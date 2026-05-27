@@ -1,16 +1,27 @@
-import { demandRepository } from "@/repositories/demandRepository";
-import { auditService } from "@/services/auditService";
+import { demandRepository }   from "@/repositories/demandRepository";
+import { auditService }        from "@/services/auditService";
 import {
   createDemandSchema,
   updateDemandSchema,
-  updateDemandStatusSchema,
+  changeDemandStatusSchema,
+  ALLOWED_TRANSITIONS,
   type CreateDemandInput,
   type UpdateDemandInput,
-  type UpdateDemandStatusInput,
+  type ChangeDemandStatusInput,
 } from "@/validations/demand";
 import { createEvidenceSchema, type CreateEvidenceInput } from "@/validations/evidence";
-import type { DemandFilters } from "@/types";
-import type { DemandStatus } from "@prisma/client";
+import type { DemandFilters }    from "@/types";
+import type { DemandStatus }     from "@prisma/client";
+import type { UserForPermission } from "@/server/auth/permissions";
+import {
+  canCreateDemand,
+  canEditDemand,
+  canChangeDemandStatus,
+  canAttachEvidence,
+  canViewDemand,
+} from "@/server/auth/permissions";
+
+// ── Erros de domínio ─────────────────────────────────────────────
 
 export class DemandNotFoundError extends Error {
   constructor(id: string) {
@@ -26,10 +37,25 @@ export class InvalidStatusTransitionError extends Error {
   }
 }
 
+export class DemandPermissionError extends Error {
+  constructor(action: string) {
+    super(`Sem permissão para ${action}`);
+    this.name = "DemandPermissionError";
+  }
+}
+
+// ── Service ──────────────────────────────────────────────────────
+
 export const demandService = {
-  async getById(id: string) {
+  async getById(id: string, actor?: UserForPermission) {
     const demand = await demandRepository.findById(id);
     if (!demand) throw new DemandNotFoundError(id);
+
+    if (actor) {
+      const demandPerm = { id: demand.id, creatorId: demand.creatorId, assigneeId: demand.assigneeId, status: demand.status };
+      if (!canViewDemand(actor, demandPerm)) throw new DemandPermissionError("visualizar esta demanda");
+    }
+
     return demand;
   },
 
@@ -37,108 +63,126 @@ export const demandService = {
     return demandRepository.findMany(filters);
   },
 
-  async createDemand(input: CreateDemandInput, actorId: string) {
-    const data = createDemandSchema.parse(input);
+  async getStats() {
+    return demandRepository.countByStatus();
+  },
 
-    const demand = await demandRepository.create(data);
+  async createDemand(input: CreateDemandInput, actor: UserForPermission) {
+    if (!canCreateDemand(actor)) throw new DemandPermissionError("criar demanda");
+
+    const data = createDemandSchema.parse(input);
+    const { saveAsDraft, ...demandData } = data;
+
+    const demand = await demandRepository.create({
+      ...demandData,
+      status: saveAsDraft ? "RASCUNHO" : "ABERTA",
+    });
 
     await auditService.log({
-      entity: "Demand",
+      entity:   "Demand",
       entityId: demand.id,
-      action: "CREATE",
-      newValue: {
-        title: demand.title,
-        status: demand.status,
-        priority: demand.priority,
-        demandType: demand.demandType,
-      },
-      userId: actorId,
+      action:   "CREATE",
+      newValue: { title: demand.title, status: demand.status, priority: demand.priority, demandType: demand.demandType },
+      userId:   actor.id,
     });
 
     return demand;
   },
 
-  async updateDemand(id: string, input: UpdateDemandInput, actorId: string) {
+  async updateDemand(id: string, input: UpdateDemandInput, actor: UserForPermission) {
     const data = updateDemandSchema.parse(input);
 
     const existing = await demandRepository.findById(id);
     if (!existing) throw new DemandNotFoundError(id);
 
-    const updated = await demandRepository.update(id, data);
+    const demandPerm = { id: existing.id, creatorId: existing.creatorId, assigneeId: existing.assigneeId, status: existing.status };
+    if (!canEditDemand(actor, demandPerm)) throw new DemandPermissionError("editar esta demanda");
+
+    // DEV só pode editar campos operacionais
+    let payload = data;
+    if (actor.role === "DEV") {
+      payload = {
+        actualStartDate:    data.actualStartDate,
+        actualDeliveryDate: data.actualDeliveryDate,
+        observations:       data.observations,
+      } as UpdateDemandInput;
+    }
+
+    const updated = await demandRepository.update(id, payload);
 
     await auditService.log({
-      entity: "Demand",
+      entity:   "Demand",
       entityId: id,
-      action: "UPDATE",
-      oldValue: {
-        title: existing.title,
-        description: existing.description,
-        priority: existing.priority,
-        assigneeId: existing.assigneeId,
-      },
-      newValue: {
-        title: updated.title,
-        description: updated.description,
-        priority: updated.priority,
-        assigneeId: updated.assigneeId,
-      },
-      userId: actorId,
+      action:   "UPDATE",
+      oldValue: { title: existing.title, priority: existing.priority, assigneeId: existing.assigneeId, plannedDeliveryDate: existing.plannedDeliveryDate },
+      newValue: { title: updated.title,  priority: updated.priority,  assigneeId: updated.assigneeId,  plannedDeliveryDate: updated.plannedDeliveryDate },
+      userId:   actor.id,
     });
 
     return updated;
   },
 
-  async changeStatus(id: string, input: UpdateDemandStatusInput, actorId: string) {
-    const { currentStatus, newStatus, reason } = updateDemandStatusSchema.parse(input);
+  async changeStatus(id: string, input: ChangeDemandStatusInput, actor: UserForPermission) {
+    const { currentStatus, newStatus, reason } = changeDemandStatusSchema.parse(input);
 
     const existing = await demandRepository.findById(id);
     if (!existing) throw new DemandNotFoundError(id);
 
-    // Verifica se o status atual do banco bate com o informado
     if (existing.status !== currentStatus) {
       throw new InvalidStatusTransitionError(existing.status, newStatus);
     }
 
-    const extra: Partial<{ actualDeliveryDate: Date; homologationDate: Date }> = {};
+    const demandPerm = { id: existing.id, creatorId: existing.creatorId, assigneeId: existing.assigneeId, status: existing.status };
+    if (!canChangeDemandStatus(actor, demandPerm, newStatus)) {
+      throw new DemandPermissionError(`alterar status para ${newStatus}`);
+    }
+
+    if (!ALLOWED_TRANSITIONS[currentStatus]?.includes(newStatus)) {
+      throw new InvalidStatusTransitionError(currentStatus, newStatus);
+    }
+
+    const extra: Partial<{ actualDeliveryDate: Date; actualStartDate: Date; homologationDate: Date }> = {};
+    if (newStatus === "EM_DESENVOLVIMENTO" && !existing.actualStartDate) extra.actualStartDate = new Date();
     if (newStatus === "AGUARDANDO_HOMOLOGACAO") extra.actualDeliveryDate = new Date();
-    if (newStatus === "HOMOLOGADA_PRODUCAO") extra.homologationDate = new Date();
+    if (newStatus === "HOMOLOGADA_PRODUCAO")    extra.homologationDate   = new Date();
 
     const updated = await demandRepository.updateStatus(id, newStatus, extra);
 
-    const action = newStatus === "HOMOLOGADA_PRODUCAO"
-      ? "HOMOLOGATION"
-      : newStatus === "REPROVADA"
-      ? "REJECTION"
-      : newStatus === "APROVADA"
-      ? "APPROVAL"
-      : "STATUS_CHANGE";
+    const action =
+      newStatus === "HOMOLOGADA_PRODUCAO" ? "HOMOLOGATION" :
+      newStatus === "REPROVADA"           ? "REJECTION"    :
+      newStatus === "APROVADA"            ? "APPROVAL"     :
+      "STATUS_CHANGE";
 
     await auditService.log({
-      entity: "Demand",
+      entity:   "Demand",
       entityId: id,
       action,
       oldValue: { status: currentStatus },
       newValue: { status: newStatus, ...(reason && { reason }) },
-      userId: actorId,
+      userId:   actor.id,
     });
 
     return updated;
   },
 
-  async addEvidence(input: CreateEvidenceInput, actorId: string) {
-    const data = createEvidenceSchema.parse(input);
+  async addEvidence(input: CreateEvidenceInput, actor: UserForPermission) {
+    const data = createEvidenceSchema.parse({ ...input, createdById: actor.id });
 
     const demand = await demandRepository.findById(data.demandId);
     if (!demand) throw new DemandNotFoundError(data.demandId);
 
-    const evidence = await demandRepository.addEvidence(data);
+    const demandPerm = { id: demand.id, creatorId: demand.creatorId, assigneeId: demand.assigneeId, status: demand.status };
+    if (!canAttachEvidence(actor, demandPerm)) throw new DemandPermissionError("anexar evidência");
+
+    const evidence = await demandRepository.addEvidence({ ...data, createdById: actor.id });
 
     await auditService.log({
-      entity: "Demand",
+      entity:   "Demand",
       entityId: data.demandId,
-      action: "UPDATE",
+      action:   "UPDATE",
       newValue: { evidenceAdded: { title: evidence.title, url: evidence.url } },
-      userId: actorId,
+      userId:   actor.id,
     });
 
     return evidence;

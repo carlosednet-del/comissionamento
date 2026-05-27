@@ -81,9 +81,10 @@ model User {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
-  createdDemands  Demand[]   @relation("DemandCreator")
-  assignedDemands Demand[]   @relation("DemandAssignee")
-  auditLogs       AuditLog[]
+  createdDemands   Demand[]         @relation("DemandCreator")
+  assignedDemands  Demand[]         @relation("DemandAssignee")
+  auditLogs        AuditLog[]
+  createdEvidences DemandEvidence[] @relation("EvidenceCreator")
 
   @@map("users")
 }
@@ -94,12 +95,21 @@ model Demand {
   description          String
   requesterArea        String
   requesterName        String
+  requesterEmail       String?
   demandType           DemandType
   priority             DemandPriority @default(MEDIA)
   status               DemandStatus   @default(RASCUNHO)
   systemAffected       String?
+  businessProblem      String?
+  expectedResult       String?
+  impactDescription    String?
+  dependencies         String?
+  risks                String?
+  observations         String?
   estimatedHours       Float?
+  plannedStartDate     DateTime?
   plannedDeliveryDate  DateTime?
+  actualStartDate      DateTime?
   actualDeliveryDate   DateTime?
   homologationDate     DateTime?
   assigneeId           String?
@@ -111,6 +121,10 @@ model Demand {
   creator   User             @relation("DemandCreator", fields: [creatorId], references: [id])
   evidences DemandEvidence[]
 
+  @@index([status])
+  @@index([priority])
+  @@index([creatorId])
+  @@index([assigneeId])
   @@map("demands")
 }
 
@@ -120,9 +134,11 @@ model DemandEvidence {
   title       String
   url         String
   description String?
+  createdById String?
   createdAt   DateTime @default(now())
 
-  demand Demand @relation(fields: [demandId], references: [id], onDelete: Cascade)
+  demand    Demand @relation(fields: [demandId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation("EvidenceCreator", fields: [createdById], references: [id])
 
   @@map("demand_evidences")
 }

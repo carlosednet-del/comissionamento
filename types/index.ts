@@ -24,35 +24,46 @@ export type {
   AuditAction,
 };
 
-// -------------------------------------------------------
-// Tipos de sessão
-// -------------------------------------------------------
-
+// ── Session ──────────────────────────────────────────────────────
 export type { SessionUser } from "@/server/auth/helpers";
 
-// -------------------------------------------------------
-// Tipos compostos / enriquecidos
-// -------------------------------------------------------
+// ── Demand composite types ────────────────────────────────────────
 
 export type DemandWithRelations = Demand & {
-  creator: User;
-  assignee: User | null;
-  evidences: DemandEvidence[];
+  creator:  Pick<User, "id" | "name">;
+  assignee: Pick<User, "id" | "name"> | null;
+  evidences: (DemandEvidence & { createdBy: Pick<User, "id" | "name"> | null })[];
 };
 
 export type DemandSummary = Pick<
   Demand,
-  "id" | "title" | "status" | "priority" | "demandType" | "createdAt" | "plannedDeliveryDate"
+  | "id"
+  | "title"
+  | "status"
+  | "priority"
+  | "demandType"
+  | "createdAt"
+  | "plannedDeliveryDate"
+  | "estimatedHours"
+  | "requesterArea"
+  | "requesterName"
 > & {
   assignee: Pick<User, "id" | "name"> | null;
-  creator: Pick<User, "id" | "name">;
+  creator:  Pick<User, "id" | "name">;
 };
 
-export type UserSummary = Pick<User, "id" | "name" | "email" | "role" | "workerProfile" | "isActive" | "createdAt">;
+export type AuditLogWithUser = AuditLog & {
+  user: Pick<User, "id" | "name" | "role">;
+};
 
-// -------------------------------------------------------
-// Resposta de API
-// -------------------------------------------------------
+// ── User composite types ──────────────────────────────────────────
+
+export type UserSummary = Pick<
+  User,
+  "id" | "name" | "email" | "role" | "workerProfile" | "isActive" | "createdAt"
+>;
+
+// ── API response types ────────────────────────────────────────────
 
 export type ApiResponse<T> = {
   data: T;
@@ -72,31 +83,29 @@ export type PaginatedResponse<T> = {
   totalPages: number;
 };
 
-// -------------------------------------------------------
-// Filtros
-// -------------------------------------------------------
+export type ActionResult<T = void> =
+  | { success: true; data: T; message?: string }
+  | { success: false; error: string; details?: unknown };
+
+// ── Filters ──────────────────────────────────────────────────────
 
 export type DemandFilters = {
-  status?: DemandStatus;
-  priority?: DemandPriority;
-  demandType?: DemandType;
-  assigneeId?: string;
-  creatorId?: string;
-  search?: string;
-  page?: number;
+  status?:        DemandStatus;
+  priority?:      DemandPriority;
+  demandType?:    DemandType;
+  assigneeId?:    string;
+  requesterArea?: string;
+  search?:        string;
+  createdFrom?:   Date;
+  createdTo?:     Date;
+  deliveryFrom?:  Date;
+  deliveryTo?:    Date;
+  page?:     number;
   pageSize?: number;
 };
 
 export type UserFilters = {
-  role?: UserRole;
+  role?:     UserRole;
   isActive?: boolean;
-  search?: string;
+  search?:   string;
 };
-
-// -------------------------------------------------------
-// Server Action result
-// -------------------------------------------------------
-
-export type ActionResult<T = void> =
-  | { success: true; data: T; message?: string }
-  | { success: false; error: string; details?: unknown };

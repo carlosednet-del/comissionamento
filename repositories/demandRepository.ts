@@ -1,55 +1,90 @@
 import { prisma } from "@/lib/prisma";
-import type { CreateDemandInput, UpdateDemandInput } from "@/validations/demand";
 import type { DemandFilters, DemandSummary, PaginatedResponse } from "@/types";
-import type { Demand, User, DemandEvidence } from "@prisma/client";
+import type { Demand, DemandStatus } from "@prisma/client";
 
-type DemandWithRelations = Demand & {
-  creator: User;
-  assignee: User | null;
-  evidences: DemandEvidence[];
-};
-import type { DemandStatus } from "@prisma/client";
-
+// ── Projeção de lista ─────────────────────────────────────────────
 const demandSummarySelect = {
-  id: true,
-  title: true,
-  status: true,
-  priority: true,
-  demandType: true,
-  createdAt: true,
+  id:                  true,
+  title:               true,
+  status:              true,
+  priority:            true,
+  demandType:          true,
+  requesterArea:       true,
+  requesterName:       true,
+  estimatedHours:      true,
+  createdAt:           true,
   plannedDeliveryDate: true,
   assignee: { select: { id: true, name: true } },
-  creator: { select: { id: true, name: true } },
+  creator:  { select: { id: true, name: true } },
 } as const;
 
+// ── Projeção de detalhe ───────────────────────────────────────────
+const demandDetailInclude = {
+  creator:  { select: { id: true, name: true } },
+  assignee: { select: { id: true, name: true } },
+  evidences: {
+    orderBy: { createdAt: "desc" as const },
+    include: { createdBy: { select: { id: true, name: true } } },
+  },
+};
+
 export const demandRepository = {
-  async findById(id: string): Promise<DemandWithRelations | null> {
+  // ── Read ────────────────────────────────────────────────────────
+
+  async findById(id: string) {
     return prisma.demand.findUnique({
       where: { id },
-      include: {
-        creator: true,
-        assignee: true,
-        evidences: { orderBy: { createdAt: "desc" } },
-      },
+      include: demandDetailInclude,
     });
   },
 
   async findMany(filters: DemandFilters = {}): Promise<PaginatedResponse<DemandSummary>> {
-    const { status, priority, demandType, assigneeId, creatorId, search, page = 1, pageSize = 20 } = filters;
+    const {
+      status,
+      priority,
+      demandType,
+      assigneeId,
+      requesterArea,
+      search,
+      createdFrom,
+      createdTo,
+      deliveryFrom,
+      deliveryTo,
+      page = 1,
+      pageSize = 20,
+    } = filters;
 
     const where = {
-      ...(status && { status }),
-      ...(priority && { priority }),
-      ...(demandType && { demandType }),
-      ...(assigneeId && { assigneeId }),
-      ...(creatorId && { creatorId }),
+      ...(status        && { status }),
+      ...(priority      && { priority }),
+      ...(demandType    && { demandType }),
+      ...(assigneeId    && { assigneeId }),
+      ...(requesterArea && {
+        requesterArea: { contains: requesterArea, mode: "insensitive" as const },
+      }),
       ...(search && {
         OR: [
-          { title: { contains: search, mode: "insensitive" as const } },
+          { title:       { contains: search, mode: "insensitive" as const } },
           { description: { contains: search, mode: "insensitive" as const } },
           { requesterName: { contains: search, mode: "insensitive" as const } },
         ],
       }),
+      ...(createdFrom || createdTo
+        ? {
+            createdAt: {
+              ...(createdFrom && { gte: createdFrom }),
+              ...(createdTo   && { lte: createdTo   }),
+            },
+          }
+        : {}),
+      ...(deliveryFrom || deliveryTo
+        ? {
+            plannedDeliveryDate: {
+              ...(deliveryFrom && { gte: deliveryFrom }),
+              ...(deliveryTo   && { lte: deliveryTo   }),
+            },
+          }
+        : {}),
     };
 
     const [data, total] = await prisma.$transaction([
@@ -64,7 +99,7 @@ export const demandRepository = {
     ]);
 
     return {
-      data: data as DemandSummary[],
+      data: data as unknown as DemandSummary[],
       total,
       page,
       pageSize,
@@ -72,35 +107,68 @@ export const demandRepository = {
     };
   },
 
-  async create(data: CreateDemandInput) {
+  async countByStatus() {
+    const groups = await prisma.demand.groupBy({
+      by: ["status"],
+      _count: { _all: true },
+    });
+    return Object.fromEntries(
+      groups.map((g) => [g.status, g._count._all]),
+    ) as Partial<Record<DemandStatus, number>>;
+  },
+
+  // ── Write ───────────────────────────────────────────────────────
+
+  async create(data: Omit<Parameters<typeof prisma.demand.create>[0]["data"], never>) {
     return prisma.demand.create({
-      data,
-      include: { creator: true, assignee: true },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: data as any,
+      include: demandDetailInclude,
     });
   },
 
-  async update(id: string, data: UpdateDemandInput) {
+  async update(id: string, data: Parameters<typeof prisma.demand.update>[0]["data"]) {
     return prisma.demand.update({
       where: { id },
       data,
-      include: { creator: true, assignee: true },
+      include: demandDetailInclude,
     });
   },
 
-  async updateStatus(id: string, status: DemandStatus, extra?: Partial<{ actualDeliveryDate: Date; homologationDate: Date }>) {
+  async updateStatus(
+    id: string,
+    status: DemandStatus,
+    extra?: Partial<{
+      actualDeliveryDate: Date;
+      actualStartDate:    Date;
+      homologationDate:   Date;
+    }>,
+  ): Promise<Demand> {
     return prisma.demand.update({
       where: { id },
       data: { status, ...extra },
     });
   },
 
-  async addEvidence(data: { demandId: string; title: string; url: string; description?: string }) {
-    return prisma.demandEvidence.create({ data });
+  // ── Evidence ────────────────────────────────────────────────────
+
+  async addEvidence(data: {
+    demandId:    string;
+    title:       string;
+    url:         string;
+    description?: string;
+    createdById?: string | null;
+  }) {
+    return prisma.demandEvidence.create({
+      data,
+      include: { createdBy: { select: { id: true, name: true } } },
+    });
   },
 
   async findEvidences(demandId: string) {
     return prisma.demandEvidence.findMany({
       where: { demandId },
+      include: { createdBy: { select: { id: true, name: true } } },
       orderBy: { createdAt: "desc" },
     });
   },

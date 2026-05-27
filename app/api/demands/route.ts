@@ -12,7 +12,6 @@ export async function GET(request: NextRequest) {
       priority: (searchParams.get("priority") as DemandPriority) ?? undefined,
       demandType: (searchParams.get("demandType") as DemandType) ?? undefined,
       assigneeId: searchParams.get("assigneeId") ?? undefined,
-      creatorId: searchParams.get("creatorId") ?? undefined,
       search: searchParams.get("search") ?? undefined,
       page: searchParams.has("page") ? Number(searchParams.get("page")) : 1,
       pageSize: searchParams.has("pageSize") ? Number(searchParams.get("pageSize")) : 20,

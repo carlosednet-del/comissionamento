@@ -46,10 +46,22 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
 
 /**
  * Exige autenticação. Redireciona para /login se não autenticado.
+ * Redireciona para /sem-perfil se há sessão Supabase mas sem registro no DB.
  */
 export async function requireAuth(): Promise<SessionUser> {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+
+  if (!user) {
+    // Distingue: sem sessão Supabase vs. sessão existe mas sem perfil no DB
+    const supabase = await createClient();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) {
+      // Usuário autenticado no Supabase mas sem registro na tabela users
+      redirect("/sem-perfil");
+    }
+    redirect("/login");
+  }
+
   if (!user.isActive) redirect("/acesso-bloqueado");
   return user;
 }

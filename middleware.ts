@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { UserRole } from "@prisma/client";
 
-const PUBLIC_ROUTES = ["/login", "/acesso-bloqueado", "/api/auth/callback"];
+const PUBLIC_ROUTES = ["/login", "/acesso-bloqueado", "/sem-perfil", "/api/auth/callback"];
 const ADMIN_ROUTES = ["/usuarios", "/parametros"];
 
 function isPublicRoute(pathname: string) {

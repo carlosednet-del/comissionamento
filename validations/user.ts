@@ -1,0 +1,44 @@
+import { z } from "zod";
+import { UserRole, WorkerProfile } from "@prisma/client";
+
+// workerProfile é obrigatório apenas para DEV
+const workerProfileRule = z
+  .nativeEnum(WorkerProfile)
+  .nullable()
+  .optional()
+  .transform((v) => v ?? null);
+
+export const createUserSchema = z
+  .object({
+    name: z.string().min(2, "Nome deve ter ao menos 2 caracteres").max(100),
+    email: z.string().email("E-mail inválido"),
+    password: z.string().min(8, "Senha temporária deve ter ao menos 8 caracteres"),
+    role: z.nativeEnum(UserRole),
+    workerProfile: workerProfileRule,
+    isActive: z.boolean().optional().default(true),
+  })
+  .refine(
+    (data) => {
+      if (data.role === UserRole.DEV && !data.workerProfile) return false;
+      return true;
+    },
+    { message: "Perfil técnico é obrigatório para DEV", path: ["workerProfile"] },
+  );
+
+export const updateUserSchema = z
+  .object({
+    name: z.string().min(2, "Nome deve ter ao menos 2 caracteres").max(100),
+    role: z.nativeEnum(UserRole),
+    workerProfile: workerProfileRule,
+    isActive: z.boolean().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.role === UserRole.DEV && !data.workerProfile) return false;
+      return true;
+    },
+    { message: "Perfil técnico é obrigatório para DEV", path: ["workerProfile"] },
+  );
+
+export type CreateUserInput = z.infer<typeof createUserSchema>;
+export type UpdateUserInput = z.infer<typeof updateUserSchema>;

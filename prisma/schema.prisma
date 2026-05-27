@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// -------------------------------------------------------
+// Enums
+// -------------------------------------------------------
+
+enum UserRole {
+  ADMIN
+  GESTOR
+  DEV
+  APROVADOR
+  FINANCEIRO
+}
+
+enum WorkerProfile {
+  JUNIOR
+  SENIOR
+  ESPECIALISTA
+}
+
+enum DemandType {
+  NOVA_SOLUCAO
+  EVOLUCAO_PRODUCAO
+  CORRECAO
+  AUTOMACAO
+  DASHBOARD
+  INTEGRACAO
+  OUTRO
+}
+
+enum DemandPriority {
+  BAIXA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+enum DemandStatus {
+  RASCUNHO
+  ABERTA
+  EM_ANALISE
+  APROVADA
+  EM_DESENVOLVIMENTO
+  AGUARDANDO_HOMOLOGACAO
+  HOMOLOGADA_PRODUCAO
+  REPROVADA
+  CANCELADA
+  CONCLUIDA
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  STATUS_CHANGE
+  APPROVAL
+  REJECTION
+  HOMOLOGATION
+}
+
+// -------------------------------------------------------
+// Models
+// -------------------------------------------------------
+
+model User {
+  id            String         @id @default(cuid())
+  authUserId    String?        @unique
+  name          String
+  email         String         @unique
+  role          UserRole       @default(DEV)
+  workerProfile WorkerProfile?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  createdDemands  Demand[]   @relation("DemandCreator")
+  assignedDemands Demand[]   @relation("DemandAssignee")
+  auditLogs       AuditLog[]
+
+  @@map("users")
+}
+
+model Demand {
+  id                   String         @id @default(cuid())
+  title                String
+  description          String
+  requesterArea        String
+  requesterName        String
+  demandType           DemandType
+  priority             DemandPriority @default(MEDIA)
+  status               DemandStatus   @default(RASCUNHO)
+  systemAffected       String?
+  estimatedHours       Float?
+  plannedDeliveryDate  DateTime?
+  actualDeliveryDate   DateTime?
+  homologationDate     DateTime?
+  assigneeId           String?
+  creatorId            String
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  assignee  User?            @relation("DemandAssignee", fields: [assigneeId], references: [id])
+  creator   User             @relation("DemandCreator", fields: [creatorId], references: [id])
+  evidences DemandEvidence[]
+
+  @@map("demands")
+}
+
+model DemandEvidence {
+  id          String   @id @default(cuid())
+  demandId    String
+  title       String
+  url         String
+  description String?
+  createdAt   DateTime @default(now())
+
+  demand Demand @relation(fields: [demandId], references: [id], onDelete: Cascade)
+
+  @@map("demand_evidences")
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  entity    String
+  entityId  String
+  action    AuditAction
+  oldValue  Json?
+  newValue  Json?
+  userId    String
+  createdAt DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@map("audit_logs")
+}

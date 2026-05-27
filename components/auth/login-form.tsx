@@ -48,7 +48,7 @@ export function LoginForm() {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5" noValidate>
 
-        {/* Erro do servidor */}
+        {/* Server error banner */}
         {serverError && (
           <Alert
             variant="destructive"
@@ -61,13 +61,13 @@ export function LoginForm() {
           </Alert>
         )}
 
-        {/* Campo e-mail */}
+        {/* E-mail field */}
         <FormField
           control={form.control}
           name="email"
           render={({ field }) => (
             <FormItem className="space-y-1.5">
-              <FormLabel className="text-sm font-medium text-slate-700">
+              <FormLabel className="text-sm font-semibold text-brand-text-dark">
                 E-mail
               </FormLabel>
               <FormControl>
@@ -77,7 +77,7 @@ export function LoginForm() {
                   autoComplete="email"
                   autoFocus
                   disabled={isSubmitting}
-                  className="h-10 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus-visible:border-slate-400 focus-visible:ring-2 focus-visible:ring-slate-200"
+                  className="h-11 rounded-xl border-brand-bg-light bg-white text-brand-text-dark placeholder:text-brand-text-muted focus-visible:border-brand-hover focus-visible:ring-2 focus-visible:ring-brand-accent/40 disabled:opacity-60"
                   {...field}
                 />
               </FormControl>
@@ -86,13 +86,13 @@ export function LoginForm() {
           )}
         />
 
-        {/* Campo senha */}
+        {/* Password field */}
         <FormField
           control={form.control}
           name="password"
           render={({ field }) => (
             <FormItem className="space-y-1.5">
-              <FormLabel className="text-sm font-medium text-slate-700">
+              <FormLabel className="text-sm font-semibold text-brand-text-dark">
                 Senha
               </FormLabel>
               <FormControl>
@@ -102,14 +102,14 @@ export function LoginForm() {
                     placeholder="••••••••"
                     autoComplete="current-password"
                     disabled={isSubmitting}
-                    className="h-10 border-slate-200 bg-white pr-10 text-slate-900 placeholder:text-slate-400 focus-visible:border-slate-400 focus-visible:ring-2 focus-visible:ring-slate-200"
+                    className="h-11 rounded-xl border-brand-bg-light bg-white pr-11 text-brand-text-dark placeholder:text-brand-text-muted focus-visible:border-brand-hover focus-visible:ring-2 focus-visible:ring-brand-accent/40 disabled:opacity-60"
                     {...field}
                   />
                   <button
                     type="button"
                     tabIndex={-1}
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-text-muted transition-colors hover:text-brand-hover"
                     aria-label={showPassword ? "Ocultar senha" : "Exibir senha"}
                   >
                     {showPassword ? (
@@ -125,11 +125,11 @@ export function LoginForm() {
           )}
         />
 
-        {/* Botão */}
+        {/* Submit button — gradient */}
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="h-10 w-full bg-slate-900 text-white hover:bg-slate-800 active:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-60 transition-colors font-medium"
+          className="h-11 w-full rounded-xl bg-gradient-to-r from-brand-primary to-brand-hover font-semibold text-white shadow-md shadow-brand-primary/25 transition-all hover:opacity-90 hover:shadow-lg hover:shadow-brand-primary/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting ? (
             <span className="flex items-center gap-2">

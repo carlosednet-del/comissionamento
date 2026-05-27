@@ -12,6 +12,20 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        /* Brand palette — driven by CSS custom properties in globals.css.
+         * The <alpha-value> placeholder lets Tailwind opacity modifiers work,
+         * e.g. bg-brand-accent/30, shadow-brand-primary/25. */
+        brand: {
+          primary:      "hsl(var(--brand-primary)      / <alpha-value>)",
+          hover:        "hsl(var(--brand-primary-hover) / <alpha-value>)",
+          accent:       "hsl(var(--brand-accent)        / <alpha-value>)",
+          "bg-light":   "hsl(var(--brand-bg-light)      / <alpha-value>)",
+          "bg-mid":     "hsl(var(--brand-bg-mid)        / <alpha-value>)",
+          "bg-base":    "hsl(var(--brand-bg-base)       / <alpha-value>)",
+          "text-dark":  "hsl(var(--brand-text-dark)     / <alpha-value>)",
+          "text-body":  "hsl(var(--brand-text-body)     / <alpha-value>)",
+          "text-muted": "hsl(var(--brand-text-muted)    / <alpha-value>)",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -52,8 +66,8 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-geist-mono)", "monospace"],
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        mono: ["monospace"],
       },
     },
   },

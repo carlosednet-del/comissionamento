@@ -101,10 +101,6 @@ DIRECT_URL="postgresql://postgres.[REF]:[SENHA]@aws-0-[REGION].pooler.supabase.c
 NEXT_PUBLIC_SUPABASE_URL="https://[REF].supabase.co"
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="sb_publishable_..."
 SUPABASE_SERVICE_ROLE_KEY="sb_secret_..."
-
-# Seed
-ADMIN_EMAIL="admin@empresa.com"
-ADMIN_PASSWORD="Admin@123456"
 ```
 
 ---
@@ -145,50 +141,44 @@ npm run db:migrate:deploy
 
 ---
 
-## Seed — criar usuários iniciais
+## Login inicial
 
-O seed cria 7 usuários no Supabase Auth **e** no banco, além de 5 demandas de exemplo.
+Após rodar o seed, acesse com:
+
+| Campo | Valor |
+|---|---|
+| **E-mail** | `admin@gestor.local` |
+| **Senha** | `Admin@123456` |
+| **Role** | ADMIN |
+
+> O ADMIN pode criar os demais usuários em **Usuários → Novo usuário** dentro do próprio sistema.
+
+---
+
+## Seed — usuário administrador inicial
+
+O seed cria apenas o usuário ADMIN no Supabase Auth e na tabela `users`.
+É **idempotente** — pode ser executado várias vezes sem duplicar dados.
 
 ```bash
 npm run db:seed
 ```
 
-**Usuários criados:**
+**O que o seed faz:**
 
-| Nome | E-mail | Papel | Perfil |
+1. Verifica se `admin@gestor.local` já existe no Supabase Auth
+   - Se sim → atualiza senha e metadata
+   - Se não → cria o usuário com `email_confirm: true`
+2. Faz `upsert` na tabela `users` com o `authUserId` correto
+3. Exibe confirmação com o login para uso imediato
+
+**Credenciais criadas pelo seed:**
+
+| Nome | E-mail | Papel | Senha |
 |---|---|---|---|
-| Administrador | `$ADMIN_EMAIL` | ADMIN | — |
-| Carlos Gestor | gestor@empresa.com | GESTOR | — |
-| Ana Júnior | ana.junior@empresa.com | DEV | JUNIOR |
-| Bruno Sênior | bruno.senior@empresa.com | DEV | SENIOR |
-| Diana Especialista | diana.especialista@empresa.com | DEV | ESPECIALISTA |
-| Eduardo Aprovador | eduardo.aprovador@empresa.com | APROVADOR | — |
-| Fernanda Financeiro | fernanda.financeiro@empresa.com | FINANCEIRO | — |
+| Administrador | `admin@gestor.local` | ADMIN | `Admin@123456` |
 
-> Todos usam a senha definida em `ADMIN_PASSWORD` (padrão: `Seed@123456`)
-
----
-
-## Criar primeiro ADMIN manualmente
-
-Se não quiser usar o seed completo, crie o admin diretamente:
-
-1. No Supabase Dashboard → **Authentication → Users → Add user**
-2. Informe e-mail e senha
-3. Execute no banco:
-```sql
-INSERT INTO users (id, "authUserId", name, email, role, "isActive", "createdAt", "updatedAt")
-VALUES (
-  gen_random_uuid()::text,
-  '[UUID-DO-SUPABASE-AUTH]',
-  'Administrador',
-  'admin@empresa.com',
-  'ADMIN',
-  true,
-  now(),
-  now()
-);
-```
+> Os demais usuários devem ser cadastrados pelo próprio sistema após o primeiro login.
 
 ---
 

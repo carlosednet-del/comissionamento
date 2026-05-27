@@ -1,194 +1,149 @@
-import {
-  PrismaClient,
-  UserRole,
-  WorkerProfile,
-  DemandType,
-  DemandPriority,
-  DemandStatus,
-} from "@prisma/client";
+/**
+ * Seed — Gestor de Demandas Técnicas
+ *
+ * Cria (ou atualiza) apenas o usuário administrador inicial.
+ * É idempotente: pode ser executado várias vezes sem duplicar dados.
+ *
+ * Execução:
+ *   npm run db:seed
+ *   npx prisma db seed
+ */
+
+import { PrismaClient, UserRole } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
 
 const prisma = new PrismaClient();
 
-function supabaseAdmin() {
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+// ── Credenciais do admin inicial ────────────────────────────────
+const ADMIN_EMAIL = "admin@gestor.local";
+const ADMIN_PASSWORD = "Admin@123456";
+const ADMIN_NAME = "Administrador";
+// ────────────────────────────────────────────────────────────────
+
+function makeAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    throw new Error(
+      "Variáveis ausentes no .env:\n" +
+        "  NEXT_PUBLIC_SUPABASE_URL\n" +
+        "  SUPABASE_SERVICE_ROLE_KEY",
+    );
+  }
+
+  return createClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }
 
-async function upsertAuthUser(
-  admin: ReturnType<typeof supabaseAdmin>,
-  email: string,
-  password: string,
-  metadata: { role: UserRole; isActive: boolean },
-): Promise<string> {
-  // Tenta buscar usuário existente pelo email
-  const { data: list } = await admin.auth.admin.listUsers();
-  const existing = list?.users?.find((u) => u.email === email);
+/**
+ * Retorna o ID do usuário no Supabase Auth.
+ *
+ * - Se o e-mail já existir → atualiza senha + metadata e retorna o ID existente.
+ * - Se não existir → cria o usuário e retorna o novo ID.
+ */
+async function resolveAuthUserId(): Promise<string> {
+  const supabase = makeAdminClient();
+
+  // Buscar por e-mail nas primeiras 1000 entradas (suficiente para projetos internos)
+  const { data: list, error: listError } = await supabase.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
+  });
+
+  if (listError) {
+    throw new Error(`Erro ao listar usuários no Supabase Auth: ${listError.message}`);
+  }
+
+  const existing = list?.users?.find((u) => u.email === ADMIN_EMAIL);
 
   if (existing) {
-    await admin.auth.admin.updateUserById(existing.id, { user_metadata: metadata });
+    console.log(`  ↺  Supabase Auth: usuário já existe  →  ${existing.id}`);
+
+    // Garante que a senha e os metadados estão corretos
+    const { error: updateError } = await supabase.auth.admin.updateUserById(existing.id, {
+      password: ADMIN_PASSWORD,
+      email_confirm: true,
+      user_metadata: { role: UserRole.ADMIN, isActive: true },
+    });
+
+    if (updateError) {
+      throw new Error(`Erro ao atualizar usuário no Auth: ${updateError.message}`);
+    }
+
     return existing.id;
   }
 
-  const { data, error } = await admin.auth.admin.createUser({
-    email,
-    password,
+  // Criar novo usuário no Supabase Auth
+  const { data, error: createError } = await supabase.auth.admin.createUser({
+    email: ADMIN_EMAIL,
+    password: ADMIN_PASSWORD,
     email_confirm: true,
-    user_metadata: metadata,
+    user_metadata: { role: UserRole.ADMIN, isActive: true },
   });
-  if (error) throw new Error(`Falha ao criar auth user ${email}: ${error.message}`);
+
+  if (createError) {
+    throw new Error(`Erro ao criar usuário no Auth: ${createError.message}`);
+  }
+
+  console.log(`  ✓  Supabase Auth: usuário criado    →  ${data.user.id}`);
   return data.user.id;
 }
 
 async function main() {
-  console.log("🌱 Iniciando seed...");
+  console.log("────────────────────────────────────────────────");
+  console.log("  🌱  Seed — Gestor de Demandas Técnicas");
+  console.log("────────────────────────────────────────────────\n");
 
-  const admin = supabaseAdmin();
-  const defaultPassword = process.env.ADMIN_PASSWORD ?? "Seed@123456";
+  // ── Passo 1: Supabase Auth ──────────────────────────────────
+  console.log("  [1/2] Supabase Auth...");
+  const authUserId = await resolveAuthUserId();
 
-  // -------------------------------------------------------
-  // Criar usuários no Supabase Auth e no banco
-  // -------------------------------------------------------
-  const usersToCreate = [
-    { email: process.env.ADMIN_EMAIL ?? "admin@empresa.com", name: "Administrador", role: UserRole.ADMIN, workerProfile: null },
-    { email: "gestor@empresa.com", name: "Carlos Gestor", role: UserRole.GESTOR, workerProfile: null },
-    { email: "ana.junior@empresa.com", name: "Ana Júnior", role: UserRole.DEV, workerProfile: WorkerProfile.JUNIOR },
-    { email: "bruno.senior@empresa.com", name: "Bruno Sênior", role: UserRole.DEV, workerProfile: WorkerProfile.SENIOR },
-    { email: "diana.especialista@empresa.com", name: "Diana Especialista", role: UserRole.DEV, workerProfile: WorkerProfile.ESPECIALISTA },
-    { email: "eduardo.aprovador@empresa.com", name: "Eduardo Aprovador", role: UserRole.APROVADOR, workerProfile: null },
-    { email: "fernanda.financeiro@empresa.com", name: "Fernanda Financeiro", role: UserRole.FINANCEIRO, workerProfile: null },
-  ];
+  // ── Passo 2: Tabela users (upsert por e-mail) ───────────────
+  console.log("\n  [2/2] Banco de dados (tabela users)...");
 
-  // Limpar audit logs e demandas antes de recriar users
-  await prisma.auditLog.deleteMany();
-  await prisma.demandEvidence.deleteMany();
-  await prisma.demand.deleteMany();
-
-  const createdUsers: Record<string, { id: string; dbId: string }> = {};
-
-  for (const u of usersToCreate) {
-    const authUserId = await upsertAuthUser(admin, u.email, defaultPassword, {
-      role: u.role,
+  const dbUser = await prisma.user.upsert({
+    where: { email: ADMIN_EMAIL },
+    update: {
+      authUserId,
+      name: ADMIN_NAME,
+      role: UserRole.ADMIN,
+      workerProfile: null,
       isActive: true,
-    });
-
-    const dbUser = await prisma.user.upsert({
-      where: { email: u.email },
-      update: { authUserId, name: u.name, role: u.role, workerProfile: u.workerProfile },
-      create: {
-        authUserId,
-        name: u.name,
-        email: u.email,
-        role: u.role,
-        workerProfile: u.workerProfile,
-        isActive: true,
-      },
-    });
-
-    createdUsers[u.email] = { id: authUserId, dbId: dbUser.id };
-    console.log(`  ✓ ${u.name} (${u.role})`);
-  }
-
-  console.log("✅ Usuários criados:", usersToCreate.length);
-
-  const gestor = createdUsers["gestor@empresa.com"].dbId;
-  const devSenior = createdUsers["bruno.senior@empresa.com"].dbId;
-  const especialista = createdUsers["diana.especialista@empresa.com"].dbId;
-  const adminDb = createdUsers[process.env.ADMIN_EMAIL ?? "admin@empresa.com"].dbId;
-  const aprovador = createdUsers["eduardo.aprovador@empresa.com"].dbId;
-
-  // -------------------------------------------------------
-  // Demandas de exemplo
-  // -------------------------------------------------------
-  const demandRascunho = await prisma.demand.create({
-    data: {
-      title: "Novo relatório de vendas por região",
-      description: "Criar dashboard com visualização de vendas segmentadas por região geográfica.",
-      requesterArea: "Comercial", requesterName: "João Silva",
-      demandType: DemandType.DASHBOARD, priority: DemandPriority.MEDIA,
-      status: DemandStatus.RASCUNHO, systemAffected: "ERP", estimatedHours: 20,
-      plannedDeliveryDate: new Date("2026-06-30"), creatorId: gestor,
+    },
+    create: {
+      authUserId,
+      name: ADMIN_NAME,
+      email: ADMIN_EMAIL,
+      role: UserRole.ADMIN,
+      workerProfile: null,
+      isActive: true,
     },
   });
 
-  const demandAberta = await prisma.demand.create({
-    data: {
-      title: "Integração com API de pagamentos PagSeguro",
-      description: "Implementar integração com API REST do PagSeguro para processamento de cobranças.",
-      requesterArea: "Financeiro", requesterName: "Maria Santos",
-      demandType: DemandType.INTEGRACAO, priority: DemandPriority.ALTA,
-      status: DemandStatus.ABERTA, systemAffected: "Portal B2B", estimatedHours: 40,
-      plannedDeliveryDate: new Date("2026-07-15"), creatorId: gestor, assigneeId: devSenior,
-    },
-  });
+  console.log(`  ✓  DB id        →  ${dbUser.id}`);
+  console.log(`  ✓  authUserId   →  ${dbUser.authUserId}`);
 
-  const demandEmDev = await prisma.demand.create({
-    data: {
-      title: "Correção de bug no módulo de estoque",
-      description: "Estoque não atualiza corretamente quando há transferência entre filiais no mesmo dia.",
-      requesterArea: "Logística", requesterName: "Pedro Costa",
-      demandType: DemandType.CORRECAO, priority: DemandPriority.CRITICA,
-      status: DemandStatus.EM_DESENVOLVIMENTO, systemAffected: "WMS", estimatedHours: 8,
-      plannedDeliveryDate: new Date("2026-06-05"), creatorId: gestor, assigneeId: especialista,
-    },
-  });
+  console.log(`
+────────────────────────────────────────────────
+  ✅  Seed concluído com sucesso!
 
-  const demandHomolog = await prisma.demand.create({
-    data: {
-      title: "Automação do processo de onboarding de clientes",
-      description: "Automatizar envio de e-mails, criação de acessos e configuração inicial para novos clientes.",
-      requesterArea: "Atendimento", requesterName: "Lúcia Ferreira",
-      demandType: DemandType.AUTOMACAO, priority: DemandPriority.ALTA,
-      status: DemandStatus.AGUARDANDO_HOMOLOGACAO, systemAffected: "CRM", estimatedHours: 60,
-      plannedDeliveryDate: new Date("2026-05-20"), actualDeliveryDate: new Date("2026-05-22"),
-      creatorId: gestor, assigneeId: devSenior,
-    },
-  });
+     Login inicial do sistema
+     ┌─────────────────────────────────────┐
+     │  E-mail : ${ADMIN_EMAIL.padEnd(26)} │
+     │  Senha  : ${ADMIN_PASSWORD.padEnd(26)} │
+     │  Role   : ADMIN                      │
+     └─────────────────────────────────────┘
 
-  await prisma.demandEvidence.createMany({
-    data: [
-      { demandId: demandHomolog.id, title: "Vídeo demonstrativo", url: "https://drive.empresa.com/evidencias/onboarding-demo.mp4", description: "Gravação do fluxo completo" },
-      { demandId: demandHomolog.id, title: "Screenshot testes", url: "https://drive.empresa.com/evidencias/onboarding-tests.png", description: "Resultado dos testes" },
-    ],
-  });
-
-  const demandConcluida = await prisma.demand.create({
-    data: {
-      title: "Nova solução de geração de NF-e",
-      description: "Desenvolver módulo nativo de emissão de Nota Fiscal Eletrônica substituindo solução legada.",
-      requesterArea: "Fiscal", requesterName: "Roberto Alves",
-      demandType: DemandType.NOVA_SOLUCAO, priority: DemandPriority.ALTA,
-      status: DemandStatus.HOMOLOGADA_PRODUCAO, systemAffected: "ERP", estimatedHours: 120,
-      plannedDeliveryDate: new Date("2026-04-30"), actualDeliveryDate: new Date("2026-04-28"),
-      homologationDate: new Date("2026-05-05"), creatorId: adminDb, assigneeId: especialista,
-    },
-  });
-
-  console.log("✅ Demandas criadas: 5");
-
-  // -------------------------------------------------------
-  // Audit logs
-  // -------------------------------------------------------
-  await prisma.auditLog.createMany({
-    data: [
-      { entity: "Demand", entityId: demandRascunho.id, action: "CREATE", newValue: { status: "RASCUNHO" }, userId: gestor },
-      { entity: "Demand", entityId: demandAberta.id, action: "CREATE", newValue: { status: "ABERTA" }, userId: gestor },
-      { entity: "Demand", entityId: demandEmDev.id, action: "STATUS_CHANGE", oldValue: { status: "ABERTA" }, newValue: { status: "EM_DESENVOLVIMENTO" }, userId: gestor },
-      { entity: "Demand", entityId: demandHomolog.id, action: "STATUS_CHANGE", oldValue: { status: "EM_DESENVOLVIMENTO" }, newValue: { status: "AGUARDANDO_HOMOLOGACAO" }, userId: devSenior },
-      { entity: "Demand", entityId: demandConcluida.id, action: "HOMOLOGATION", oldValue: { status: "AGUARDANDO_HOMOLOGACAO" }, newValue: { status: "HOMOLOGADA_PRODUCAO" }, userId: aprovador },
-    ],
-  });
-
-  console.log("✅ Audit logs criados: 5");
-  console.log("\n🎉 Seed concluído!");
-  console.log(`\n  📧 Admin: ${process.env.ADMIN_EMAIL ?? "admin@empresa.com"}`);
-  console.log(`  🔑 Senha padrão: ${defaultPassword}`);
+  Acesse http://localhost:3000/login
+────────────────────────────────────────────────
+`);
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Erro no seed:", e);
+    console.error("\n❌  Erro no seed:", e.message ?? e);
     process.exit(1);
   })
   .finally(() => prisma.$disconnect());

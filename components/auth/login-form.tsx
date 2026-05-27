@@ -77,7 +77,7 @@ export function LoginForm() {
                   autoComplete="email"
                   autoFocus
                   disabled={isSubmitting}
-                  className="h-11 rounded-xl border-brand-bg-light bg-white text-brand-text-dark placeholder:text-brand-text-muted focus-visible:border-brand-hover focus-visible:ring-2 focus-visible:ring-brand-accent/40 disabled:opacity-60"
+                  className="h-11 rounded-lg border-slate-200 bg-slate-50/60 text-brand-text-dark placeholder:text-brand-text-muted focus-visible:border-brand-hover focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-brand-accent/30 disabled:opacity-60"
                   {...field}
                 />
               </FormControl>
@@ -102,7 +102,7 @@ export function LoginForm() {
                     placeholder="••••••••"
                     autoComplete="current-password"
                     disabled={isSubmitting}
-                    className="h-11 rounded-xl border-brand-bg-light bg-white pr-11 text-brand-text-dark placeholder:text-brand-text-muted focus-visible:border-brand-hover focus-visible:ring-2 focus-visible:ring-brand-accent/40 disabled:opacity-60"
+                    className="h-11 rounded-lg border-slate-200 bg-slate-50/60 pr-11 text-brand-text-dark placeholder:text-brand-text-muted focus-visible:border-brand-hover focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-brand-accent/30 disabled:opacity-60"
                     {...field}
                   />
                   <button

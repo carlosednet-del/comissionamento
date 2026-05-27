@@ -9,6 +9,8 @@ import type {
   DemandPriority,
   DemandStatus,
   AuditAction,
+  ComplexityLevel,
+  RoiLevel,
 } from "@prisma/client";
 
 export type {
@@ -22,6 +24,8 @@ export type {
   DemandPriority,
   DemandStatus,
   AuditAction,
+  ComplexityLevel,
+  RoiLevel,
 };
 
 // ── Session ──────────────────────────────────────────────────────
@@ -45,6 +49,9 @@ export type DemandSummary = Pick<
   | "createdAt"
   | "plannedDeliveryDate"
   | "estimatedHours"
+  | "estimatedDemandValue"
+  | "complexity"
+  | "roi"
   | "requesterArea"
   | "requesterName"
 > & {

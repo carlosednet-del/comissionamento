@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DemandType, DemandPriority, DemandStatus } from "@prisma/client";
+import { DemandType, DemandPriority, DemandStatus, ComplexityLevel, RoiLevel } from "@prisma/client";
 
 // ── Transições de status permitidas ─────────────────────────────
 export const ALLOWED_TRANSITIONS: Record<DemandStatus, DemandStatus[]> = {
@@ -15,8 +15,8 @@ export const ALLOWED_TRANSITIONS: Record<DemandStatus, DemandStatus[]> = {
   CONCLUIDA:             [],
 };
 
-// ── Refinamento de datas (reutilizado em create e update) ────────
-const deliveryAfterStart = (d: {
+// ── Refinamento de datas ─────────────────────────────────────────
+const dateDeliveryAfterStart = (d: {
   plannedStartDate?:    Date | null;
   plannedDeliveryDate?: Date | null;
 }) => {
@@ -29,7 +29,16 @@ const deliveryMsg = {
   path: ["plannedDeliveryDate"],
 };
 
-// ── Schema base (sem refine) — permite .omit / .partial / .extend ─
+// ── Preprocess para número opcional ──────────────────────────────
+const optionalPositiveNumber = z.preprocess(
+  (v) =>
+    v === "" || v === null || v === undefined || (typeof v === "number" && isNaN(v))
+      ? undefined
+      : Number(v),
+  z.number().positive("Horas estimadas devem ser maiores que zero").optional(),
+);
+
+// ── Schema base (sem refine) — suporta .omit / .partial / .extend ─
 const createDemandBase = z.object({
   // Bloco 1 — Identificação
   title:          z.string().min(5, "Título deve ter pelo menos 5 caracteres").max(200),
@@ -40,13 +49,16 @@ const createDemandBase = z.object({
   systemAffected: z.string().max(200).optional(),
 
   // Bloco 2 — Classificação
-  demandType:     z.nativeEnum(DemandType, { required_error: "Tipo é obrigatório" }),
-  priority:       z.nativeEnum(DemandPriority).default(DemandPriority.MEDIA),
-  estimatedHours: z.coerce.number({ required_error: "Horas estimadas são obrigatórias" })
-                   .positive("Horas estimadas devem ser maiores que zero"),
-  assigneeId:     z.string().cuid("ID do responsável inválido").optional().nullable(),
+  demandType: z.nativeEnum(DemandType, { required_error: "Tipo é obrigatório" }),
+  priority:   z.nativeEnum(DemandPriority).default(DemandPriority.MEDIA),
 
-  // Bloco 3 — Contexto de negócio
+  // Bloco 3 — Execução técnica (opcional no rascunho)
+  assigneeId:     z.string().cuid("ID do responsável inválido").optional().nullable(),
+  estimatedHours: optionalPositiveNumber,
+  complexity:     z.nativeEnum(ComplexityLevel).optional().nullable(),
+  roi:            z.nativeEnum(RoiLevel).optional().nullable(),
+
+  // Bloco 4 — Contexto de negócio
   businessProblem:   z.string().min(10, "Problema de negócio deve ter pelo menos 10 caracteres").optional(),
   expectedResult:    z.string().optional(),
   impactDescription: z.string().optional(),
@@ -54,17 +66,60 @@ const createDemandBase = z.object({
   risks:             z.string().optional(),
   observations:      z.string().optional(),
 
-  // Bloco 4 — Prazo
+  // Bloco 5 — Prazo
   plannedStartDate:    z.coerce.date().optional().nullable(),
   plannedDeliveryDate: z.coerce.date({ required_error: "Data de entrega é obrigatória" }),
 
   // Controle interno
-  creatorId:    z.string().cuid(),
-  saveAsDraft:  z.boolean().default(false),
+  creatorId:   z.string().cuid(),
+  saveAsDraft: z.boolean().default(false),
 });
 
-// ── Schema de criação ────────────────────────────────────────────
-export const createDemandSchema = createDemandBase.refine(deliveryAfterStart, deliveryMsg);
+// ── Schema de criação — valida datas e campos obrigatórios p/ não-rascunho ──
+export const createDemandSchema = createDemandBase.superRefine((data, ctx) => {
+  // Validação de datas
+  if (data.plannedStartDate && data.plannedDeliveryDate) {
+    if (data.plannedDeliveryDate < data.plannedStartDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Data de entrega não pode ser anterior à data de início",
+        path: ["plannedDeliveryDate"],
+      });
+    }
+  }
+
+  // Campos obrigatórios quando não é rascunho
+  if (!data.saveAsDraft) {
+    if (!data.assigneeId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Responsável técnico é obrigatório para demandas abertas",
+        path: ["assigneeId"],
+      });
+    }
+    if (data.estimatedHours === undefined || data.estimatedHours === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Horas estimadas são obrigatórias para demandas abertas",
+        path: ["estimatedHours"],
+      });
+    }
+    if (!data.complexity) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Complexidade é obrigatória para demandas abertas",
+        path: ["complexity"],
+      });
+    }
+    if (!data.roi) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "ROI é obrigatório para demandas abertas",
+        path: ["roi"],
+      });
+    }
+  }
+});
 
 // ── Schema de atualização ────────────────────────────────────────
 export const updateDemandSchema = createDemandBase
@@ -75,7 +130,7 @@ export const updateDemandSchema = createDemandBase
     actualDeliveryDate: z.coerce.date().optional().nullable(),
     homologationDate:   z.coerce.date().optional().nullable(),
   })
-  .refine(deliveryAfterStart, deliveryMsg);
+  .refine(dateDeliveryAfterStart, deliveryMsg);
 
 // ── Schema de alteração de status ────────────────────────────────
 export const changeDemandStatusSchema = z
@@ -113,8 +168,8 @@ export const demandFiltersSchema = z.object({
 });
 
 // ── Types exportados ─────────────────────────────────────────────
-export type CreateDemandInput    = z.infer<typeof createDemandSchema>;
-export type UpdateDemandInput    = z.infer<typeof updateDemandSchema>;
+export type CreateDemandInput       = z.infer<typeof createDemandSchema>;
+export type UpdateDemandInput       = z.infer<typeof updateDemandSchema>;
 export type ChangeDemandStatusInput = z.infer<typeof changeDemandStatusSchema>;
 export type UpdateDemandStatusInput = ChangeDemandStatusInput; // alias
-export type DemandFiltersInput   = z.infer<typeof demandFiltersSchema>;
+export type DemandFiltersInput      = z.infer<typeof demandFiltersSchema>;

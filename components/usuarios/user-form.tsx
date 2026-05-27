@@ -38,8 +38,9 @@ const ROLE_OPTIONS = [
 ];
 
 const PROFILE_OPTIONS = [
-  { value: WorkerProfile.JUNIOR, label: "Júnior" },
-  { value: WorkerProfile.SENIOR, label: "Sênior" },
+  { value: WorkerProfile.JUNIOR,       label: "Júnior" },
+  { value: WorkerProfile.PLENO,        label: "Pleno" },
+  { value: WorkerProfile.SENIOR,       label: "Sênior" },
   { value: WorkerProfile.ESPECIALISTA, label: "Especialista" },
 ];
 

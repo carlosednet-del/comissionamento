@@ -19,7 +19,7 @@ export default async function NovaDemandaPage() {
 
   const assignees = await prisma.user.findMany({
     where:   { isActive: true, role: "DEV" },
-    select:  { id: true, name: true },
+    select:  { id: true, name: true, workerProfile: true },
     orderBy: { name: "asc" },
   });
 

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { DemandType, DemandPriority } from "@prisma/client";
+import { DemandType, DemandPriority, ComplexityLevel, RoiLevel, WorkerProfile } from "@prisma/client";
 import {
   createDemandSchema,
   updateDemandSchema,
@@ -33,10 +33,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save, Send } from "lucide-react";
+import { Loader2, Save, Send, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  HOURLY_RATES,
+  WORKER_PROFILE_LABELS,
+  COMPLEXITY_LABELS,
+  ROI_LABELS,
+  calculateDemandEstimatedValue,
+} from "@/lib/demand-pricing";
 
-// ── helpers ─────────────────────────────────────────────────────────
+// ── Formatação ───────────────────────────────────────────────────────────────
+const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
 function toDateInput(value: Date | string | null | undefined): string {
   if (!value) return "";
   const d = value instanceof Date ? value : new Date(value);
@@ -44,7 +53,7 @@ function toDateInput(value: Date | string | null | undefined): string {
   return d.toISOString().slice(0, 10);
 }
 
-// ── Textarea ─────────────────────────────────────────────────────────
+// ── Textarea ─────────────────────────────────────────────────────────────────
 function Textarea({
   className,
   rows = 3,
@@ -65,14 +74,14 @@ function Textarea({
   );
 }
 
-// ── Tipos ─────────────────────────────────────────────────────────────
-type Assignee = { id: string; name: string };
+// ── Tipos ─────────────────────────────────────────────────────────────────────
+type Assignee = { id: string; name: string; workerProfile: WorkerProfile | null };
 
 type CreateMode = { mode: "create"; assignees: Assignee[] };
 type EditMode   = { mode: "edit"; demand: DemandWithRelations; assignees: Assignee[] };
 type Props = CreateMode | EditMode;
 
-// ── Opções ────────────────────────────────────────────────────────────
+// ── Opções ────────────────────────────────────────────────────────────────────
 const DEMAND_TYPE_OPTIONS: { value: DemandType; label: string }[] = [
   { value: "NOVA_SOLUCAO",      label: "Nova solução" },
   { value: "EVOLUCAO_PRODUCAO", label: "Evolução de produção" },
@@ -90,9 +99,88 @@ const PRIORITY_OPTIONS: { value: DemandPriority; label: string }[] = [
   { value: "CRITICA", label: "Crítica" },
 ];
 
+const COMPLEXITY_OPTIONS: { value: ComplexityLevel; label: string }[] = (
+  Object.keys(COMPLEXITY_LABELS) as ComplexityLevel[]
+).map((v) => ({ value: v, label: COMPLEXITY_LABELS[v] }));
+
+const ROI_OPTIONS: { value: RoiLevel; label: string }[] = (
+  Object.keys(ROI_LABELS) as RoiLevel[]
+).map((v) => ({ value: v, label: ROI_LABELS[v] }));
+
 const NONE_ASSIGNEE = "__NONE__";
 
-// ── Componente ────────────────────────────────────────────────────────
+// ── Prévia de pricing ─────────────────────────────────────────────────────────
+function PricingPreview({
+  workerProfile,
+  estimatedHours,
+  complexity,
+  roi,
+}: {
+  workerProfile:  WorkerProfile | null | undefined;
+  estimatedHours: number | null | undefined;
+  complexity:     ComplexityLevel | null | undefined;
+  roi:            RoiLevel | null | undefined;
+}) {
+  const result = useMemo(() => {
+    if (!workerProfile || !estimatedHours || !complexity || !roi) return null;
+    return calculateDemandEstimatedValue({ workerProfile, estimatedHours, complexity, roi });
+  }, [workerProfile, estimatedHours, complexity, roi]);
+
+  if (!result) {
+    return (
+      <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-center text-sm text-muted-foreground">
+        Preencha responsável, horas, complexidade e ROI para ver a prévia do valor estimado.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-brand-accent/40 bg-brand-bg-base p-4 space-y-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-brand-text-muted">
+        Prévia do valor estimado
+      </p>
+
+      <div className="space-y-1.5 text-sm">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Valor/hora</span>
+          <span className="font-mono">{BRL.format(result.hourlyRate)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Horas estimadas</span>
+          <span className="font-mono">{result.estimatedHours}h</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Complexidade</span>
+          <span className="font-mono">
+            {result.complexityMultiplier.toFixed(1)}× ({COMPLEXITY_LABELS[complexity!]})
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">ROI</span>
+          <span className="font-mono">
+            {result.roiMultiplier.toFixed(2)}× ({ROI_LABELS[roi!]})
+          </span>
+        </div>
+
+        <div className="border-t pt-2 flex justify-between items-center">
+          <span className="font-semibold text-brand-text-dark">Valor estimado</span>
+          <span className="font-bold text-lg text-brand-text-dark font-mono">
+            {BRL.format(result.estimatedValue)}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex gap-1.5 rounded-md bg-amber-50 border border-amber-200 p-2.5">
+        <Info className="h-3.5 w-3.5 text-amber-600 mt-0.5 shrink-0" />
+        <p className="text-xs text-amber-700">
+          Este valor é uma prévia. O cálculo final será confirmado pelo sistema no momento do registro.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
 export function DemandForm(props: Props) {
   const router   = useRouter();
   const isCreate = props.mode === "create";
@@ -107,7 +195,8 @@ export function DemandForm(props: Props) {
         title: "", description: "", requesterArea: "", requesterName: "",
         requesterEmail: "", systemAffected: "",
         demandType: undefined, priority: "MEDIA",
-        estimatedHours: undefined, assigneeId: null,
+        assigneeId: null, estimatedHours: undefined,
+        complexity: null, roi: null,
         businessProblem: "", expectedResult: "", impactDescription: "",
         dependencies: "", risks: "", observations: "",
         plannedStartDate: null, plannedDeliveryDate: undefined,
@@ -122,13 +211,15 @@ export function DemandForm(props: Props) {
         systemAffected:      demand?.systemAffected ?? "",
         demandType:          demand?.demandType,
         priority:            demand?.priority ?? "MEDIA",
-        estimatedHours:      demand?.estimatedHours ?? undefined,
         assigneeId:          demand?.assigneeId ?? null,
+        estimatedHours:      demand?.estimatedHours ?? undefined,
+        complexity:          demand?.complexity ?? null,
+        roi:                 demand?.roi ?? null,
         businessProblem:     demand?.businessProblem ?? "",
         expectedResult:      demand?.expectedResult ?? "",
         impactDescription:   demand?.impactDescription ?? "",
         dependencies:        demand?.dependencies ?? "",
-        risks:                demand?.risks ?? "",
+        risks:               demand?.risks ?? "",
         observations:        demand?.observations ?? "",
         plannedStartDate:    demand?.plannedStartDate ?? null,
         plannedDeliveryDate: demand?.plannedDeliveryDate ?? undefined,
@@ -140,6 +231,17 @@ export function DemandForm(props: Props) {
     resolver: zodResolver(isCreate ? createDemandSchema : updateDemandSchema) as never,
     defaultValues: defaultValues as never,
   });
+
+  // ── Derived state for execution block ──
+  const watchedAssigneeId = form.watch("assigneeId" as never) as unknown as string | null | undefined;
+  const watchedHours      = form.watch("estimatedHours" as never) as unknown as number | undefined;
+  const watchedComplexity = form.watch("complexity" as never) as unknown as ComplexityLevel | null | undefined;
+  const watchedRoi        = form.watch("roi" as never) as unknown as RoiLevel | null | undefined;
+
+  const selectedAssignee  = props.assignees.find((a) => a.id === watchedAssigneeId) ?? null;
+  const workerProfile     = selectedAssignee?.workerProfile ?? null;
+  const profileLabel      = workerProfile ? WORKER_PROFILE_LABELS[workerProfile] : "—";
+  const hourlyRateDisplay = workerProfile ? BRL.format(HOURLY_RATES[workerProfile]) : "—";
 
   async function submit(values: FormValues, draft = false) {
     setServerError(null);
@@ -172,7 +274,7 @@ export function DemandForm(props: Props) {
           </Alert>
         )}
 
-        {/* ── Bloco 1 — Identificação ─────────────────────────────── */}
+        {/* ── Bloco 1 — Identificação ──────────────────────────────────── */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Identificação</CardTitle>
@@ -270,7 +372,7 @@ export function DemandForm(props: Props) {
           </CardContent>
         </Card>
 
-        {/* ── Bloco 2 — Classificação ─────────────────────────────── */}
+        {/* ── Bloco 2 — Classificação ──────────────────────────────────── */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Classificação</CardTitle>
@@ -326,22 +428,100 @@ export function DemandForm(props: Props) {
                   </FormItem>
                 )}
               />
+            </div>
+          </CardContent>
+        </Card>
 
+        {/* ── Bloco 3 — Execução técnica ───────────────────────────────── */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Execução técnica</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Row 1 — Responsável + campos derivados (readonly) */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="lg:col-span-2">
+                <FormField
+                  control={form.control}
+                  name={"assigneeId" as never}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Responsável técnico{!isCreate && <span className="text-destructive ml-1">*</span>}
+                      </FormLabel>
+                      <Select
+                        onValueChange={(v) => {
+                          field.onChange(v === NONE_ASSIGNEE ? null : v);
+                        }}
+                        value={(field as { value: string | null }).value ?? NONE_ASSIGNEE}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecionar responsável" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value={NONE_ASSIGNEE}>Sem responsável</SelectItem>
+                          {props.assignees.map((a) => (
+                            <SelectItem key={a.id} value={a.id}>
+                              {a.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Perfil técnico — derivado do responsável, readonly */}
+              <FormItem>
+                <FormLabel>Perfil técnico</FormLabel>
+                <FormControl>
+                  <Input
+                    readOnly
+                    disabled
+                    value={profileLabel}
+                    className="bg-muted text-muted-foreground cursor-not-allowed"
+                  />
+                </FormControl>
+              </FormItem>
+
+              {/* Valor/hora — derivado do responsável, readonly */}
+              <FormItem>
+                <FormLabel>Valor / hora</FormLabel>
+                <FormControl>
+                  <Input
+                    readOnly
+                    disabled
+                    value={hourlyRateDisplay}
+                    className="bg-muted text-muted-foreground cursor-not-allowed font-mono"
+                  />
+                </FormControl>
+              </FormItem>
+            </div>
+
+            {/* Row 2 — Horas, Complexidade, ROI */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <FormField
                 control={form.control}
-                name="estimatedHours"
+                name={"estimatedHours" as never}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Horas estimadas <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>Horas estimadas</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         min={0.5}
                         step={0.5}
                         placeholder="Ex.: 8"
-                        {...field}
-                        value={field.value ?? ""}
-                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        value={(field as { value: number | undefined }).value ?? ""}
+                        onChange={(e) =>
+                          field.onChange(
+                            e.target.value === "" ? undefined : e.target.valueAsNumber,
+                          )
+                        }
                       />
                     </FormControl>
                     <FormMessage />
@@ -351,24 +531,51 @@ export function DemandForm(props: Props) {
 
               <FormField
                 control={form.control}
-                name="assigneeId"
+                name={"complexity" as never}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Responsável</FormLabel>
+                    <FormLabel>Complexidade</FormLabel>
                     <Select
-                      onValueChange={(v) => field.onChange(v === NONE_ASSIGNEE ? null : v)}
-                      defaultValue={field.value ?? NONE_ASSIGNEE}
+                      onValueChange={field.onChange}
+                      value={(field as { value: ComplexityLevel | null }).value ?? ""}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Sem responsável" />
+                          <SelectValue placeholder="Selecionar" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value={NONE_ASSIGNEE}>Sem responsável</SelectItem>
-                        {props.assignees.map((a) => (
-                          <SelectItem key={a.id} value={a.id}>
-                            {a.name}
+                        {COMPLEXITY_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name={"roi" as never}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>ROI / Impacto estratégico</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={(field as { value: RoiLevel | null }).value ?? ""}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecionar" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {ROI_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -378,10 +585,18 @@ export function DemandForm(props: Props) {
                 )}
               />
             </div>
+
+            {/* Prévia de valor estimado */}
+            <PricingPreview
+              workerProfile={workerProfile}
+              estimatedHours={watchedHours}
+              complexity={watchedComplexity}
+              roi={watchedRoi}
+            />
           </CardContent>
         </Card>
 
-        {/* ── Bloco 3 — Contexto de negócio ───────────────────────── */}
+        {/* ── Bloco 4 — Contexto de negócio ───────────────────────────── */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Contexto de negócio</CardTitle>
@@ -476,7 +691,7 @@ export function DemandForm(props: Props) {
           </CardContent>
         </Card>
 
-        {/* ── Bloco 4 — Prazo ─────────────────────────────────────── */}
+        {/* ── Bloco 5 — Prazo ──────────────────────────────────────────── */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Prazo</CardTitle>
@@ -571,7 +786,7 @@ export function DemandForm(props: Props) {
           </CardContent>
         </Card>
 
-        {/* ── Ações ────────────────────────────────────────────────── */}
+        {/* ── Ações ─────────────────────────────────────────────────────── */}
         <div className="flex flex-wrap gap-3">
           {isCreate && (
             <Button

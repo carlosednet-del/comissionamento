@@ -22,8 +22,23 @@ enum UserRole {
 
 enum WorkerProfile {
   JUNIOR
+  PLENO
   SENIOR
   ESPECIALISTA
+}
+
+enum ComplexityLevel {
+  BAIXA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+enum RoiLevel {
+  BAIXO
+  MEDIO
+  ALTO
+  ESTRATEGICO
 }
 
 enum DemandType {
@@ -106,8 +121,13 @@ model Demand {
   dependencies         String?
   risks                String?
   observations         String?
-  estimatedHours       Float?
-  plannedStartDate     DateTime?
+  estimatedHours          Float?
+  complexity              ComplexityLevel?
+  roi                     RoiLevel?
+  estimatedDemandValue    Float?
+  assigneeProfileSnapshot WorkerProfile?
+  hourlyRateSnapshot      Float?
+  plannedStartDate        DateTime?
   plannedDeliveryDate  DateTime?
   actualStartDate      DateTime?
   actualDeliveryDate   DateTime?

@@ -2,8 +2,9 @@ import { Badge } from "@/components/ui/badge";
 import type { WorkerProfile } from "@prisma/client";
 
 const PROFILE_LABELS: Record<WorkerProfile, string> = {
-  JUNIOR: "Júnior",
-  SENIOR: "Sênior",
+  JUNIOR:       "Júnior",
+  PLENO:        "Pleno",
+  SENIOR:       "Sênior",
   ESPECIALISTA: "Especialista",
 };
 

@@ -1,5 +1,6 @@
 import { demandRepository }   from "@/repositories/demandRepository";
 import { auditService }        from "@/services/auditService";
+import { prisma }              from "@/lib/prisma";
 import {
   createDemandSchema,
   updateDemandSchema,
@@ -10,8 +11,9 @@ import {
   type ChangeDemandStatusInput,
 } from "@/validations/demand";
 import { createEvidenceSchema, type CreateEvidenceInput } from "@/validations/evidence";
+import { calculateDemandEstimatedValue } from "@/lib/demand-pricing";
 import type { DemandFilters }    from "@/types";
-import type { DemandStatus }     from "@prisma/client";
+import type { DemandStatus, WorkerProfile } from "@prisma/client";
 import type { UserForPermission } from "@/server/auth/permissions";
 import {
   canCreateDemand,
@@ -20,6 +22,56 @@ import {
   canAttachEvidence,
   canViewDemand,
 } from "@/server/auth/permissions";
+
+// ── Tipos internos de pricing ─────────────────────────────────────
+
+type PricingSnapshot = {
+  estimatedDemandValue?:    number;
+  assigneeProfileSnapshot?: WorkerProfile;
+  hourlyRateSnapshot?:      number;
+};
+
+/**
+ * Busca o assignee no banco e recalcula os campos de pricing para segurança.
+ * NUNCA confia nos valores enviados pelo frontend.
+ */
+async function buildPricingSnapshot(
+  assigneeId:     string | null | undefined,
+  estimatedHours: number | null | undefined,
+  complexity:     string | null | undefined,
+  roi:            string | null | undefined,
+): Promise<PricingSnapshot> {
+  if (!assigneeId || !estimatedHours || !complexity || !roi) return {};
+
+  const assignee = await prisma.user.findUnique({
+    where: { id: assigneeId },
+    select: { role: true, isActive: true, workerProfile: true },
+  });
+
+  if (
+    !assignee ||
+    assignee.role !== "DEV" ||
+    !assignee.isActive ||
+    !assignee.workerProfile
+  ) {
+    return {};
+  }
+
+  const pricing = calculateDemandEstimatedValue({
+    workerProfile:  assignee.workerProfile,
+    estimatedHours,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    complexity: complexity as any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    roi:        roi as any,
+  });
+
+  return {
+    estimatedDemandValue:    pricing.estimatedValue,
+    assigneeProfileSnapshot: assignee.workerProfile,
+    hourlyRateSnapshot:      pricing.hourlyRate,
+  };
+}
 
 // ── Erros de domínio ─────────────────────────────────────────────
 
@@ -73,8 +125,19 @@ export const demandService = {
     const data = createDemandSchema.parse(input);
     const { saveAsDraft, ...demandData } = data;
 
+    // Backend recalcula pricing — nunca confia no frontend
+    const pricing = saveAsDraft
+      ? {}
+      : await buildPricingSnapshot(
+          demandData.assigneeId,
+          demandData.estimatedHours,
+          demandData.complexity,
+          demandData.roi,
+        );
+
     const demand = await demandRepository.create({
       ...demandData,
+      ...pricing,
       status: saveAsDraft ? "RASCUNHO" : "ABERTA",
     });
 
@@ -82,7 +145,13 @@ export const demandService = {
       entity:   "Demand",
       entityId: demand.id,
       action:   "CREATE",
-      newValue: { title: demand.title, status: demand.status, priority: demand.priority, demandType: demand.demandType },
+      newValue: {
+        title:      demand.title,
+        status:     demand.status,
+        priority:   demand.priority,
+        demandType: demand.demandType,
+        estimatedDemandValue: (demand as { estimatedDemandValue?: number }).estimatedDemandValue,
+      },
       userId:   actor.id,
     });
 
@@ -108,7 +177,18 @@ export const demandService = {
       } as UpdateDemandInput;
     }
 
-    const updated = await demandRepository.update(id, payload);
+    // Backend recalcula pricing para não-DEV quando houver alteração de execução
+    let pricingUpdate: PricingSnapshot = {};
+    if (actor.role !== "DEV" && (data.assigneeId || data.estimatedHours || data.complexity || data.roi)) {
+      pricingUpdate = await buildPricingSnapshot(
+        data.assigneeId ?? existing.assigneeId,
+        data.estimatedHours ?? existing.estimatedHours,
+        data.complexity      ?? existing.complexity,
+        data.roi             ?? existing.roi,
+      );
+    }
+
+    const updated = await demandRepository.update(id, { ...payload, ...pricingUpdate });
 
     await auditService.log({
       entity:   "Demand",

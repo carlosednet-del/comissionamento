@@ -3,9 +3,18 @@
 import { revalidatePath }  from "next/cache";
 import { requireAuth }     from "@/server/auth/helpers";
 import { toPermissionUser } from "@/server/auth/helpers";
-import { demandService }   from "@/services/demandService";
+import { demandService }          from "@/services/demandService";
+import { demandWorkflowService }  from "@/services/demandWorkflowService";
 import type { ActionResult, DemandFilters } from "@/types";
-import type { CreateDemandInput, UpdateDemandInput, ChangeDemandStatusInput } from "@/validations/demand";
+import type {
+  CreateDemandInput,
+  UpdateDemandInput,
+  ChangeDemandStatusInput,
+  SendToHomologationInput,
+  HomologateDemandInput,
+  RejectDemandInput,
+  CancelDemandInput,
+} from "@/validations/demand";
 import type { CreateEvidenceInput } from "@/validations/evidence";
 
 function handleError(e: unknown): ActionResult<never> {
@@ -111,4 +120,104 @@ export async function getDemandAuditLogsAction(demandId: string) {
 export async function getDemandStatsAction() {
   await requireAuth();
   return demandService.getStats();
+}
+
+// ── Workflow ─────────────────────────────────────────────────────
+
+function revalidateDemand(id: string) {
+  revalidatePath("/demandas");
+  revalidatePath(`/demandas/${id}`);
+}
+
+export async function openDemandAction(id: string): Promise<ActionResult<void>> {
+  try {
+    const session = await requireAuth();
+    await demandWorkflowService.openDemand(id, toPermissionUser(session));
+    revalidateDemand(id);
+    return { success: true, data: undefined };
+  } catch (e) { return handleError(e); }
+}
+
+export async function sendToAnalysisAction(id: string): Promise<ActionResult<void>> {
+  try {
+    const session = await requireAuth();
+    await demandWorkflowService.sendToAnalysis(id, toPermissionUser(session));
+    revalidateDemand(id);
+    return { success: true, data: undefined };
+  } catch (e) { return handleError(e); }
+}
+
+export async function approveDemandAction(id: string): Promise<ActionResult<void>> {
+  try {
+    const session = await requireAuth();
+    await demandWorkflowService.approveDemand(id, toPermissionUser(session));
+    revalidateDemand(id);
+    return { success: true, data: undefined };
+  } catch (e) { return handleError(e); }
+}
+
+export async function startDevelopmentAction(id: string): Promise<ActionResult<void>> {
+  try {
+    const session = await requireAuth();
+    await demandWorkflowService.startDevelopment(id, toPermissionUser(session));
+    revalidateDemand(id);
+    return { success: true, data: undefined };
+  } catch (e) { return handleError(e); }
+}
+
+export async function sendToHomologationAction(
+  id: string,
+  input: SendToHomologationInput,
+): Promise<ActionResult<void>> {
+  try {
+    const session = await requireAuth();
+    await demandWorkflowService.sendToHomologation(id, input, toPermissionUser(session));
+    revalidateDemand(id);
+    return { success: true, data: undefined };
+  } catch (e) { return handleError(e); }
+}
+
+export async function homologateDemandAction(
+  id: string,
+  input: HomologateDemandInput,
+): Promise<ActionResult<void>> {
+  try {
+    const session = await requireAuth();
+    await demandWorkflowService.homologateDemand(id, input, toPermissionUser(session));
+    revalidateDemand(id);
+    return { success: true, data: undefined };
+  } catch (e) { return handleError(e); }
+}
+
+export async function rejectDemandAction(
+  id: string,
+  input: RejectDemandInput,
+): Promise<ActionResult<void>> {
+  try {
+    const session = await requireAuth();
+    await demandWorkflowService.rejectDemand(id, input, toPermissionUser(session));
+    revalidateDemand(id);
+    return { success: true, data: undefined };
+  } catch (e) { return handleError(e); }
+}
+
+export async function returnToDevelopmentAction(id: string): Promise<ActionResult<void>> {
+  try {
+    const session = await requireAuth();
+    await demandWorkflowService.returnToDevelopment(id, toPermissionUser(session));
+    revalidateDemand(id);
+    return { success: true, data: undefined };
+  } catch (e) { return handleError(e); }
+}
+
+export async function cancelDemandAction(
+  id: string,
+  input: CancelDemandInput,
+): Promise<ActionResult<void>> {
+  try {
+    const session = await requireAuth();
+    await demandWorkflowService.cancelDemand(id, input, toPermissionUser(session));
+    revalidateDemand(id);
+    return { success: true, data: undefined };
+  } catch (e) { return handleError(e); }
 }

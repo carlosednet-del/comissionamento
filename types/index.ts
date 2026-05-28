@@ -34,8 +34,11 @@ export type { SessionUser } from "@/server/auth/helpers";
 // ── Demand composite types ────────────────────────────────────────
 
 export type DemandWithRelations = Demand & {
-  creator:  Pick<User, "id" | "name">;
-  assignee: Pick<User, "id" | "name"> | null;
+  creator:       Pick<User, "id" | "name">;
+  assignee:      Pick<User, "id" | "name"> | null;
+  approvedBy:    Pick<User, "id" | "name"> | null;
+  homologatedBy: Pick<User, "id" | "name"> | null;
+  canceledBy:    Pick<User, "id" | "name"> | null;
   evidences: (DemandEvidence & { createdBy: Pick<User, "id" | "name"> | null })[];
 };
 

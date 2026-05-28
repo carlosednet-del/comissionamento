@@ -1,4 +1,4 @@
-import type { AuditLog, AuditAction } from "@prisma/client";
+import type { AuditAction } from "@prisma/client";
 const DATETIME_FMT = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit", month: "2-digit", year: "numeric",
   hour: "2-digit", minute: "2-digit",
@@ -10,28 +10,52 @@ import {
   Plus,
   Pencil,
   ShieldCheck,
+  PlayCircle,
+  Send,
+  Ban,
+  Paperclip,
   MoreHorizontal,
 } from "lucide-react";
 
-type AuditLogWithUser = AuditLog & {
-  user: { id: string; name: string };
+type AuditLogWithUser = {
+  id:        string;
+  action:    AuditAction;
+  oldValue:  unknown;
+  newValue:  unknown;
+  createdAt: Date | string;
+  user:      { id: string; name: string };
 };
 
-type Props = {
-  logs: AuditLogWithUser[];
-};
+type Props = { logs: AuditLogWithUser[] };
 
 const ACTION_CONFIG: Record<
   AuditAction,
   { label: string; icon: React.ElementType; color: string; bg: string }
 > = {
-  CREATE:        { label: "Demanda criada",       icon: Plus,         color: "text-emerald-600",  bg: "bg-emerald-100" },
-  UPDATE:        { label: "Demanda atualizada",    icon: Pencil,       color: "text-blue-600",     bg: "bg-blue-100"    },
-  DELETE:        { label: "Demanda excluída",      icon: XCircle,      color: "text-red-600",      bg: "bg-red-100"     },
-  STATUS_CHANGE: { label: "Status alterado",       icon: RefreshCw,    color: "text-amber-600",    bg: "bg-amber-100"   },
-  APPROVAL:      { label: "Demanda aprovada",      icon: CheckCircle2, color: "text-emerald-600",  bg: "bg-emerald-100" },
-  REJECTION:     { label: "Demanda reprovada",     icon: XCircle,      color: "text-red-600",      bg: "bg-red-100"     },
-  HOMOLOGATION:  { label: "Demanda homologada",    icon: ShieldCheck,  color: "text-green-600",    bg: "bg-green-100"   },
+  CREATE:                { label: "Demanda criada",               icon: Plus,         color: "text-emerald-600",  bg: "bg-emerald-100"  },
+  UPDATE:                { label: "Demanda atualizada",           icon: Pencil,       color: "text-blue-600",     bg: "bg-blue-100"     },
+  DELETE:                { label: "Demanda excluída",             icon: XCircle,      color: "text-red-600",      bg: "bg-red-100"      },
+  STATUS_CHANGE:         { label: "Status alterado",             icon: RefreshCw,    color: "text-amber-600",    bg: "bg-amber-100"    },
+  APPROVAL:              { label: "Demanda aprovada",            icon: CheckCircle2, color: "text-emerald-600",  bg: "bg-emerald-100"  },
+  REJECTION:             { label: "Demanda reprovada",           icon: XCircle,      color: "text-red-600",      bg: "bg-red-100"      },
+  HOMOLOGATION:          { label: "Demanda homologada",          icon: ShieldCheck,  color: "text-green-600",    bg: "bg-green-100"    },
+  DEVELOPMENT_STARTED:   { label: "Desenvolvimento iniciado",    icon: PlayCircle,   color: "text-purple-600",   bg: "bg-purple-100"   },
+  SENT_TO_HOMOLOGATION:  { label: "Enviada para homologação",    icon: Send,         color: "text-orange-600",   bg: "bg-orange-100"   },
+  DEMAND_CANCELED:       { label: "Demanda cancelada",           icon: Ban,          color: "text-slate-600",    bg: "bg-slate-100"    },
+  EVIDENCE_ADDED:        { label: "Evidência adicionada",        icon: Paperclip,    color: "text-blue-600",     bg: "bg-blue-100"     },
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  RASCUNHO:               "Rascunho",
+  ABERTA:                 "Aberta",
+  EM_ANALISE:             "Em análise",
+  APROVADA:               "Aprovada",
+  EM_DESENVOLVIMENTO:     "Em desenvolvimento",
+  AGUARDANDO_HOMOLOGACAO: "Aguard. homologação",
+  HOMOLOGADA_PRODUCAO:    "Homologada",
+  REPROVADA:              "Reprovada",
+  CANCELADA:              "Cancelada",
+  CONCLUIDA:              "Concluída",
 };
 
 function getValue(v: unknown): Record<string, unknown> | null {
@@ -39,23 +63,54 @@ function getValue(v: unknown): Record<string, unknown> | null {
   return v as Record<string, unknown>;
 }
 
-function renderDiff(old: Record<string, unknown> | null, nw: Record<string, unknown> | null) {
+function fmtValue(key: string, value: unknown): string {
+  if (key === "status" || key === "oldStatus" || key === "newStatus") {
+    return STATUS_LABELS[String(value)] ?? String(value);
+  }
+  if (value instanceof Date) return DATETIME_FMT.format(value);
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+    return DATETIME_FMT.format(new Date(value));
+  }
+  return String(value);
+}
+
+const SKIP_KEYS = new Set(["approvedById", "homologatedById", "canceledById", "startedById"]);
+const HUMAN_KEYS: Record<string, string> = {
+  status:             "Status",
+  rejectionReason:    "Motivo da reprovação",
+  cancellationReason: "Motivo do cancelamento",
+  deliveryNotes:      "Observações de entrega",
+  homologationNotes:  "Observações de homologação",
+  actualDeliveryDate: "Data real de entrega",
+};
+
+function renderDetails(old: Record<string, unknown> | null, nw: Record<string, unknown> | null) {
   if (!nw) return null;
-  const entries = Object.entries(nw).filter(([k]) => k !== "reason");
+  const entries = Object.entries(nw).filter(([k]) => !SKIP_KEYS.has(k));
   if (entries.length === 0) return null;
 
   return (
-    <dl className="mt-1 space-y-0.5">
+    <dl className="mt-1.5 space-y-0.5">
       {entries.map(([key, value]) => {
         const oldVal = old?.[key];
         const changed = oldVal !== undefined && oldVal !== value;
+        const label = HUMAN_KEYS[key] ?? key.replace(/([A-Z])/g, " $1").toLowerCase();
+
+        if (key === "status" && changed) {
+          return (
+            <div key={key} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="line-through text-red-400">{fmtValue(key, oldVal)}</span>
+              <span className="text-muted-foreground">→</span>
+              <span className="text-emerald-600 font-medium">{fmtValue(key, value)}</span>
+            </div>
+          );
+        }
+
         return (
-          <div key={key} className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
-            <dt className="font-medium capitalize">{key.replace(/([A-Z])/g, " $1").toLowerCase()}:</dt>
-            {changed && (
-              <dd className="line-through text-red-400">{String(oldVal)}</dd>
-            )}
-            <dd className={changed ? "text-emerald-600 font-medium" : ""}>{String(value)}</dd>
+          <div key={key} className="text-xs text-muted-foreground">
+            <span className="font-medium capitalize">{label}:</span>{" "}
+            {changed && <span className="line-through text-red-400 mr-1">{fmtValue(key, oldVal)}</span>}
+            <span className={changed ? "text-emerald-600 font-medium" : ""}>{fmtValue(key, value)}</span>
           </div>
         );
       })}
@@ -77,20 +132,19 @@ export function AuditTimeline({ logs }: Props) {
       {logs.map((log) => {
         const cfg = ACTION_CONFIG[log.action] ?? {
           label: log.action,
-          icon: MoreHorizontal,
+          icon:  MoreHorizontal,
           color: "text-slate-500",
-          bg: "bg-slate-100",
+          bg:    "bg-slate-100",
         };
         const Icon = cfg.icon;
 
         const nw  = getValue(log.newValue);
         const old = getValue(log.oldValue);
 
-        const reason = nw?.reason as string | undefined;
+        const reason = (nw?.rejectionReason ?? nw?.cancellationReason) as string | undefined;
 
         return (
           <li key={log.id} className="ml-5">
-            {/* Ícone no ponto da linha */}
             <span
               className={`absolute -left-3 flex h-6 w-6 items-center justify-center rounded-full ${cfg.bg}`}
             >
@@ -109,7 +163,7 @@ export function AuditTimeline({ logs }: Props) {
                 por <span className="font-medium text-foreground">{log.user.name}</span>
               </p>
 
-              {renderDiff(old, nw)}
+              {renderDetails(old, nw)}
 
               {reason && (
                 <blockquote className="mt-1.5 border-l-2 border-muted pl-2 text-xs italic text-muted-foreground">

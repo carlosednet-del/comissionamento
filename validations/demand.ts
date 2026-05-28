@@ -121,6 +121,31 @@ export const changeDemandStatusSchema = z
 // Alias para compatibilidade com código legado do Módulo 1
 export const updateDemandStatusSchema = changeDemandStatusSchema;
 
+// ── Schema de envio para homologação ─────────────────────────────
+export const sendToHomologationSchema = z.object({
+  actualDeliveryDate: z.coerce.date({ required_error: "Data real de entrega é obrigatória" }),
+  deliveryNotes:      z.string().optional(),
+});
+
+// ── Schema de homologação em produção ─────────────────────────────
+export const homologateDemandSchema = z.object({
+  homologationNotes: z.string().optional(),
+});
+
+// ── Schema de reprovação ──────────────────────────────────────────
+export const rejectDemandSchema = z.object({
+  rejectionReason: z
+    .string()
+    .min(10, "Motivo da reprovação deve ter ao menos 10 caracteres"),
+});
+
+// ── Schema de cancelamento ────────────────────────────────────────
+export const cancelDemandSchema = z.object({
+  cancellationReason: z
+    .string()
+    .min(10, "Motivo do cancelamento deve ter ao menos 10 caracteres"),
+});
+
 // ── Schema de filtros ────────────────────────────────────────────
 export const demandFiltersSchema = z.object({
   status:        z.nativeEnum(DemandStatus).optional(),
@@ -138,8 +163,12 @@ export const demandFiltersSchema = z.object({
 });
 
 // ── Types exportados ─────────────────────────────────────────────
-export type CreateDemandInput       = z.infer<typeof createDemandSchema>;
-export type UpdateDemandInput       = z.infer<typeof updateDemandSchema>;
-export type ChangeDemandStatusInput = z.infer<typeof changeDemandStatusSchema>;
-export type UpdateDemandStatusInput = ChangeDemandStatusInput; // alias
-export type DemandFiltersInput      = z.infer<typeof demandFiltersSchema>;
+export type CreateDemandInput          = z.infer<typeof createDemandSchema>;
+export type UpdateDemandInput          = z.infer<typeof updateDemandSchema>;
+export type ChangeDemandStatusInput    = z.infer<typeof changeDemandStatusSchema>;
+export type UpdateDemandStatusInput    = ChangeDemandStatusInput; // alias
+export type DemandFiltersInput         = z.infer<typeof demandFiltersSchema>;
+export type SendToHomologationInput    = z.infer<typeof sendToHomologationSchema>;
+export type HomologateDemandInput      = z.infer<typeof homologateDemandSchema>;
+export type RejectDemandInput          = z.infer<typeof rejectDemandSchema>;
+export type CancelDemandInput          = z.infer<typeof cancelDemandSchema>;

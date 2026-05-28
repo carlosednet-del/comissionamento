@@ -85,8 +85,10 @@ export function canChangeDemandStatus(
       return false;
 
     case "HOMOLOGADA_PRODUCAO":
-      if (role !== "APROVADOR") return false;
-      return demand.assigneeId !== actor.id; // sem auto-homologação
+      if (role === "APROVADOR" || role === "GESTOR") {
+        return demand.assigneeId !== actor.id; // sem auto-homologação
+      }
+      return false;
 
     case "REPROVADA":
       return role === "APROVADOR" || role === "GESTOR";
@@ -103,13 +105,13 @@ export function canChangeDemandStatus(
 }
 
 export function canCancelDemand(actor: UserForPermission, demand: DemandForPermission): boolean {
-  const cancellable: DemandStatus[] = ["ABERTA", "EM_ANALISE", "APROVADA", "EM_DESENVOLVIMENTO"];
+  const cancellable: DemandStatus[] = ["RASCUNHO", "ABERTA", "EM_ANALISE", "APROVADA", "EM_DESENVOLVIMENTO"];
   if (!cancellable.includes(demand.status)) return false;
   return canChangeDemandStatus(actor, demand, "CANCELADA");
 }
 
 export function canHomologateDemand(actor: UserForPermission, demand: DemandForPermission): boolean {
-  if (actor.role !== "APROVADOR" && actor.role !== "ADMIN") return false;
+  if (actor.role !== "APROVADOR" && actor.role !== "ADMIN" && actor.role !== "GESTOR") return false;
   if (demand.assigneeId === actor.id) return false; // sem auto-homologação
   return true;
 }

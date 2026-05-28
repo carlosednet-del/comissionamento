@@ -23,8 +23,11 @@ const demandSummarySelect = {
 
 // ── Projeção de detalhe ───────────────────────────────────────────
 const demandDetailInclude = {
-  creator:  { select: { id: true, name: true } },
-  assignee: { select: { id: true, name: true } },
+  creator:       { select: { id: true, name: true } },
+  assignee:      { select: { id: true, name: true } },
+  approvedBy:    { select: { id: true, name: true } },
+  homologatedBy: { select: { id: true, name: true } },
+  canceledBy:    { select: { id: true, name: true } },
   evidences: {
     orderBy: { createdAt: "desc" as const },
     include: { createdBy: { select: { id: true, name: true } } },
@@ -141,15 +144,12 @@ export const demandRepository = {
   async updateStatus(
     id: string,
     status: DemandStatus,
-    extra?: Partial<{
-      actualDeliveryDate: Date;
-      actualStartDate:    Date;
-      homologationDate:   Date;
-    }>,
+    extra?: Record<string, unknown>,
   ): Promise<Demand> {
     return prisma.demand.update({
       where: { id },
-      data: { status, ...extra },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: { status, ...(extra as any) },
     });
   },
 

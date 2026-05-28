@@ -79,6 +79,10 @@ enum AuditAction {
   APPROVAL
   REJECTION
   HOMOLOGATION
+  DEVELOPMENT_STARTED
+  SENT_TO_HOMOLOGATION
+  DEMAND_CANCELED
+  EVIDENCE_ADDED
 }
 
 // -------------------------------------------------------
@@ -96,10 +100,13 @@ model User {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
-  createdDemands   Demand[]         @relation("DemandCreator")
-  assignedDemands  Demand[]         @relation("DemandAssignee")
-  auditLogs        AuditLog[]
-  createdEvidences DemandEvidence[] @relation("EvidenceCreator")
+  createdDemands     Demand[]         @relation("DemandCreator")
+  assignedDemands    Demand[]         @relation("DemandAssignee")
+  approvedDemands    Demand[]         @relation("DemandApprover")
+  homologatedDemands Demand[]         @relation("DemandHomologator")
+  canceledDemands    Demand[]         @relation("DemandCanceler")
+  auditLogs          AuditLog[]
+  createdEvidences   DemandEvidence[] @relation("EvidenceCreator")
 
   @@map("users")
 }
@@ -134,12 +141,24 @@ model Demand {
   homologationDate     DateTime?
   assigneeId           String?
   creatorId            String
+  approvedById         String?
+  homologatedById      String?
+  canceledById         String?
+  approvedAt           DateTime?
+  canceledAt           DateTime?
+  cancellationReason   String?
+  rejectionReason      String?
+  deliveryNotes        String?
+  homologationNotes    String?
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
 
-  assignee  User?            @relation("DemandAssignee", fields: [assigneeId], references: [id])
-  creator   User             @relation("DemandCreator", fields: [creatorId], references: [id])
-  evidences DemandEvidence[]
+  assignee      User?            @relation("DemandAssignee",    fields: [assigneeId],    references: [id])
+  creator       User             @relation("DemandCreator",     fields: [creatorId],     references: [id])
+  approvedBy    User?            @relation("DemandApprover",    fields: [approvedById],  references: [id])
+  homologatedBy User?            @relation("DemandHomologator", fields: [homologatedById], references: [id])
+  canceledBy    User?            @relation("DemandCanceler",    fields: [canceledById],  references: [id])
+  evidences     DemandEvidence[]
 
   @@index([status])
   @@index([priority])

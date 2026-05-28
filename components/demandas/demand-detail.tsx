@@ -2,43 +2,33 @@
 
 import Link from "next/link";
 const DATE_FMT = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
-import type { DemandWithRelations, AuditLog } from "@/types";
-import type { UserForPermission } from "@/server/auth/permissions";
-import {
-  canEditDemand,
-  canChangeDemandStatus,
-  canAttachEvidence,
-} from "@/server/auth/permissions";
-import { ALLOWED_TRANSITIONS } from "@/validations/demand";
-import type { DemandStatus } from "@prisma/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { StatusBadge } from "./status-badge";
-import { PriorityBadge } from "./priority-badge";
-import { TypeBadge } from "./type-badge";
-import { ChangeStatusDialog } from "./change-status-dialog";
-import { AttachEvidenceDialog } from "./attach-evidence-dialog";
-import { AuditTimeline } from "./audit-timeline";
-import {
-  Pencil,
-  ExternalLink,
-  Clock,
-  Calendar,
-  User,
-  Building2,
-  Layers,
-  ArrowRightCircle,
-} from "lucide-react";
+const BRL      = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
-type AuditLogWithUser = AuditLog & {
-  user: { id: string; name: string };
-};
+import type { DemandWithRelations, AuditLog } from "@/types";
+import type { UserForPermission }             from "@/server/auth/permissions";
+import { canEditDemand, canAttachEvidence }   from "@/server/auth/permissions";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button }    from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { StatusBadge }      from "./status-badge";
+import { PriorityBadge }    from "./priority-badge";
+import { TypeBadge }        from "./type-badge";
+import { AttachEvidenceDialog } from "./attach-evidence-dialog";
+import { AuditTimeline }    from "./audit-timeline";
+import { WorkflowSection }  from "./workflow-section";
+import {
+  Pencil, ExternalLink, Clock, Calendar, User,
+  Building2, Layers,
+} from "lucide-react";
+import { COMPLEXITY_LABELS, ROI_LABELS, WORKER_PROFILE_LABELS } from "@/lib/demand-pricing";
+import type { ComplexityLevel, RoiLevel, WorkerProfile } from "@prisma/client";
+
+type AuditLogEntry = AuditLog & { user: { id: string; name: string } };
 
 type Props = {
   demand:    DemandWithRelations;
   actor:     UserForPermission;
-  auditLogs: AuditLogWithUser[];
+  auditLogs: AuditLogEntry[];
 };
 
 function fmtDate(d: Date | string | null | undefined): string {
@@ -70,12 +60,8 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
     status:     demand.status,
   };
 
-  const canEdit       = canEditDemand(actor, demandPerm);
-  const canAttach     = canAttachEvidence(actor, demandPerm);
-
-  const nextStatuses = (ALLOWED_TRANSITIONS[demand.status] ?? []).filter((s) =>
-    canChangeDemandStatus(actor, demandPerm, s as DemandStatus),
-  ) as DemandStatus[];
+  const canEdit   = canEditDemand(actor, demandPerm);
+  const canAttach = canAttachEvidence(actor, demandPerm);
 
   return (
     <div className="space-y-6">
@@ -93,7 +79,6 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
           </p>
         </div>
 
-        {/* Ações */}
         <div className="flex flex-wrap gap-2 shrink-0">
           {canEdit && (
             <Button asChild variant="outline" size="sm">
@@ -103,30 +88,18 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
               </Link>
             </Button>
           )}
-
-          {canAttach && (
-            <AttachEvidenceDialog demandId={demand.id} />
-          )}
-
-          {nextStatuses.length > 0 && (
-            <ChangeStatusDialog
-              demandId={demand.id}
-              currentStatus={demand.status}
-              trigger={
-                <Button size="sm">
-                  <ArrowRightCircle className="mr-2 h-4 w-4" />
-                  Avançar status
-                </Button>
-              }
-            />
-          )}
+          {canAttach && <AttachEvidenceDialog demandId={demand.id} />}
         </div>
       </div>
 
       <Separator />
 
+      {/* ── Workflow da demanda ───────────────────────────────────── */}
+      <WorkflowSection demand={demand} actor={actor} />
+
       {/* ── Grade de informações ─────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+
         {/* Coluna principal */}
         <div className="lg:col-span-2 space-y-6">
 
@@ -145,11 +118,7 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
                 {demand.requesterEmail && (
                   <InfoRow label="E-mail">{demand.requesterEmail}</InfoRow>
                 )}
-                {demand.systemAffected && (
-                  <InfoRow label="Sistema afetado">{demand.systemAffected}</InfoRow>
-                )}
               </dl>
-
               {demand.description && (
                 <>
                   <Separator className="my-3" />
@@ -158,6 +127,50 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
               )}
             </CardContent>
           </Card>
+
+          {/* Execução técnica */}
+          {(demand.assignee || demand.estimatedHours || demand.complexity || demand.roi) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-brand-primary" />
+                  Execução técnica
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                  <InfoRow label="Responsável">
+                    {demand.assignee?.name ?? <span className="italic text-muted-foreground">—</span>}
+                  </InfoRow>
+                  {demand.assigneeProfileSnapshot && (
+                    <InfoRow label="Perfil">
+                      {WORKER_PROFILE_LABELS[demand.assigneeProfileSnapshot as WorkerProfile] ?? demand.assigneeProfileSnapshot}
+                    </InfoRow>
+                  )}
+                  {demand.estimatedHours != null && (
+                    <InfoRow label="Horas estimadas">{demand.estimatedHours}h</InfoRow>
+                  )}
+                  {demand.complexity && (
+                    <InfoRow label="Complexidade">
+                      {COMPLEXITY_LABELS[demand.complexity as ComplexityLevel] ?? demand.complexity}
+                    </InfoRow>
+                  )}
+                  {demand.roi && (
+                    <InfoRow label="ROI">
+                      {ROI_LABELS[demand.roi as RoiLevel] ?? demand.roi}
+                    </InfoRow>
+                  )}
+                  {demand.estimatedDemandValue != null && (
+                    <InfoRow label="Valor estimado">
+                      <span className="font-mono font-semibold text-brand-text-dark">
+                        {BRL.format(demand.estimatedDemandValue)}
+                      </span>
+                    </InfoRow>
+                  )}
+                </dl>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Contexto de negócio */}
           {(demand.businessProblem || demand.expectedResult || demand.impactDescription ||
@@ -172,34 +185,24 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
               <CardContent>
                 <dl className="space-y-4">
                   {demand.businessProblem && (
-                    <InfoRow label="Problema de negócio">
+                    <InfoRow label="Critérios de aceite / Problema de negócio">
                       <OptionalText value={demand.businessProblem} />
                     </InfoRow>
                   )}
                   {demand.expectedResult && (
-                    <InfoRow label="Resultado esperado">
-                      <OptionalText value={demand.expectedResult} />
-                    </InfoRow>
+                    <InfoRow label="Resultado esperado"><OptionalText value={demand.expectedResult} /></InfoRow>
                   )}
                   {demand.impactDescription && (
-                    <InfoRow label="Impacto">
-                      <OptionalText value={demand.impactDescription} />
-                    </InfoRow>
+                    <InfoRow label="Impacto"><OptionalText value={demand.impactDescription} /></InfoRow>
                   )}
                   {demand.dependencies && (
-                    <InfoRow label="Dependências">
-                      <OptionalText value={demand.dependencies} />
-                    </InfoRow>
+                    <InfoRow label="Dependências"><OptionalText value={demand.dependencies} /></InfoRow>
                   )}
                   {demand.risks && (
-                    <InfoRow label="Riscos">
-                      <OptionalText value={demand.risks} />
-                    </InfoRow>
+                    <InfoRow label="Riscos"><OptionalText value={demand.risks} /></InfoRow>
                   )}
                   {demand.observations && (
-                    <InfoRow label="Observações">
-                      <OptionalText value={demand.observations} />
-                    </InfoRow>
+                    <InfoRow label="Observações"><OptionalText value={demand.observations} /></InfoRow>
                   )}
                 </dl>
               </CardContent>
@@ -249,7 +252,8 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
 
         {/* Coluna lateral */}
         <div className="space-y-4">
-          {/* Responsável e criador */}
+
+          {/* Pessoas */}
           <Card>
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">
@@ -263,6 +267,15 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
                   {demand.assignee?.name ?? <span className="text-muted-foreground italic">Não atribuído</span>}
                 </InfoRow>
                 <InfoRow label="Criador">{demand.creator.name}</InfoRow>
+                {demand.approvedBy && (
+                  <InfoRow label="Aprovado por">{demand.approvedBy.name}</InfoRow>
+                )}
+                {demand.homologatedBy && (
+                  <InfoRow label="Homologado por">{demand.homologatedBy.name}</InfoRow>
+                )}
+                {demand.canceledBy && (
+                  <InfoRow label="Cancelado por">{demand.canceledBy.name}</InfoRow>
+                )}
               </dl>
             </CardContent>
           </Card>
@@ -286,65 +299,28 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
                 {demand.actualDeliveryDate && (
                   <InfoRow label="Entrega real">{fmtDate(demand.actualDeliveryDate)}</InfoRow>
                 )}
+                {demand.approvedAt && (
+                  <InfoRow label="Aprovado em">{fmtDate(demand.approvedAt)}</InfoRow>
+                )}
                 {demand.homologationDate && (
                   <InfoRow label="Homologado em">{fmtDate(demand.homologationDate)}</InfoRow>
+                )}
+                {demand.canceledAt && (
+                  <InfoRow label="Cancelado em">{fmtDate(demand.canceledAt)}</InfoRow>
                 )}
               </dl>
             </CardContent>
           </Card>
-
-          {/* Horas */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Clock className="h-4 w-4 text-brand-primary" />
-                Esforço
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <dl className="space-y-3">
-                <InfoRow label="Horas estimadas">
-                  {demand.estimatedHours != null
-                    ? `${demand.estimatedHours}h`
-                    : <span className="text-muted-foreground italic">—</span>}
-                </InfoRow>
-              </dl>
-            </CardContent>
-          </Card>
-
-          {/* Ações rápidas de status */}
-          {nextStatuses.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Avançar para</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
-                {nextStatuses.map((s) => (
-                  <ChangeStatusDialog
-                    key={s}
-                    demandId={demand.id}
-                    currentStatus={demand.status}
-                    targetStatus={s}
-                    trigger={
-                      <Button variant="outline" size="sm" className="text-xs h-7">
-                        {s.replace(/_/g, " ").toLowerCase()}
-                      </Button>
-                    }
-                  />
-                ))}
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
 
-      {/* ── Histórico ───────────────────────────────────────────── */}
+      {/* ── Histórico de atividades ──────────────────────────────── */}
       <Card>
         <CardHeader>
           <CardTitle className="text-sm">Histórico de atividades</CardTitle>
         </CardHeader>
         <CardContent>
-          <AuditTimeline logs={auditLogs as AuditLogWithUser[]} />
+          <AuditTimeline logs={auditLogs} />
         </CardContent>
       </Card>
     </div>

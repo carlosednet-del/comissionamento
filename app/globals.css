@@ -106,3 +106,22 @@
       "calt" 1;
   }
 }
+
+/* ── Gradiente nos cabeçalhos dos cards ──────────────────────────
+ * Dá um leve toque de profundidade sem sobrescrever o shadcn Card.
+ * ─────────────────────────────────────────────────────────────── */
+@layer components {
+  .card-header-gradient {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--brand-bg-light) / 0.45) 0%,
+      hsl(var(--background))            100%
+    );
+    border-bottom: 1px solid hsl(var(--brand-bg-light) / 0.6);
+  }
+
+  /* Barra colorida no topo de cards de destaque */
+  .card-accent-top {
+    border-top: 3px solid hsl(var(--brand-primary));
+  }
+}

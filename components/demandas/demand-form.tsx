@@ -433,9 +433,9 @@ export function DemandForm(props: Props) {
         </Card>
 
         {/* ── Bloco 3 — Execução técnica ───────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Execução técnica</CardTitle>
+        <Card className="card-accent-top">
+          <CardHeader className="card-header-gradient">
+            <CardTitle className="text-base text-brand-text-dark">Execução técnica</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Row 1 — Responsável + campos derivados (readonly) */}
@@ -475,31 +475,31 @@ export function DemandForm(props: Props) {
                 />
               </div>
 
-              {/* Perfil técnico — derivado do responsável, readonly */}
-              <FormItem>
-                <FormLabel>Perfil técnico</FormLabel>
-                <FormControl>
-                  <Input
-                    readOnly
-                    disabled
-                    value={profileLabel}
-                    className="bg-muted text-muted-foreground cursor-not-allowed"
-                  />
-                </FormControl>
-              </FormItem>
+              {/* Perfil técnico — derivado do responsável, readonly (sem FormField) */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  Perfil técnico
+                </label>
+                <Input
+                  readOnly
+                  tabIndex={-1}
+                  value={profileLabel}
+                  className="bg-muted/60 text-muted-foreground cursor-default select-none"
+                />
+              </div>
 
-              {/* Valor/hora — derivado do responsável, readonly */}
-              <FormItem>
-                <FormLabel>Valor / hora</FormLabel>
-                <FormControl>
-                  <Input
-                    readOnly
-                    disabled
-                    value={hourlyRateDisplay}
-                    className="bg-muted text-muted-foreground cursor-not-allowed font-mono"
-                  />
-                </FormControl>
-              </FormItem>
+              {/* Valor/hora — derivado do responsável, readonly (sem FormField) */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  Valor / hora
+                </label>
+                <Input
+                  readOnly
+                  tabIndex={-1}
+                  value={hourlyRateDisplay}
+                  className="bg-muted/60 text-muted-foreground cursor-default select-none font-mono"
+                />
+              </div>
             </div>
 
             {/* Row 2 — Horas, Complexidade, ROI */}

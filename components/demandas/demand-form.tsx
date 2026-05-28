@@ -773,7 +773,14 @@ export function DemandForm(props: Props) {
               type="button"
               variant="outline"
               disabled={isSubmitting}
-              onClick={form.handleSubmit((v) => submit(v, true))}
+              onClick={async () => {
+                // Avisa o superRefine que é rascunho ANTES da validação rodar,
+                // para não exigir assigneeId / horas / complexidade / ROI.
+                form.setValue("saveAsDraft" as never, true as never);
+                await form.handleSubmit((v) => submit(v, true))();
+                // Resetar para false caso o usuário continue editando depois de um erro
+                form.setValue("saveAsDraft" as never, false as never);
+              }}
             >
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               Salvar rascunho

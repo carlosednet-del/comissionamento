@@ -70,7 +70,8 @@ const createDemandBase = z.object({
   plannedDeliveryDate: z.coerce.date({ required_error: "Data de entrega é obrigatória" }),
 
   // Controle interno
-  creatorId:   z.string().cuid(),
+  // creatorId é opcional no schema do formulário — o server action injeta o valor real.
+  creatorId:   z.string().cuid().optional(),
   saveAsDraft: z.boolean().default(false),
 });
 

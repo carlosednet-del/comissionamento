@@ -46,7 +46,6 @@ const createDemandBase = z.object({
   requesterArea:  z.string().min(2, "Área solicitante é obrigatória"),
   requesterName:  z.string().min(2, "Nome do solicitante é obrigatório"),
   requesterEmail: z.string().email("E-mail inválido").optional().or(z.literal("")).transform(v => v || undefined),
-  systemAffected: z.string().max(200).optional(),
 
   // Bloco 2 — Classificação
   demandType: z.nativeEnum(DemandType, { required_error: "Tipo é obrigatório" }),

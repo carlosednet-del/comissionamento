@@ -150,16 +150,10 @@ function PricingPreview({
           <span className="font-mono">{result.estimatedHours}h</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Complexidade</span>
-          <span className="font-mono">
-            {result.complexityMultiplier.toFixed(1)}× ({COMPLEXITY_LABELS[complexity!]})
+          <span className="text-muted-foreground">
+            Fator ({COMPLEXITY_LABELS[complexity!]} / {ROI_LABELS[roi!]})
           </span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">ROI</span>
-          <span className="font-mono">
-            {result.roiMultiplier.toFixed(2)}× ({ROI_LABELS[roi!]})
-          </span>
+          <span className="font-mono">{result.combinedFactor.toFixed(1)}×</span>
         </div>
 
         <div className="border-t pt-2 flex justify-between items-center">
@@ -193,7 +187,7 @@ export function DemandForm(props: Props) {
   const defaultValues: Partial<FormValues> = isCreate
     ? {
         title: "", description: "", requesterArea: "", requesterName: "",
-        requesterEmail: "", systemAffected: "",
+        requesterEmail: "",
         demandType: undefined, priority: "MEDIA",
         assigneeId: null, estimatedHours: undefined,
         complexity: null, roi: null,
@@ -208,7 +202,6 @@ export function DemandForm(props: Props) {
         requesterArea:       demand?.requesterArea ?? "",
         requesterName:       demand?.requesterName ?? "",
         requesterEmail:      demand?.requesterEmail ?? "",
-        systemAffected:      demand?.systemAffected ?? "",
         demandType:          demand?.demandType,
         priority:            demand?.priority ?? "MEDIA",
         assigneeId:          demand?.assigneeId ?? null,
@@ -355,19 +348,6 @@ export function DemandForm(props: Props) {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="systemAffected"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sistema afetado</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex.: ERP, Portal Web…" {...field} value={field.value ?? ""} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
           </CardContent>
         </Card>

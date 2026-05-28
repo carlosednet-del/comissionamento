@@ -1,54 +1,71 @@
 import {
   calculateDemandEstimatedValue,
   HOURLY_RATES,
-  COMPLEXITY_MULTIPLIERS,
-  ROI_MULTIPLIERS,
+  COMBINED_FACTORS,
   WORKER_PROFILE_LABELS,
   COMPLEXITY_LABELS,
   ROI_LABELS,
 } from "@/lib/demand-pricing";
 
-// ── Tabelas ────────────────────────────────────────────────────────────────
+// ── Tabela de valores/hora ─────────────────────────────────────────────────
 
 describe("HOURLY_RATES", () => {
-  it("has correct rate for JUNIOR",       () => expect(HOURLY_RATES.JUNIOR).toBe(60));
-  it("has correct rate for PLENO",        () => expect(HOURLY_RATES.PLENO).toBe(80));
-  it("has correct rate for SENIOR",       () => expect(HOURLY_RATES.SENIOR).toBe(100));
-  it("has correct rate for ESPECIALISTA", () => expect(HOURLY_RATES.ESPECIALISTA).toBe(130));
+  it("JUNIOR = 25",       () => expect(HOURLY_RATES.JUNIOR).toBe(25));
+  it("PLENO = 30",        () => expect(HOURLY_RATES.PLENO).toBe(30));
+  it("SENIOR = 35",       () => expect(HOURLY_RATES.SENIOR).toBe(35));
+  it("ESPECIALISTA = 45", () => expect(HOURLY_RATES.ESPECIALISTA).toBe(45));
 });
 
-describe("COMPLEXITY_MULTIPLIERS", () => {
-  it("BAIXA = 1.0",   () => expect(COMPLEXITY_MULTIPLIERS.BAIXA).toBe(1.0));
-  it("MEDIA = 1.2",   () => expect(COMPLEXITY_MULTIPLIERS.MEDIA).toBe(1.2));
-  it("ALTA = 1.5",    () => expect(COMPLEXITY_MULTIPLIERS.ALTA).toBe(1.5));
-  it("CRITICA = 2.0", () => expect(COMPLEXITY_MULTIPLIERS.CRITICA).toBe(2.0));
-});
+// ── Tabela de fatores combinados ───────────────────────────────────────────
 
-describe("ROI_MULTIPLIERS", () => {
-  it("BAIXO = 1.00",       () => expect(ROI_MULTIPLIERS.BAIXO).toBe(1.00));
-  it("MEDIO = 1.15",       () => expect(ROI_MULTIPLIERS.MEDIO).toBe(1.15));
-  it("ALTO = 1.30",        () => expect(ROI_MULTIPLIERS.ALTO).toBe(1.30));
-  it("ESTRATEGICO = 1.50", () => expect(ROI_MULTIPLIERS.ESTRATEGICO).toBe(1.50));
+describe("COMBINED_FACTORS", () => {
+  describe("BAIXA", () => {
+    it("BAIXO = 1.0",       () => expect(COMBINED_FACTORS.BAIXA.BAIXO).toBe(1.0));
+    it("MEDIO = 1.2",       () => expect(COMBINED_FACTORS.BAIXA.MEDIO).toBe(1.2));
+    it("ALTO = 1.5",        () => expect(COMBINED_FACTORS.BAIXA.ALTO).toBe(1.5));
+    it("ESTRATEGICO = 2.0", () => expect(COMBINED_FACTORS.BAIXA.ESTRATEGICO).toBe(2.0));
+  });
+
+  describe("MEDIA", () => {
+    it("BAIXO = 1.2",       () => expect(COMBINED_FACTORS.MEDIA.BAIXO).toBe(1.2));
+    it("MEDIO = 1.5",       () => expect(COMBINED_FACTORS.MEDIA.MEDIO).toBe(1.5));
+    it("ALTO = 2.0",        () => expect(COMBINED_FACTORS.MEDIA.ALTO).toBe(2.0));
+    it("ESTRATEGICO = 2.0", () => expect(COMBINED_FACTORS.MEDIA.ESTRATEGICO).toBe(2.0));
+  });
+
+  describe("ALTA", () => {
+    it("BAIXO = 1.2",       () => expect(COMBINED_FACTORS.ALTA.BAIXO).toBe(1.2));
+    it("MEDIO = 1.5",       () => expect(COMBINED_FACTORS.ALTA.MEDIO).toBe(1.5));
+    it("ALTO = 2.0",        () => expect(COMBINED_FACTORS.ALTA.ALTO).toBe(2.0));
+    it("ESTRATEGICO = 2.0", () => expect(COMBINED_FACTORS.ALTA.ESTRATEGICO).toBe(2.0));
+  });
+
+  describe("CRITICA", () => {
+    it("BAIXO = 1.5",       () => expect(COMBINED_FACTORS.CRITICA.BAIXO).toBe(1.5));
+    it("MEDIO = 1.5",       () => expect(COMBINED_FACTORS.CRITICA.MEDIO).toBe(1.5));
+    it("ALTO = 2.0",        () => expect(COMBINED_FACTORS.CRITICA.ALTO).toBe(2.0));
+    it("ESTRATEGICO = 2.0", () => expect(COMBINED_FACTORS.CRITICA.ESTRATEGICO).toBe(2.0));
+  });
 });
 
 // ── Labels ─────────────────────────────────────────────────────────────────
 
 describe("labels", () => {
-  it("WORKER_PROFILE_LABELS has all profiles",  () => {
+  it("WORKER_PROFILE_LABELS covers all profiles", () => {
     expect(WORKER_PROFILE_LABELS.JUNIOR).toBe("Júnior");
     expect(WORKER_PROFILE_LABELS.PLENO).toBe("Pleno");
     expect(WORKER_PROFILE_LABELS.SENIOR).toBe("Sênior");
     expect(WORKER_PROFILE_LABELS.ESPECIALISTA).toBe("Especialista");
   });
 
-  it("COMPLEXITY_LABELS has all levels", () => {
+  it("COMPLEXITY_LABELS covers all levels", () => {
     expect(COMPLEXITY_LABELS.BAIXA).toBe("Baixa");
     expect(COMPLEXITY_LABELS.MEDIA).toBe("Média");
     expect(COMPLEXITY_LABELS.ALTA).toBe("Alta");
     expect(COMPLEXITY_LABELS.CRITICA).toBe("Crítica");
   });
 
-  it("ROI_LABELS has all levels", () => {
+  it("ROI_LABELS covers all levels", () => {
     expect(ROI_LABELS.BAIXO).toBe("Baixo");
     expect(ROI_LABELS.MEDIO).toBe("Médio");
     expect(ROI_LABELS.ALTO).toBe("Alto");
@@ -59,89 +76,70 @@ describe("labels", () => {
 // ── calculateDemandEstimatedValue ──────────────────────────────────────────
 
 describe("calculateDemandEstimatedValue", () => {
-  it("returns correct structure", () => {
+  it("returns correct structure with combinedFactor", () => {
     const result = calculateDemandEstimatedValue({
-      workerProfile:  "JUNIOR",
-      estimatedHours: 10,
-      complexity:     "BAIXA",
-      roi:            "BAIXO",
+      workerProfile: "JUNIOR", estimatedHours: 10, complexity: "BAIXA", roi: "BAIXO",
     });
     expect(result).toHaveProperty("hourlyRate");
     expect(result).toHaveProperty("estimatedHours");
-    expect(result).toHaveProperty("complexityMultiplier");
-    expect(result).toHaveProperty("roiMultiplier");
+    expect(result).toHaveProperty("combinedFactor");
     expect(result).toHaveProperty("estimatedValue");
+    // old separate multipliers must NOT exist
+    expect(result).not.toHaveProperty("complexityMultiplier");
+    expect(result).not.toHaveProperty("roiMultiplier");
   });
 
-  it("JUNIOR × 10h × BAIXA × BAIXO = 600", () => {
-    // 60 × 10 × 1.0 × 1.0 = 600
+  it("JUNIOR × 10h × BAIXA/BAIXO = 250", () => {
+    // 25 × 10 × 1.0 = 250
     const { estimatedValue } = calculateDemandEstimatedValue({
-      workerProfile:  "JUNIOR",
-      estimatedHours: 10,
-      complexity:     "BAIXA",
-      roi:            "BAIXO",
+      workerProfile: "JUNIOR", estimatedHours: 10, complexity: "BAIXA", roi: "BAIXO",
     });
-    expect(estimatedValue).toBe(600);
+    expect(estimatedValue).toBe(250);
   });
 
-  it("PLENO × 20h × ALTA × ALTO = 3120", () => {
-    // 80 × 20 × 1.5 × 1.30 = 3120
+  it("PLENO × 20h × ALTA/ALTO = 1200", () => {
+    // 30 × 20 × 2.0 = 1200
     const { estimatedValue } = calculateDemandEstimatedValue({
-      workerProfile:  "PLENO",
-      estimatedHours: 20,
-      complexity:     "ALTA",
-      roi:            "ALTO",
+      workerProfile: "PLENO", estimatedHours: 20, complexity: "ALTA", roi: "ALTO",
     });
-    expect(estimatedValue).toBeCloseTo(3120, 2);
+    expect(estimatedValue).toBe(1200);
   });
 
-  it("SENIOR × 40h × MEDIA × MEDIO", () => {
-    // 100 × 40 × 1.2 × 1.15 = 5520
+  it("SENIOR × 40h × MEDIA/MEDIO = 2100", () => {
+    // 35 × 40 × 1.5 = 2100
     const { estimatedValue } = calculateDemandEstimatedValue({
-      workerProfile:  "SENIOR",
-      estimatedHours: 40,
-      complexity:     "MEDIA",
-      roi:            "MEDIO",
+      workerProfile: "SENIOR", estimatedHours: 40, complexity: "MEDIA", roi: "MEDIO",
     });
-    expect(estimatedValue).toBeCloseTo(5520, 2);
+    expect(estimatedValue).toBe(2100);
   });
 
-  it("ESPECIALISTA × 80h × CRITICA × ESTRATEGICO", () => {
-    // 130 × 80 × 2.0 × 1.50 = 31200
+  it("ESPECIALISTA × 80h × CRITICA/ESTRATEGICO = 7200", () => {
+    // 45 × 80 × 2.0 = 7200
     const { estimatedValue } = calculateDemandEstimatedValue({
-      workerProfile:  "ESPECIALISTA",
-      estimatedHours: 80,
-      complexity:     "CRITICA",
-      roi:            "ESTRATEGICO",
+      workerProfile: "ESPECIALISTA", estimatedHours: 80, complexity: "CRITICA", roi: "ESTRATEGICO",
     });
-    expect(estimatedValue).toBeCloseTo(31200, 2);
+    expect(estimatedValue).toBe(7200);
   });
 
-  it("echoes back the correct inputs in the result", () => {
+  it("JUNIOR × 0.5h × BAIXA/BAIXO = 12.5 (minimum case)", () => {
+    // 25 × 0.5 × 1.0 = 12.5
+    const { estimatedValue } = calculateDemandEstimatedValue({
+      workerProfile: "JUNIOR", estimatedHours: 0.5, complexity: "BAIXA", roi: "BAIXO",
+    });
+    expect(estimatedValue).toBe(12.5);
+  });
+
+  it("combinedFactor is read from the correct table cell", () => {
     const result = calculateDemandEstimatedValue({
-      workerProfile:  "SENIOR",
-      estimatedHours: 15,
-      complexity:     "ALTA",
-      roi:            "ALTO",
+      workerProfile: "SENIOR", estimatedHours: 10, complexity: "CRITICA", roi: "MEDIO",
     });
-    expect(result.hourlyRate).toBe(100);
-    expect(result.estimatedHours).toBe(15);
-    expect(result.complexityMultiplier).toBe(1.5);
-    expect(result.roiMultiplier).toBe(1.3);
+    expect(result.combinedFactor).toBe(COMBINED_FACTORS.CRITICA.MEDIO); // 1.5
+    expect(result.hourlyRate).toBe(35);
+    expect(result.estimatedValue).toBeCloseTo(35 * 10 * 1.5, 5);
   });
 
-  it("minimum value: JUNIOR × 0.5h × BAIXA × BAIXO = 30", () => {
-    const { estimatedValue } = calculateDemandEstimatedValue({
-      workerProfile:  "JUNIOR",
-      estimatedHours: 0.5,
-      complexity:     "BAIXA",
-      roi:            "BAIXO",
-    });
-    expect(estimatedValue).toBe(30);
-  });
-
-  it("maximum multipliers produce higher values", () => {
-    const low = calculateDemandEstimatedValue({
+  it("higher cargo + worst combo always produces greater value than minimum", () => {
+    const low  = calculateDemandEstimatedValue({
       workerProfile: "JUNIOR", estimatedHours: 10, complexity: "BAIXA", roi: "BAIXO",
     });
     const high = calculateDemandEstimatedValue({

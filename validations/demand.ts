@@ -75,47 +75,17 @@ const createDemandBase = z.object({
   saveAsDraft: z.boolean().default(false),
 });
 
-// ── Schema de criação — valida datas e campos obrigatórios p/ não-rascunho ──
+// ── Schema de criação — valida apenas estrutura de dados e datas ──
+// Regras de negócio (campos obrigatórios para não-rascunho) são validadas
+// manualmente no formulário e revalidadas no service, pois saveAsDraft não
+// é um campo registrado no react-hook-form e não chega ao superRefine.
 export const createDemandSchema = createDemandBase.superRefine((data, ctx) => {
-  // Validação de datas
   if (data.plannedStartDate && data.plannedDeliveryDate) {
     if (data.plannedDeliveryDate < data.plannedStartDate) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Data de entrega não pode ser anterior à data de início",
         path: ["plannedDeliveryDate"],
-      });
-    }
-  }
-
-  // Campos obrigatórios quando não é rascunho
-  if (!data.saveAsDraft) {
-    if (!data.assigneeId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Responsável técnico é obrigatório para demandas abertas",
-        path: ["assigneeId"],
-      });
-    }
-    if (data.estimatedHours === undefined || data.estimatedHours === null) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Horas estimadas são obrigatórias para demandas abertas",
-        path: ["estimatedHours"],
-      });
-    }
-    if (!data.complexity) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Complexidade é obrigatória para demandas abertas",
-        path: ["complexity"],
-      });
-    }
-    if (!data.roi) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "ROI é obrigatório para demandas abertas",
-        path: ["roi"],
       });
     }
   }

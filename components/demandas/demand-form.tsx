@@ -239,11 +239,36 @@ export function DemandForm(props: Props) {
   async function submit(values: FormValues, draft = false) {
     setServerError(null);
 
+    // ── Validação manual dos campos obrigatórios para demanda (não-rascunho) ──
+    if (!draft && isCreate) {
+      const v = values as CreateDemandInput;
+      let hasError = false;
+
+      if (!v.assigneeId) {
+        form.setError("assigneeId" as never, { message: "Responsável técnico é obrigatório para criar a demanda" });
+        hasError = true;
+      }
+      if (!v.estimatedHours) {
+        form.setError("estimatedHours" as never, { message: "Horas estimadas são obrigatórias" });
+        hasError = true;
+      }
+      if (!v.complexity) {
+        form.setError("complexity" as never, { message: "Complexidade é obrigatória" });
+        hasError = true;
+      }
+      if (!v.roi) {
+        form.setError("roi" as never, { message: "ROI / Impacto estratégico é obrigatório" });
+        hasError = true;
+      }
+
+      if (hasError) return;
+    }
+
     if (isCreate) {
       const payload = { ...(values as CreateDemandInput), saveAsDraft: draft };
       const result  = await createDemandAction(payload);
       if (!result.success) { setServerError(result.error); return; }
-      router.push(`/demandas/${result.data.id}`);
+      router.push("/demandas");
     } else {
       const result = await updateDemandAction((props as EditMode).demand.id, values as UpdateDemandInput);
       if (!result.success) { setServerError(result.error); return; }
@@ -773,14 +798,7 @@ export function DemandForm(props: Props) {
               type="button"
               variant="outline"
               disabled={isSubmitting}
-              onClick={async () => {
-                // Avisa o superRefine que é rascunho ANTES da validação rodar,
-                // para não exigir assigneeId / horas / complexidade / ROI.
-                form.setValue("saveAsDraft" as never, true as never);
-                await form.handleSubmit((v) => submit(v, true))();
-                // Resetar para false caso o usuário continue editando depois de um erro
-                form.setValue("saveAsDraft" as never, false as never);
-              }}
+              onClick={form.handleSubmit((v) => submit(v, true))}
             >
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               Salvar rascunho

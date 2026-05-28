@@ -52,7 +52,7 @@ const createDemandBase = z.object({
   priority:   z.nativeEnum(DemandPriority).default(DemandPriority.MEDIA),
 
   // Bloco 3 — Execução técnica (opcional no rascunho)
-  assigneeId:     z.string().cuid("ID do responsável inválido").optional().nullable(),
+  assigneeId:     z.string().min(1, "ID do responsável inválido").optional().nullable(),
   estimatedHours: optionalPositiveNumber,
   complexity:     z.nativeEnum(ComplexityLevel).optional().nullable(),
   roi:            z.nativeEnum(RoiLevel).optional().nullable(),
@@ -71,7 +71,7 @@ const createDemandBase = z.object({
 
   // Controle interno
   // creatorId é opcional no schema do formulário — o server action injeta o valor real.
-  creatorId:   z.string().cuid().optional(),
+  creatorId:   z.string().min(1).optional(),
   saveAsDraft: z.boolean().default(false),
 });
 

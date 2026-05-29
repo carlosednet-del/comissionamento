@@ -187,8 +187,15 @@ describe("canHomologateDemand", () => {
     expect(canHomologateDemand(user("DEV", "dev"), demand("g", "dev"))).toBe(false);
   });
 
-  it("GESTOR não pode homologar", () => {
-    expect(canHomologateDemand(user("GESTOR"), demand())).toBe(false);
+  it("GESTOR pode homologar demanda de outro desenvolvedor (Módulo 4)", () => {
+    // GESTOR recebeu permissão de homologação no Módulo 4 para agilizar o fluxo
+    // A restrição de auto-homologação ainda se aplica
+    expect(canHomologateDemand(user("GESTOR"), demand())).toBe(true);
+  });
+
+  it("GESTOR não pode homologar demanda em que é o responsável técnico", () => {
+    const gestor = user("GESTOR", "gest");
+    expect(canHomologateDemand(gestor, demand("c", "gest"))).toBe(false);
   });
 
   it("ADMIN pode homologar", () => {

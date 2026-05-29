@@ -8,6 +8,7 @@ import { logoutAction } from "@/server/actions/authActions";
 import {
   LayoutDashboard,
   ClipboardList,
+  LayoutGrid,
   Users,
   LogOut,
   ChevronRight,
@@ -30,8 +31,9 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard",  icon: LayoutDashboard, roles: ["ADMIN", "GESTOR", "FINANCEIRO"] },
-  { href: "/demandas",  label: "Demandas",   icon: ClipboardList },
-  { href: "/usuarios",  label: "Usuários",   icon: Users, roles: ["ADMIN"] },
+  { href: "/demandas",        label: "Demandas",   icon: ClipboardList },
+  { href: "/demandas/kanban", label: "Kanban",      icon: LayoutGrid },
+  { href: "/usuarios",        label: "Usuários",    icon: Users, roles: ["ADMIN"] },
 ];
 
 export function Sidebar({ user }: { user: SidebarUser }) {
@@ -63,9 +65,12 @@ export function Sidebar({ user }: { user: SidebarUser }) {
       {/* ── Navegação ───────────────────────────────────────────── */}
       <nav className="flex-1 space-y-0.5 p-3">
         {visibleItems.map((item) => {
+          // Exact match para rotas que são prefixo de outras (/dashboard, /demandas)
           const isActive =
-            item.href === "/dashboard"
-              ? pathname === "/dashboard"
+            item.href === "/dashboard" || item.href === "/demandas"
+              ? pathname === item.href ||
+                (pathname.startsWith(item.href + "/") &&
+                  !pathname.startsWith("/demandas/kanban"))
               : pathname.startsWith(item.href);
 
           return (

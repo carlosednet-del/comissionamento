@@ -1,6 +1,25 @@
 import { prisma } from "@/lib/prisma";
 import type { DemandFilters, DemandSummary, PaginatedResponse } from "@/types";
-import type { Demand, DemandStatus } from "@prisma/client";
+import type { Demand, DemandStatus, DemandPriority, DemandType, ComplexityLevel, RoiLevel } from "@prisma/client";
+
+// ── Tipo de filtros do Kanban ────────────────────────────────────
+export type KanbanFilters = {
+  search?:        string;
+  statuses?:      DemandStatus[];
+  priority?:      DemandPriority;
+  demandType?:    DemandType;
+  assigneeId?:    string;
+  requesterArea?: string;
+  complexity?:    ComplexityLevel;
+  roi?:           RoiLevel;
+  deadlineStatus?: "overdue" | "today" | "soon" | "ok";
+  deliveryFrom?:  Date;
+  deliveryTo?:    Date;
+  onlyMine?:      boolean;
+  currentUserId?: string;
+  visibleStatuses?: DemandStatus[];
+  sortBy?:        "priority" | "deadline" | "created" | "title";
+};
 
 // ── Projeção de lista ─────────────────────────────────────────────
 const demandSummarySelect = {
@@ -111,6 +130,106 @@ export const demandRepository = {
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     };
+  },
+
+  async findKanbanDemands(filters: KanbanFilters): Promise<DemandSummary[]> {
+    const {
+      search,
+      statuses,
+      priority,
+      demandType,
+      assigneeId,
+      requesterArea,
+      complexity,
+      roi,
+      deadlineStatus,
+      deliveryFrom,
+      deliveryTo,
+      onlyMine,
+      currentUserId,
+      visibleStatuses,
+      sortBy = "priority",
+    } = filters;
+
+    const today    = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const soonEnd  = new Date(today);
+    soonEnd.setDate(soonEnd.getDate() + 4); // "soon" = next 3 days
+
+    const deadlineWhere = (() => {
+      if (!deadlineStatus) return undefined;
+      switch (deadlineStatus) {
+        case "overdue": return { plannedDeliveryDate: { lt: today } };
+        case "today":   return { plannedDeliveryDate: { gte: today, lt: tomorrow } };
+        case "soon":    return { plannedDeliveryDate: { gte: tomorrow, lt: soonEnd } };
+        case "ok":      return { plannedDeliveryDate: { gte: soonEnd } };
+      }
+    })();
+
+    const statusFilter = (() => {
+      // merge role-visible statuses with user-selected filter
+      const base = visibleStatuses && visibleStatuses.length > 0 ? visibleStatuses : undefined;
+      if (base && statuses && statuses.length > 0) {
+        const intersection = statuses.filter((s) => base.includes(s));
+        return intersection.length > 0 ? intersection : base;
+      }
+      if (base)    return base;
+      if (statuses && statuses.length > 0) return statuses;
+      return undefined;
+    })();
+
+    const where = {
+      ...(statusFilter   && { status: { in: statusFilter } }),
+      ...(priority       && { priority }),
+      ...(demandType     && { demandType }),
+      ...(complexity     && { complexity }),
+      ...(roi            && { roi }),
+      ...(assigneeId     && { assigneeId }),
+      ...(onlyMine && currentUserId
+        ? { OR: [{ assigneeId: currentUserId }, { creatorId: currentUserId }] }
+        : {}),
+      ...(requesterArea  && {
+        requesterArea: { contains: requesterArea, mode: "insensitive" as const },
+      }),
+      ...(search && {
+        OR: [
+          { title:         { contains: search, mode: "insensitive" as const } },
+          { description:   { contains: search, mode: "insensitive" as const } },
+          { requesterName: { contains: search, mode: "insensitive" as const } },
+          { requesterArea: { contains: search, mode: "insensitive" as const } },
+        ],
+      }),
+      ...(deadlineWhere ?? {}),
+      ...(deliveryFrom || deliveryTo
+        ? {
+            plannedDeliveryDate: {
+              ...(deliveryFrom && { gte: deliveryFrom }),
+              ...(deliveryTo   && { lte: deliveryTo   }),
+            },
+          }
+        : {}),
+    };
+
+    const orderBy = (() => {
+      switch (sortBy) {
+        case "deadline": return [{ plannedDeliveryDate: "asc" as const }];
+        case "created":  return [{ createdAt: "desc" as const }];
+        case "title":    return [{ title: "asc" as const }];
+        case "priority":
+        default:         return [{ priority: "desc" as const }, { createdAt: "desc" as const }];
+      }
+    })();
+
+    const data = await prisma.demand.findMany({
+      where,
+      select: demandSummarySelect,
+      orderBy,
+      take: 500, // razoável para kanban sem paginação
+    });
+
+    return data as unknown as DemandSummary[];
   },
 
   async countByStatus() {

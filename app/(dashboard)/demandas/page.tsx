@@ -6,7 +6,7 @@ import { DemandStats } from "@/components/demandas/demand-stats";
 import { DemandFilters } from "@/components/demandas/demand-filters";
 import { DemandTable } from "@/components/demandas/demand-table";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, LayoutGrid } from "lucide-react";
 import type { DemandStatus, DemandPriority, DemandType } from "@prisma/client";
 
 export const metadata = { title: "Demandas — Gestor de Demandas" };
@@ -55,14 +55,22 @@ export default async function DemandasPage({
             Gerencie e acompanhe o fluxo de demandas técnicas.
           </p>
         </div>
-        {userCanCreate && (
-          <Button asChild>
-            <Link href="/demandas/nova">
-              <Plus className="mr-2 h-4 w-4" />
-              Nova demanda
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline">
+            <Link href="/demandas/kanban">
+              <LayoutGrid className="mr-2 h-4 w-4" />
+              Kanban
             </Link>
           </Button>
-        )}
+          {userCanCreate && (
+            <Button asChild>
+              <Link href="/demandas/nova">
+                <Plus className="mr-2 h-4 w-4" />
+                Nova demanda
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Stats */}

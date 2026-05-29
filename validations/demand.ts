@@ -146,6 +146,23 @@ export const cancelDemandSchema = z.object({
     .min(10, "Motivo do cancelamento deve ter ao menos 10 caracteres"),
 });
 
+// ── Schema de filtros do kanban ──────────────────────────────────
+export const kanbanFiltersSchema = z.object({
+  search:        z.string().optional(),
+  statuses:      z.array(z.nativeEnum(DemandStatus)).optional(),
+  priority:      z.nativeEnum(DemandPriority).optional(),
+  demandType:    z.nativeEnum(DemandType).optional(),
+  assigneeId:    z.string().optional(),
+  requesterArea: z.string().optional(),
+  complexity:    z.nativeEnum(ComplexityLevel).optional(),
+  roi:           z.nativeEnum(RoiLevel).optional(),
+  deadlineStatus: z.enum(["overdue", "today", "soon", "ok"]).optional(),
+  deliveryFrom:  z.coerce.date().optional(),
+  deliveryTo:    z.coerce.date().optional(),
+  onlyMine:      z.coerce.boolean().default(false),
+  sortBy:        z.enum(["priority", "deadline", "created", "title"]).default("priority"),
+});
+
 // ── Schema de filtros ────────────────────────────────────────────
 export const demandFiltersSchema = z.object({
   status:        z.nativeEnum(DemandStatus).optional(),
@@ -172,3 +189,4 @@ export type SendToHomologationInput    = z.infer<typeof sendToHomologationSchema
 export type HomologateDemandInput      = z.infer<typeof homologateDemandSchema>;
 export type RejectDemandInput          = z.infer<typeof rejectDemandSchema>;
 export type CancelDemandInput          = z.infer<typeof cancelDemandSchema>;
+export type KanbanFiltersInput         = z.infer<typeof kanbanFiltersSchema>;

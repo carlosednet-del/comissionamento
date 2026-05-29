@@ -86,7 +86,6 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
       const result = await deleteDemandAction(demand.id);
       if (result.success) {
         router.push("/demandas");
-        router.refresh();
       }
     });
   }

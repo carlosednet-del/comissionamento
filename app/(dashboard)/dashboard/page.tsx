@@ -77,13 +77,18 @@ export default async function DashboardPage({
     prisma.demand.count({ where: { status: "EM_DESENVOLVIMENTO" } }),
   ]);
 
-  // Card extra: valor estimado homologado no mês corrente
-  const homologadoMes = canViewFinancialData(actor)
-    ? await prisma.demand.aggregate({
-        _sum: { estimatedDemandValue: true },
-        where: { homologationDate: { gte: monthStart, lte: monthEnd } },
-      })
-    : null;
+  // Cards financeiros (só para quem tem permissão)
+  const [homologadoMes, valorPrevisto] = canViewFinancialData(actor)
+    ? await Promise.all([
+        prisma.demand.aggregate({
+          _sum: { estimatedDemandValue: true },
+          where: { homologationDate: { gte: monthStart, lte: monthEnd } },
+        }),
+        prisma.demand.aggregate({
+          _sum: { estimatedDemandValue: true },
+        }),
+      ])
+    : [null, null];
 
   const stats = [
     { label: "Usuários ativos",           value: totalUsers,           icon: Users,         color: "text-blue-600"   },
@@ -119,26 +124,53 @@ export default async function DashboardPage({
         ))}
       </div>
 
-      {/* Card financeiro do mês corrente (só para quem tem permissão) */}
-      {canSeeFinancial && homologadoMes && (
-        <Card className="border-green-200 bg-green-50/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-green-700 flex items-center gap-2">
-              <CheckCircle className="h-4 w-4" />
-              Valor homologado no mês atual (informativo)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold font-mono text-green-700">
-              {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
-                homologadoMes._sum.estimatedDemandValue ?? 0,
-              )}
-            </p>
-            <p className="text-xs text-green-600 mt-0.5">
-              Soma dos valores estimados das demandas homologadas este mês. Deflator não aplicado.
-            </p>
-          </CardContent>
-        </Card>
+      {/* Cards financeiros (só para quem tem permissão) */}
+      {canSeeFinancial && (homologadoMes || valorPrevisto) && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {/* Valor previsto — soma de todas as demandas */}
+          {valorPrevisto && (
+            <Card className="border-blue-200 bg-blue-50/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-blue-700 flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4" />
+                  Valor previsto — carteira total (informativo)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold font-mono text-blue-700">
+                  {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
+                    valorPrevisto._sum.estimatedDemandValue ?? 0,
+                  )}
+                </p>
+                <p className="text-xs text-blue-600 mt-0.5">
+                  Soma dos valores estimados de todas as demandas (todos os status). Deflator não aplicado.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Valor homologado no mês corrente */}
+          {homologadoMes && (
+            <Card className="border-green-200 bg-green-50/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-green-700 flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Valor homologado no mês atual (informativo)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold font-mono text-green-700">
+                  {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
+                    homologadoMes._sum.estimatedDemandValue ?? 0,
+                  )}
+                </p>
+                <p className="text-xs text-green-600 mt-0.5">
+                  Soma dos valores estimados das demandas homologadas este mês. Deflator não aplicado.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
 
       {/* Resumo mensal por colaborador */}

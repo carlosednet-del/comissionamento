@@ -221,3 +221,15 @@ export async function cancelDemandAction(
     return { success: true, data: undefined };
   } catch (e) { return handleError(e); }
 }
+
+// ── Delete ───────────────────────────────────────────────────────
+
+export async function deleteDemandAction(id: string): Promise<ActionResult<void>> {
+  try {
+    const session = await requireAuth();
+    await demandService.deleteDemand(id, toPermissionUser(session));
+    revalidatePath("/demandas");
+    revalidatePath("/demandas/kanban");
+    return { success: true, data: undefined };
+  } catch (e) { return handleError(e); }
+}

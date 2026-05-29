@@ -4,9 +4,10 @@
  * Mostra, para o período selecionado:
  *  · Valor estimado = SUM(estimatedDemandValue) das demandas aprovadas no mês
  *  · Valor final    = SUM(estimatedDemandValue) das demandas homologadas no mês
+ *  · Valor previsto = SUM(estimatedDemandValue) de TODAS as demandas (carteira total)
  *
  * ⚠  Deflator por atraso e fechamento de RV/comissão NÃO implementados.
- *    Ambos os valores são informativos.
+ *    Todos os valores são informativos.
  */
 
 import type { MonthlyDashboardSummary } from "@/services/dashboardService";
@@ -18,6 +19,7 @@ import {
   TrendingUp,
   ClipboardCheck,
   Clock,
+  LayoutList,
 } from "lucide-react";
 
 // ── Formatação ────────────────────────────────────────────────────
@@ -82,13 +84,14 @@ export function MonthlySummaryTable({ data }: Props) {
       <div className="flex items-start gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
         <InfoIcon className="h-3.5 w-3.5 mt-0.5 shrink-0" />
         <span>
-          <strong>Valor final</strong> = valor estimado das demandas homologadas no período.
+          <strong>Valor final</strong> = valor estimado das demandas homologadas no período.{" "}
+          <strong>Valor previsto</strong> = carteira total (todos os status, sem filtro de período).{" "}
           Deflator por atraso e fechamento de RV ainda não foram implementados.
         </span>
       </div>
 
       {/* Sumário rápido no topo */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <SummaryMini
           label="Aprovadas no período"
           value={NUM.format(totals.approvedCount)}
@@ -121,6 +124,22 @@ export function MonthlySummaryTable({ data }: Props) {
           color="text-green-700"
           bg="bg-green-50 border-green-100"
         />
+        <SummaryMini
+          label="Carteira total"
+          value={NUM.format(totals.portfolioCount)}
+          sub="todas as demandas"
+          icon={LayoutList}
+          color="text-blue-700"
+          bg="bg-blue-50 border-blue-100"
+        />
+        <SummaryMini
+          label="Valor previsto"
+          value={BRL.format(totals.portfolioValue)}
+          sub="carteira total"
+          icon={LayoutList}
+          color="text-blue-700"
+          bg="bg-blue-50 border-blue-100"
+        />
       </div>
 
       {/* Tabela por colaborador */}
@@ -128,31 +147,51 @@ export function MonthlySummaryTable({ data }: Props) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/40">
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide" rowSpan={2}>
                 Colaborador
               </th>
-              <th className="px-3 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <th className="px-3 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide" rowSpan={2}>
                 Perfil
               </th>
-              {/* Valor estimado */}
-              <th className="px-3 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide border-l border-dashed">
-                Dem. aprovadas
+              {/* Grupo: Período */}
+              <th className="px-3 py-2 text-center text-xs font-semibold text-emerald-700 uppercase tracking-wide border-l border-dashed" colSpan={3}>
+                Aprovadas no período
               </th>
-              <th className="px-3 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <th className="px-3 py-2 text-center text-xs font-semibold text-green-700 uppercase tracking-wide border-l border-dashed" colSpan={3}>
+                Homologadas no período
+              </th>
+              {/* Grupo: Carteira total */}
+              <th className="px-3 py-2 text-center text-xs font-semibold text-blue-700 uppercase tracking-wide border-l border-dashed" colSpan={2}>
+                Carteira total
+              </th>
+            </tr>
+            <tr className="border-b bg-muted/40">
+              {/* Aprovadas */}
+              <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide border-l border-dashed">
+                Dem.
+              </th>
+              <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Horas est.
               </th>
-              <th className="px-3 py-3 text-right text-xs font-semibold text-brand-primary uppercase tracking-wide">
-                Valor estimado
+              <th className="px-3 py-2 text-right text-xs font-semibold text-emerald-700 uppercase tracking-wide">
+                Valor est.
               </th>
-              {/* Valor final */}
-              <th className="px-3 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide border-l border-dashed">
-                Dem. homolog.
+              {/* Homologadas */}
+              <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide border-l border-dashed">
+                Dem.
               </th>
-              <th className="px-3 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Horas entreg.
+              <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Horas ent.
               </th>
-              <th className="px-3 py-3 text-right text-xs font-semibold text-green-700 uppercase tracking-wide">
+              <th className="px-3 py-2 text-right text-xs font-semibold text-green-700 uppercase tracking-wide">
                 Valor final
+              </th>
+              {/* Carteira */}
+              <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide border-l border-dashed">
+                Dem.
+              </th>
+              <th className="px-3 py-2 text-right text-xs font-semibold text-blue-700 uppercase tracking-wide">
+                Valor prev.
               </th>
             </tr>
           </thead>
@@ -186,7 +225,7 @@ export function MonthlySummaryTable({ data }: Props) {
                   )}
                 </td>
 
-                {/* Valor estimado */}
+                {/* Aprovadas no período */}
                 <td className="px-3 py-3 text-right tabular-nums text-muted-foreground border-l border-dashed">
                   {c.approvedCount > 0 ? c.approvedCount : <span className="opacity-40">—</span>}
                 </td>
@@ -198,7 +237,7 @@ export function MonthlySummaryTable({ data }: Props) {
                 </td>
                 <td className="px-3 py-3 text-right">
                   {c.estimatedValue > 0 ? (
-                    <span className="font-mono font-semibold text-brand-primary">
+                    <span className="font-mono font-semibold text-emerald-700">
                       {BRL.format(c.estimatedValue)}
                     </span>
                   ) : (
@@ -206,7 +245,7 @@ export function MonthlySummaryTable({ data }: Props) {
                   )}
                 </td>
 
-                {/* Valor final */}
+                {/* Homologadas no período */}
                 <td className="px-3 py-3 text-right tabular-nums text-muted-foreground border-l border-dashed">
                   {c.homologatedCount > 0 ? c.homologatedCount : <span className="opacity-40">—</span>}
                 </td>
@@ -225,6 +264,20 @@ export function MonthlySummaryTable({ data }: Props) {
                     <span className="text-muted-foreground/40 text-xs">—</span>
                   )}
                 </td>
+
+                {/* Carteira total */}
+                <td className="px-3 py-3 text-right tabular-nums text-muted-foreground border-l border-dashed">
+                  {c.portfolioCount > 0 ? c.portfolioCount : <span className="opacity-40">—</span>}
+                </td>
+                <td className="px-3 py-3 text-right">
+                  {c.portfolioValue > 0 ? (
+                    <span className="font-mono font-semibold text-blue-700">
+                      {BRL.format(c.portfolioValue)}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground/40 text-xs">—</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -236,6 +289,7 @@ export function MonthlySummaryTable({ data }: Props) {
                 <td className="px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground" colSpan={2}>
                   Total — {collaborators.length} colaborador{collaborators.length !== 1 ? "es" : ""}
                 </td>
+                {/* Aprovadas */}
                 <td className="px-3 py-3 text-right tabular-nums border-l border-dashed">
                   {totals.approvedCount}
                 </td>
@@ -247,10 +301,11 @@ export function MonthlySummaryTable({ data }: Props) {
                   )}
                 </td>
                 <td className="px-3 py-3 text-right">
-                  <span className="font-mono text-brand-primary">
+                  <span className="font-mono text-emerald-700">
                     {BRL.format(totals.estimatedValue)}
                   </span>
                 </td>
+                {/* Homologadas */}
                 <td className="px-3 py-3 text-right tabular-nums border-l border-dashed">
                   {totals.homologatedCount}
                 </td>
@@ -264,6 +319,15 @@ export function MonthlySummaryTable({ data }: Props) {
                 <td className="px-3 py-3 text-right">
                   <span className="font-mono text-green-700">
                     {BRL.format(totals.finalValue)}
+                  </span>
+                </td>
+                {/* Carteira */}
+                <td className="px-3 py-3 text-right tabular-nums border-l border-dashed">
+                  {totals.portfolioCount}
+                </td>
+                <td className="px-3 py-3 text-right">
+                  <span className="font-mono text-blue-700">
+                    {BRL.format(totals.portfolioValue)}
                   </span>
                 </td>
               </tr>

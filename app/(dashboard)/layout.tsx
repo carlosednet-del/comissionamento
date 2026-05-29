@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { requireAuth } from "@/server/auth/helpers";
 import { Sidebar } from "@/components/layout/sidebar";
 
@@ -18,5 +17,3 @@ export default async function DashboardLayout({ children }: { children: React.Re
     </div>
   );
 }
-
-export { redirect };

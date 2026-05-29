@@ -1,7 +1,7 @@
 /**
  * dashboardService — Resumo mensal por colaborador
  *
- * Retorna dois conjuntos de dados para o período selecionado:
+ * Retorna três conjuntos de dados por colaborador:
  *
  *  · Valor estimado  = SUM(estimatedDemandValue) das demandas com
  *    `approvedAt` no período — o que foi comprometido/iniciado.
@@ -9,6 +9,9 @@
  *  · Valor final     = SUM(estimatedDemandValue) das demandas com
  *    `homologationDate` no período — o que foi efetivamente entregue
  *    e homologado.
+ *
+ *  · Valor previsto  = SUM(estimatedDemandValue) de TODAS as demandas
+ *    do colaborador, sem filtro de período (carteira total).
  *
  * ⚠  Valor final = estimatedDemandValue por enquanto.
  *    Deflator por atraso e fechamento de RV/comissão NÃO implementados.
@@ -35,6 +38,11 @@ export type CollaboratorMonthlySummary = {
   homologatedHours: number;
   /** Soma de estimatedDemandValue das demandas homologadas no período */
   finalValue:       number;
+
+  /** Carteira total — todas as demandas, sem filtro de período */
+  portfolioCount: number;
+  /** Soma de estimatedDemandValue de todas as demandas do colaborador */
+  portfolioValue: number;
 };
 
 export type MonthlyDashboardSummary = {
@@ -42,12 +50,14 @@ export type MonthlyDashboardSummary = {
   year:   number;
   collaborators: CollaboratorMonthlySummary[];
   totals: {
-    approvedCount:   number;
-    estimatedValue:  number;
+    approvedCount:    number;
+    estimatedValue:   number;
     homologatedCount: number;
     finalValue:       number;
-    approvedHours:   number;
+    approvedHours:    number;
     homologatedHours: number;
+    portfolioCount:   number;
+    portfolioValue:   number;
   };
 };
 
@@ -72,6 +82,7 @@ export const dashboardService = {
   /**
    * Retorna o resumo mensal de todos os colaboradores (ou de um específico).
    * O período é determinado pelo mês/ano dos campos approvedAt e homologationDate.
+   * A coluna "carteira total" agrega todas as demandas sem filtro de período.
    */
   async getMonthlySummary(
     month: number,
@@ -84,35 +95,35 @@ export const dashboardService = {
       ? { assigneeId }
       : { assigneeId: { not: null } };
 
+    const demandSelect = {
+      id:                    true,
+      assigneeId:            true,
+      estimatedHours:        true,
+      estimatedDemandValue:  true,
+      assigneeProfileSnapshot: true,
+      assignee: { select: { id: true, name: true, workerProfile: true } },
+    } as const;
+
     // Demandas aprovadas no período (valor estimado)
     const approvedRaw = await prisma.demand.findMany({
-      where: {
-        ...assigneeFilter,
-        approvedAt: { gte: start, lte: end },
-      },
-      select: {
-        id:                    true,
-        assigneeId:            true,
-        estimatedHours:        true,
-        estimatedDemandValue:  true,
-        assigneeProfileSnapshot: true,
-        assignee: { select: { id: true, name: true, workerProfile: true } },
-      },
+      where: { ...assigneeFilter, approvedAt: { gte: start, lte: end } },
+      select: demandSelect,
     });
 
     // Demandas homologadas no período (valor final)
     const homologatedRaw = await prisma.demand.findMany({
-      where: {
-        ...assigneeFilter,
-        homologationDate: { gte: start, lte: end },
-      },
+      where: { ...assigneeFilter, homologationDate: { gte: start, lte: end } },
+      select: demandSelect,
+    });
+
+    // Carteira total — todas as demandas, sem filtro de período
+    const portfolioRaw = await prisma.demand.findMany({
+      where: assigneeFilter,
       select: {
-        id:                    true,
-        assigneeId:            true,
-        estimatedHours:        true,
-        estimatedDemandValue:  true,
-        assigneeProfileSnapshot: true,
+        assigneeId:           true,
+        estimatedDemandValue: true,
         assignee: { select: { id: true, name: true, workerProfile: true } },
+        assigneeProfileSnapshot: true,
       },
     });
 
@@ -137,6 +148,8 @@ export const dashboardService = {
           homologatedCount: 0,
           homologatedHours: 0,
           finalValue:       0,
+          portfolioCount:   0,
+          portfolioValue:   0,
         });
       }
       return map.get(d.assigneeId)!;
@@ -158,6 +171,15 @@ export const dashboardService = {
       c.finalValue       += d.estimatedDemandValue ?? 0;
     }
 
+    // Portfolio: só atualiza colaboradores já presentes no mapa do período
+    for (const d of portfolioRaw) {
+      if (!d.assigneeId) continue;
+      const c = map.get(d.assigneeId);
+      if (!c) continue;
+      c.portfolioCount++;
+      c.portfolioValue += d.estimatedDemandValue ?? 0;
+    }
+
     // Ordena por valor final desc, depois por valor estimado desc
     const collaborators = Array.from(map.values()).sort(
       (a, b) => b.finalValue - a.finalValue || b.estimatedValue - a.estimatedValue,
@@ -171,10 +193,13 @@ export const dashboardService = {
         homologatedCount: acc.homologatedCount + c.homologatedCount,
         finalValue:       acc.finalValue       + c.finalValue,
         homologatedHours: acc.homologatedHours + c.homologatedHours,
+        portfolioCount:   acc.portfolioCount   + c.portfolioCount,
+        portfolioValue:   acc.portfolioValue   + c.portfolioValue,
       }),
       {
         approvedCount: 0, estimatedValue: 0, approvedHours: 0,
         homologatedCount: 0, finalValue: 0, homologatedHours: 0,
+        portfolioCount: 0, portfolioValue: 0,
       },
     );
 

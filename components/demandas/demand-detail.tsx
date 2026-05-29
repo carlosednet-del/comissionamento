@@ -4,12 +4,25 @@ import Link from "next/link";
 const DATE_FMT = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 const BRL      = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
+import { useState, useTransition } from "react";
+import { useRouter }               from "next/navigation";
 import type { DemandWithRelations, AuditLog } from "@/types";
 import type { UserForPermission }             from "@/server/auth/permissions";
-import { canEditDemand, canAttachEvidence }   from "@/server/auth/permissions";
+import { canEditDemand, canAttachEvidence, canDeleteDemand } from "@/server/auth/permissions";
+import { deleteDemandAction }      from "@/server/actions/demandActions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button }    from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { StatusBadge }      from "./status-badge";
 import { PriorityBadge }    from "./priority-badge";
 import { TypeBadge }        from "./type-badge";
@@ -18,7 +31,7 @@ import { AuditTimeline }    from "./audit-timeline";
 import { WorkflowSection }  from "./workflow-section";
 import {
   Pencil, ExternalLink, Clock, Calendar, User,
-  Building2, Layers,
+  Building2, Layers, Trash2,
 } from "lucide-react";
 import { COMPLEXITY_LABELS, ROI_LABELS, WORKER_PROFILE_LABELS } from "@/lib/demand-pricing";
 import type { ComplexityLevel, RoiLevel, WorkerProfile } from "@prisma/client";
@@ -53,6 +66,10 @@ function OptionalText({ value }: { value: string | null | undefined }) {
 }
 
 export function DemandDetail({ demand, actor, auditLogs }: Props) {
+  const router = useRouter();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [isPending, startTransition]  = useTransition();
+
   const demandPerm = {
     id:         demand.id,
     creatorId:  demand.creatorId,
@@ -62,6 +79,17 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
 
   const canEdit   = canEditDemand(actor, demandPerm);
   const canAttach = canAttachEvidence(actor, demandPerm);
+  const canDelete = canDeleteDemand(actor);
+
+  function handleDelete() {
+    startTransition(async () => {
+      const result = await deleteDemandAction(demand.id);
+      if (result.success) {
+        router.push("/demandas");
+        router.refresh();
+      }
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -89,6 +117,18 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
             </Button>
           )}
           {canAttach && <AttachEvidenceDialog demandId={demand.id} />}
+          {canDelete && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive border-destructive/40 hover:bg-destructive/5"
+              onClick={() => setConfirmOpen(true)}
+              disabled={isPending}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Excluir
+            </Button>
+          )}
         </div>
       </div>
 
@@ -323,6 +363,30 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
           <AuditTimeline logs={auditLogs} />
         </CardContent>
       </Card>
+
+      {/* ── Diálogo de confirmação de exclusão ───────────────────── */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir demanda?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação é <strong>irreversível</strong>. A demanda{" "}
+              <strong>&ldquo;{demand.title}&rdquo;</strong> e todo o seu
+              histórico de atividades serão permanentemente removidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isPending}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              {isPending ? "Excluindo…" : "Sim, excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

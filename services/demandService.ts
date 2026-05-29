@@ -21,6 +21,7 @@ import {
   canChangeDemandStatus,
   canAttachEvidence,
   canViewDemand,
+  canDeleteDemand,
 } from "@/server/auth/permissions";
 
 // ── Tipos internos de pricing ─────────────────────────────────────
@@ -278,5 +279,19 @@ export const demandService = {
     const demand = await demandRepository.findById(demandId);
     if (!demand) throw new DemandNotFoundError(demandId);
     return auditService.getLogsForDemand(demandId);
+  },
+
+  async deleteDemand(id: string, actor: UserForPermission): Promise<void> {
+    if (!canDeleteDemand(actor)) throw new DemandPermissionError("excluir demanda");
+
+    const demand = await demandRepository.findById(id);
+    if (!demand) throw new DemandNotFoundError(id);
+
+    // Audit logs usam entityId como string (sem FK), então os excluímos manualmente.
+    // DemandEvidence tem onDelete: Cascade — removida automaticamente.
+    await prisma.$transaction([
+      prisma.auditLog.deleteMany({ where: { entity: "Demand", entityId: id } }),
+      prisma.demand.delete({ where: { id } }),
+    ]);
   },
 };

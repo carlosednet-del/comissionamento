@@ -116,6 +116,10 @@ export function canHomologateDemand(actor: UserForPermission, demand: DemandForP
   return true;
 }
 
+export function canDeleteDemand(actor: UserForPermission): boolean {
+  return actor.role === "ADMIN";
+}
+
 export function canAttachEvidence(actor: UserForPermission, demand: DemandForPermission): boolean {
   if (actor.role === "ADMIN")  return true;
   if (actor.role === "DEV")    return demand.assigneeId === actor.id;

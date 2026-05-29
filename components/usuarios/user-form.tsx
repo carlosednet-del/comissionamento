@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { UserRole, WorkerProfile } from "@prisma/client";
+import { PROFILE_GROUPS, WORKER_PROFILE_LABELS } from "@/lib/demand-pricing";
 import { createUserSchema, updateUserSchema } from "@/validations/user";
 import type { CreateUserInput, UpdateUserInput } from "@/validations/user";
 import { createUserAction, updateUserAction } from "@/server/actions/userActions";
@@ -37,12 +38,6 @@ const ROLE_OPTIONS = [
   { value: UserRole.FINANCEIRO, label: "Financeiro" },
 ];
 
-const PROFILE_OPTIONS = [
-  { value: WorkerProfile.JUNIOR,       label: "Júnior" },
-  { value: WorkerProfile.PLENO,        label: "Pleno" },
-  { value: WorkerProfile.SENIOR,       label: "Sênior" },
-  { value: WorkerProfile.ESPECIALISTA, label: "Especialista" },
-];
 
 type CreateMode = { mode: "create" };
 type EditMode = {
@@ -185,10 +180,17 @@ export function UserForm(props: Props) {
                   </FormControl>
                   <SelectContent>
                     {!requiresProfile && <SelectItem value="none">N/A</SelectItem>}
-                    {PROFILE_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
+                    {PROFILE_GROUPS.map((group) => (
+                      <div key={group.label}>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                          {group.label}
+                        </div>
+                        {group.profiles.map((p) => (
+                          <SelectItem key={p} value={p}>
+                            {WORKER_PROFILE_LABELS[p]}
+                          </SelectItem>
+                        ))}
+                      </div>
                     ))}
                   </SelectContent>
                 </Select>

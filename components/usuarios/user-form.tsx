@@ -171,15 +171,14 @@ export function UserForm(props: Props) {
                 <Select
                   onValueChange={(v) => field.onChange(v === "none" ? null : v)}
                   defaultValue={field.value ?? "none"}
-                  disabled={!requiresProfile}
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder={requiresProfile ? "Selecione" : "N/A"} />
+                      <SelectValue placeholder="Selecione ou deixe em branco" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {!requiresProfile && <SelectItem value="none">N/A</SelectItem>}
+                    <SelectItem value="none">Sem perfil técnico</SelectItem>
                     {PROFILE_GROUPS.map((group) => (
                       <div key={group.label}>
                         <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">

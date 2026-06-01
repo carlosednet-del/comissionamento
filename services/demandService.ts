@@ -11,7 +11,7 @@ import {
   type ChangeDemandStatusInput,
 } from "@/validations/demand";
 import { createEvidenceSchema, type CreateEvidenceInput } from "@/validations/evidence";
-import { calculateDemandEstimatedValue } from "@/lib/demand-pricing";
+import { calculateDemandEstimatedValue, isTechnicalRole } from "@/lib/demand-pricing";
 import type { DemandFilters }    from "@/types";
 import type { DemandStatus, WorkerProfile } from "@prisma/client";
 import type { UserForPermission } from "@/server/auth/permissions";
@@ -51,11 +51,20 @@ async function buildPricingSnapshot(
 
   if (
     !assignee ||
-    assignee.role !== "DEV" ||
+    !isTechnicalRole(assignee.role) ||
     !assignee.isActive ||
     !assignee.workerProfile
   ) {
     return {};
+  }
+
+  // SUPORTE: valor sempre zero (papel de apoio, sem precificação por hora)
+  if (assignee.role === "SUPORTE") {
+    return {
+      estimatedDemandValue:    0,
+      assigneeProfileSnapshot: assignee.workerProfile,
+      hourlyRateSnapshot:      0,
+    };
   }
 
   const pricing = calculateDemandEstimatedValue({
@@ -168,9 +177,9 @@ export const demandService = {
     const demandPerm = { id: existing.id, creatorId: existing.creatorId, assigneeId: existing.assigneeId, status: existing.status };
     if (!canEditDemand(actor, demandPerm)) throw new DemandPermissionError("editar esta demanda");
 
-    // DEV só pode editar campos operacionais
+    // Papéis técnicos só podem editar campos operacionais
     let payload = data;
-    if (actor.role === "DEV") {
+    if (isTechnicalRole(actor.role)) {
       payload = {
         actualStartDate:    data.actualStartDate,
         actualDeliveryDate: data.actualDeliveryDate,
@@ -178,9 +187,9 @@ export const demandService = {
       } as UpdateDemandInput;
     }
 
-    // Backend recalcula pricing para não-DEV quando houver alteração de execução
+    // Backend recalcula pricing para papéis não-técnicos quando houver alteração de execução
     let pricingUpdate: PricingSnapshot = {};
-    if (actor.role !== "DEV" && (data.assigneeId || data.estimatedHours || data.complexity || data.roi)) {
+    if (!isTechnicalRole(actor.role) && (data.assigneeId || data.estimatedHours || data.complexity || data.roi)) {
       pricingUpdate = await buildPricingSnapshot(
         data.assigneeId ?? existing.assigneeId,
         data.estimatedHours ?? existing.estimatedHours,

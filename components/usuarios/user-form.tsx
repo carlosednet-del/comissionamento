@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { UserRole, WorkerProfile } from "@prisma/client";
-import { PROFILE_GROUPS, WORKER_PROFILE_LABELS } from "@/lib/demand-pricing";
+import { WORKER_PROFILE_LABELS } from "@/lib/demand-pricing";
 import { createUserSchema, updateUserSchema } from "@/validations/user";
 import type { CreateUserInput, UpdateUserInput } from "@/validations/user";
 import { createUserAction, updateUserAction } from "@/server/actions/userActions";
@@ -31,12 +31,16 @@ import {
 import { Loader2 } from "lucide-react";
 
 const ROLE_OPTIONS = [
-  { value: UserRole.ADMIN, label: "Administrador" },
-  { value: UserRole.GESTOR, label: "Gestor" },
-  { value: UserRole.DEV, label: "Desenvolvedor" },
-  { value: UserRole.APROVADOR, label: "Aprovador" },
+  { value: UserRole.ADMIN,      label: "Administrador" },
+  { value: UserRole.GESTOR,     label: "Gestor" },
+  { value: UserRole.DEV,        label: "Desenvolvedor" },
+  { value: UserRole.SUPORTE,    label: "Suporte" },
+  { value: UserRole.ARQUITETO,  label: "Arquiteto" },
+  { value: UserRole.APROVADOR,  label: "Aprovador" },
   { value: UserRole.FINANCEIRO, label: "Financeiro" },
 ];
+
+const TECHNICAL_ROLES: UserRole[] = [UserRole.DEV, UserRole.SUPORTE, UserRole.ARQUITETO];
 
 
 type CreateMode = { mode: "create" };
@@ -61,7 +65,7 @@ export function UserForm(props: Props) {
   });
 
   const selectedRole = form.watch("role");
-  const requiresProfile = selectedRole === UserRole.DEV;
+  const requiresProfile = TECHNICAL_ROLES.includes(selectedRole as UserRole);
 
   async function onSubmit(values: CreateUserInput | UpdateUserInput) {
     setServerError(null);
@@ -179,17 +183,10 @@ export function UserForm(props: Props) {
                   </FormControl>
                   <SelectContent>
                     <SelectItem value="none">Sem perfil técnico</SelectItem>
-                    {PROFILE_GROUPS.map((group) => (
-                      <div key={group.label}>
-                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                          {group.label}
-                        </div>
-                        {group.profiles.map((p) => (
-                          <SelectItem key={p} value={p}>
-                            {WORKER_PROFILE_LABELS[p]}
-                          </SelectItem>
-                        ))}
-                      </div>
+                    {(Object.keys(WORKER_PROFILE_LABELS) as WorkerProfile[]).map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {WORKER_PROFILE_LABELS[p]}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

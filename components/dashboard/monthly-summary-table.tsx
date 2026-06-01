@@ -33,21 +33,10 @@ const MONTH_NAMES = [
 ];
 
 const PROFILE_STYLE: Record<WorkerProfile, string> = {
-  // Desenvolvedor
-  JUNIOR:               "bg-slate-100  text-slate-700  border-slate-200",
-  PLENO:                "bg-blue-50    text-blue-700   border-blue-200",
-  SENIOR:               "bg-violet-50  text-violet-700 border-violet-200",
-  ESPECIALISTA:         "bg-amber-50   text-amber-700  border-amber-200",
-  // Suporte
-  SUPORTE_JUNIOR:       "bg-teal-50    text-teal-700   border-teal-200",
-  SUPORTE_PLENO:        "bg-cyan-50    text-cyan-700   border-cyan-200",
-  SUPORTE_SENIOR:       "bg-sky-50     text-sky-700    border-sky-200",
-  SUPORTE_ESPECIALISTA: "bg-indigo-50  text-indigo-700 border-indigo-200",
-  // Arquiteto
-  ARQUITETO_JUNIOR:       "bg-rose-50    text-rose-700   border-rose-200",
-  ARQUITETO_PLENO:        "bg-pink-50    text-pink-700   border-pink-200",
-  ARQUITETO_SENIOR:       "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200",
-  ARQUITETO_ESPECIALISTA: "bg-purple-50  text-purple-700 border-purple-200",
+  JUNIOR:       "bg-slate-100  text-slate-700  border-slate-200",
+  PLENO:        "bg-blue-50    text-blue-700   border-blue-200",
+  SENIOR:       "bg-violet-50  text-violet-700 border-violet-200",
+  ESPECIALISTA: "bg-amber-50   text-amber-700  border-amber-200",
 };
 
 // ── Props ─────────────────────────────────────────────────────────

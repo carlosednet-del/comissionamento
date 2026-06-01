@@ -2,18 +2,22 @@ import { Badge } from "@/components/ui/badge";
 import type { UserRole } from "@prisma/client";
 
 const ROLE_LABELS: Record<UserRole, string> = {
-  ADMIN: "Admin",
-  GESTOR: "Gestor",
-  DEV: "Desenvolvedor",
-  APROVADOR: "Aprovador",
+  ADMIN:      "Admin",
+  GESTOR:     "Gestor",
+  DEV:        "Desenvolvedor",
+  SUPORTE:    "Suporte",
+  ARQUITETO:  "Arquiteto",
+  APROVADOR:  "Aprovador",
   FINANCEIRO: "Financeiro",
 };
 
 const ROLE_VARIANTS: Record<UserRole, "default" | "secondary" | "destructive" | "outline"> = {
-  ADMIN: "destructive",
-  GESTOR: "default",
-  DEV: "secondary",
-  APROVADOR: "outline",
+  ADMIN:      "destructive",
+  GESTOR:     "default",
+  DEV:        "secondary",
+  SUPORTE:    "secondary",
+  ARQUITETO:  "secondary",
+  APROVADOR:  "outline",
   FINANCEIRO: "outline",
 };
 

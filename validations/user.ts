@@ -8,6 +8,8 @@ const workerProfileRule = z
   .optional()
   .transform((v) => v ?? null);
 
+const TECHNICAL_ROLES: UserRole[] = [UserRole.DEV, UserRole.SUPORTE, UserRole.ARQUITETO];
+
 export const createUserSchema = z
   .object({
     name: z.string().min(2, "Nome deve ter ao menos 2 caracteres").max(100),
@@ -19,10 +21,10 @@ export const createUserSchema = z
   })
   .refine(
     (data) => {
-      if (data.role === UserRole.DEV && !data.workerProfile) return false;
+      if (TECHNICAL_ROLES.includes(data.role) && !data.workerProfile) return false;
       return true;
     },
-    { message: "Perfil técnico é obrigatório para DEV", path: ["workerProfile"] },
+    { message: "Perfil técnico é obrigatório para papéis técnicos (Dev, Suporte, Arquiteto)", path: ["workerProfile"] },
   );
 
 export const updateUserSchema = z
@@ -34,10 +36,10 @@ export const updateUserSchema = z
   })
   .refine(
     (data) => {
-      if (data.role === UserRole.DEV && !data.workerProfile) return false;
+      if (TECHNICAL_ROLES.includes(data.role) && !data.workerProfile) return false;
       return true;
     },
-    { message: "Perfil técnico é obrigatório para DEV", path: ["workerProfile"] },
+    { message: "Perfil técnico é obrigatório para papéis técnicos (Dev, Suporte, Arquiteto)", path: ["workerProfile"] },
   );
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;

@@ -206,10 +206,10 @@ export const dashboardService = {
     return { month, year, collaborators, totals };
   },
 
-  /** Lista colaboradores ativos do tipo DEV para o filtro de seleção */
+  /** Lista colaboradores técnicos ativos (DEV, SUPORTE, ARQUITETO) para o filtro de seleção */
   async getDevCollaborators(): Promise<DevCollaborator[]> {
     const users = await prisma.user.findMany({
-      where:   { role: "DEV", isActive: true },
+      where:   { role: { in: ["DEV", "SUPORTE", "ARQUITETO"] }, isActive: true },
       select:  { id: true, name: true, workerProfile: true },
       orderBy: { name: "asc" },
     });

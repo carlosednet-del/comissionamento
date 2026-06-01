@@ -11,6 +11,7 @@
  */
 
 import { demandRepository }    from "@/repositories/demandRepository";
+import { isTechnicalRole }     from "@/lib/demand-pricing";
 import type { UserForPermission } from "@/server/auth/permissions";
 import type { DemandSummary, DemandStatus } from "@/types";
 import type { KanbanFiltersInput } from "@/validations/demand";
@@ -48,7 +49,9 @@ export const KANBAN_COLUMN_LABELS: Record<DemandStatus, string> = {
 const ROLE_VISIBLE_STATUSES: Record<string, DemandStatus[]> = {
   ADMIN:      KANBAN_COLUMN_ORDER,
   GESTOR:     KANBAN_COLUMN_ORDER,
-  DEV:        KANBAN_COLUMN_ORDER, // DEV: filtrado por assigneeId no repositório
+  DEV:        KANBAN_COLUMN_ORDER, // filtrado por assigneeId no repositório
+  SUPORTE:    KANBAN_COLUMN_ORDER, // idem
+  ARQUITETO:  KANBAN_COLUMN_ORDER, // idem
   APROVADOR:  ["AGUARDANDO_HOMOLOGACAO", "HOMOLOGADA_PRODUCAO", "CONCLUIDA"],
   FINANCEIRO: ["HOMOLOGADA_PRODUCAO", "CONCLUIDA"],
 };
@@ -99,9 +102,9 @@ export const demandKanbanService = {
     const visibleStatuses: DemandStatus[] =
       ROLE_VISIBLE_STATUSES[actor.role] ?? KANBAN_COLUMN_ORDER;
 
-    // DEV: restringe também por assigneeId para que só veja as próprias
+    // Papéis técnicos: restringe por assigneeId para que só vejam as próprias
     const devFilter =
-      actor.role === "DEV" ? { assigneeId: actor.id } : {};
+      isTechnicalRole(actor.role) ? { assigneeId: actor.id } : {};
 
     const demands = await demandRepository.findKanbanDemands({
       search:         filters.search,

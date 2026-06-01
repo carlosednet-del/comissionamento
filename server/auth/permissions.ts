@@ -35,9 +35,14 @@ export function canViewAdminRoutes(actor: UserForPermission): boolean {
 
 // ── Permissões de demanda ────────────────────────────────────────
 
+/** Papéis técnicos com acesso operacional equivalente ao DEV */
+function isTechnical(role: string): boolean {
+  return role === "DEV" || role === "SUPORTE" || role === "ARQUITETO";
+}
+
 export function canViewDemand(actor: UserForPermission, demand: DemandForPermission): boolean {
   if (actor.role === "ADMIN" || actor.role === "GESTOR") return true;
-  if (actor.role === "DEV")        return demand.assigneeId === actor.id || demand.creatorId === actor.id;
+  if (isTechnical(actor.role)) return demand.assigneeId === actor.id || demand.creatorId === actor.id;
   if (actor.role === "APROVADOR")  return ["AGUARDANDO_HOMOLOGACAO", "HOMOLOGADA_PRODUCAO", "CONCLUIDA"].includes(demand.status);
   if (actor.role === "FINANCEIRO") return ["HOMOLOGADA_PRODUCAO", "CONCLUIDA"].includes(demand.status);
   return false;
@@ -50,7 +55,7 @@ export function canCreateDemand(actor: UserForPermission): boolean {
 export function canEditDemand(actor: UserForPermission, demand: DemandForPermission): boolean {
   if (actor.role === "ADMIN") return true;
   if (actor.role === "GESTOR") return demand.creatorId === actor.id;
-  if (actor.role === "DEV")    return demand.assigneeId === actor.id;
+  if (isTechnical(actor.role)) return demand.assigneeId === actor.id;
   return false;
 }
 
@@ -75,12 +80,12 @@ export function canChangeDemandStatus(
       return role === "GESTOR";
 
     case "EM_DESENVOLVIMENTO":
-      if (role === "DEV")    return demand.assigneeId === actor.id;
+      if (isTechnical(role)) return demand.assigneeId === actor.id;
       if (role === "GESTOR") return true;
       return false;
 
     case "AGUARDANDO_HOMOLOGACAO":
-      if (role === "DEV")    return demand.assigneeId === actor.id;
+      if (isTechnical(role)) return demand.assigneeId === actor.id;
       if (role === "GESTOR") return true;
       return false;
 
@@ -121,9 +126,9 @@ export function canDeleteDemand(actor: UserForPermission): boolean {
 }
 
 export function canAttachEvidence(actor: UserForPermission, demand: DemandForPermission): boolean {
-  if (actor.role === "ADMIN")  return true;
-  if (actor.role === "DEV")    return demand.assigneeId === actor.id;
-  if (actor.role === "GESTOR") return demand.creatorId === actor.id;
+  if (actor.role === "ADMIN")      return true;
+  if (isTechnical(actor.role))     return demand.assigneeId === actor.id;
+  if (actor.role === "GESTOR")     return demand.creatorId === actor.id;
   return false;
 }
 

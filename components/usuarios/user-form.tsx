@@ -47,7 +47,14 @@ type CreateMode = { mode: "create" };
 type EditMode = {
   mode: "edit";
   userId: string;
-  defaultValues: { name: string; role: UserRole; workerProfile: WorkerProfile | null; isActive: boolean };
+  defaultValues: {
+    name:              string;
+    role:              UserRole;
+    workerProfile:     WorkerProfile | null;
+    monthlyBaseSalary: number | null;
+    monthlyCapValue:   number | null;
+    isActive:          boolean;
+  };
 };
 
 type Props = CreateMode | EditMode;
@@ -60,7 +67,7 @@ export function UserForm(props: Props) {
   const form = useForm<CreateUserInput | UpdateUserInput>({
     resolver: zodResolver(isCreate ? createUserSchema : updateUserSchema),
     defaultValues: isCreate
-      ? { name: "", email: "", password: "", role: UserRole.DEV, workerProfile: null, isActive: true }
+      ? { name: "", email: "", password: "", role: UserRole.DEV, workerProfile: null, monthlyBaseSalary: null, monthlyCapValue: null, isActive: true }
       : (props as EditMode).defaultValues,
   });
 
@@ -190,6 +197,65 @@ export function UserForm(props: Props) {
                     ))}
                   </SelectContent>
                 </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* ── Remuneração ──────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name={"monthlyBaseSalary" as never}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Salário base mensal (R$)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={100}
+                    placeholder="Ex.: 5000"
+                    value={
+                      (field as { value: number | null }).value !== null &&
+                      (field as { value: number | null }).value !== undefined
+                        ? String((field as { value: number | null }).value)
+                        : ""
+                    }
+                    onChange={(e) =>
+                      field.onChange(e.target.value === "" ? null : parseFloat(e.target.value))
+                    }
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name={"monthlyCapValue" as never}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Teto mensal individual (R$)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={100}
+                    placeholder={`Padrão por perfil (ex.: 12.000)`}
+                    value={
+                      (field as { value: number | null }).value !== null &&
+                      (field as { value: number | null }).value !== undefined
+                        ? String((field as { value: number | null }).value)
+                        : ""
+                    }
+                    onChange={(e) =>
+                      field.onChange(e.target.value === "" ? null : parseFloat(e.target.value))
+                    }
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}

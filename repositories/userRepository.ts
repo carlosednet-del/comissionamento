@@ -38,12 +38,14 @@ export const userRepository = {
   ) {
     return prisma.user.create({
       data: {
-        authUserId: data.authUserId,
-        name: data.name,
-        email: data.email,
-        role: data.role,
-        workerProfile: data.workerProfile ?? null,
-        isActive: data.isActive ?? true,
+        authUserId:        data.authUserId,
+        name:              data.name,
+        email:             data.email,
+        role:              data.role,
+        workerProfile:     data.workerProfile     ?? null,
+        monthlyBaseSalary: data.monthlyBaseSalary ?? null,
+        monthlyCapValue:   data.monthlyCapValue   ?? null,
+        isActive:          data.isActive          ?? true,
       },
     });
   },
@@ -52,9 +54,11 @@ export const userRepository = {
     return prisma.user.update({
       where: { id },
       data: {
-        name: data.name,
-        role: data.role,
-        workerProfile: data.workerProfile ?? null,
+        name:              data.name,
+        role:              data.role,
+        workerProfile:     data.workerProfile     ?? null,
+        monthlyBaseSalary: data.monthlyBaseSalary ?? null,
+        monthlyCapValue:   data.monthlyCapValue   ?? null,
         ...(data.isActive !== undefined && { isActive: data.isActive }),
       },
     });

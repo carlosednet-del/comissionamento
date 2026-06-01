@@ -56,12 +56,14 @@ export const userService = {
 
     // 2. Criar no banco com authUserId
     const user = await userRepository.create({
-      authUserId: authUser.id,
-      name: data.name,
-      email: data.email,
-      role: data.role,
-      workerProfile: data.workerProfile,
-      isActive: data.isActive ?? true,
+      authUserId:        authUser.id,
+      name:              data.name,
+      email:             data.email,
+      role:              data.role,
+      workerProfile:     data.workerProfile,
+      monthlyBaseSalary: data.monthlyBaseSalary,
+      monthlyCapValue:   data.monthlyCapValue,
+      isActive:          data.isActive ?? true,
     });
 
     await auditService.log({

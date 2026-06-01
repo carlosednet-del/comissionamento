@@ -41,10 +41,14 @@ export type CollaboratorMonthlySummary = {
   homologatedHours: number;
   /** Soma de estimatedDemandValue das demandas homologadas no período (já aplicado o teto) */
   finalValue:       number;
-  /** Teto mensal do perfil (null se colaborador sem perfil técnico) */
+  /** Teto efetivo: monthlyCapValue individual se preenchido, senão MONTHLY_CAPS[perfil] */
   monthlyCap:       number | null;
   /** true se finalValue atingiu o teto mensal */
   capReached:       boolean;
+  /** Salário base mensal do colaborador (0 se não preenchido) */
+  baseSalary:       number;
+  /** Valor a pagar = max(0, finalValue − salário base) */
+  payableValue:     number;
 
   /** Carteira total — todas as demandas, sem filtro de período */
   portfolioCount: number;
@@ -65,6 +69,8 @@ export type MonthlyDashboardSummary = {
     homologatedHours: number;
     portfolioCount:   number;
     portfolioValue:   number;
+    totalSalary:      number;
+    totalPayable:     number;
   };
 };
 
@@ -164,7 +170,12 @@ export const dashboardService = {
       estimatedHours:          true,
       estimatedDemandValue:    true,
       assigneeProfileSnapshot: true,
-      assignee: { select: { id: true, name: true, workerProfile: true, role: true } },
+      assignee: {
+        select: {
+          id: true, name: true, workerProfile: true, role: true,
+          monthlyBaseSalary: true, monthlyCapValue: true,
+        },
+      },
     } as const;
 
     // ── Demandas aprovadas no período (valor estimado) ───────────
@@ -186,15 +197,27 @@ export const dashboardService = {
         assigneeId:              true,
         estimatedDemandValue:    true,
         assigneeProfileSnapshot: true,
-        assignee: { select: { id: true, name: true, workerProfile: true, role: true } },
+        assignee: {
+          select: {
+            id: true, name: true, workerProfile: true, role: true,
+            monthlyBaseSalary: true, monthlyCapValue: true,
+          },
+        },
       },
     });
 
     // ── Agrega por colaborador ───────────────────────────────────
     const map = new Map<string, CollaboratorMonthlySummary>();
+    // Guarda o monthlyCapValue individual de cada usuário para uso no passo de cap
+    const userIndividualCaps = new Map<string, number | null>();
 
     type AssigneeShape = {
-      id: string; name: string; workerProfile: WorkerProfile | null; role: string;
+      id:                string;
+      name:              string;
+      workerProfile:     WorkerProfile | null;
+      role:              string;
+      monthlyBaseSalary: number | null;
+      monthlyCapValue:   number | null;
     } | null;
 
     function getOrInit(d: {
@@ -218,9 +241,12 @@ export const dashboardService = {
           finalValue:       0,
           monthlyCap:       null,
           capReached:       false,
+          baseSalary:       d.assignee.monthlyBaseSalary ?? 0,
+          payableValue:     0,
           portfolioCount:   0,
           portfolioValue:   0,
         });
+        userIndividualCaps.set(d.assigneeId, d.assignee.monthlyCapValue ?? null);
       }
       return map.get(d.assigneeId)!;
     }
@@ -250,18 +276,25 @@ export const dashboardService = {
       c.portfolioValue += d.estimatedDemandValue ?? 0;
     }
 
-    // ── Aplica teto mensal ao valor final homologado ─────────────
+    // ── Aplica teto e calcula valor a pagar ─────────────────────
     for (const c of map.values()) {
-      if (c.assigneeProfile) {
-        const cap = MONTHLY_CAPS[c.assigneeProfile];
-        c.monthlyCap = cap;
-        if (c.finalValue > cap) {
-          c.finalValue = cap;
-          c.capReached  = true;
-        } else if (c.finalValue === cap && cap > 0) {
+      // Teto efetivo: individual (se preenchido) sobrepõe o de perfil
+      const individualCap = userIndividualCaps.get(c.assigneeId) ?? null;
+      const profileCap    = c.assigneeProfile ? MONTHLY_CAPS[c.assigneeProfile] : null;
+      const effectiveCap  = individualCap ?? profileCap;
+
+      if (effectiveCap !== null) {
+        c.monthlyCap = effectiveCap;
+        if (c.finalValue > effectiveCap) {
+          c.finalValue = effectiveCap;
+          c.capReached = true;
+        } else if (c.finalValue === effectiveCap && effectiveCap > 0) {
           c.capReached = true;
         }
       }
+
+      // Valor a pagar = excedente acima do salário base (mínimo 0)
+      c.payableValue = Math.max(0, c.finalValue - c.baseSalary);
     }
 
     // ── Ordena conforme parâmetro ────────────────────────────────
@@ -286,11 +319,14 @@ export const dashboardService = {
         homologatedHours: acc.homologatedHours + c.homologatedHours,
         portfolioCount:   acc.portfolioCount   + c.portfolioCount,
         portfolioValue:   acc.portfolioValue   + c.portfolioValue,
+        totalSalary:      acc.totalSalary      + c.baseSalary,
+        totalPayable:     acc.totalPayable     + c.payableValue,
       }),
       {
         approvedCount: 0, estimatedValue: 0, approvedHours: 0,
         homologatedCount: 0, finalValue: 0, homologatedHours: 0,
         portfolioCount: 0, portfolioValue: 0,
+        totalSalary: 0, totalPayable: 0,
       },
     );
 

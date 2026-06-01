@@ -29,7 +29,9 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -74,8 +76,18 @@ function Textarea({
   );
 }
 
-// ── Tipos ─────────────────────────────────────────────────────────────────────
-type Assignee = { id: string; name: string; workerProfile: WorkerProfile | null };
+// ── Tipos e constantes de papel ───────────────────────────────────────────────
+type Assignee = { id: string; name: string; role: string; workerProfile: WorkerProfile | null };
+
+/** Papéis que podem ser atribuídos como responsável técnico, em ordem de exibição. */
+const ASSIGNABLE_ROLE_ORDER = ["DEV", "GESTOR", "ARQUITETO", "SUPORTE"] as const;
+
+const ASSIGNABLE_ROLE_LABELS: Record<string, string> = {
+  DEV:        "Desenvolvedor",
+  GESTOR:     "Gestor",
+  ARQUITETO:  "Arquiteto",
+  SUPORTE:    "Suporte",
+};
 
 type CreateMode = { mode: "create"; assignees: Assignee[] };
 type EditMode   = { mode: "edit"; demand: DemandWithRelations; assignees: Assignee[] };
@@ -111,22 +123,27 @@ const NONE_ASSIGNEE = "__NONE__";
 
 // ── Prévia de pricing ─────────────────────────────────────────────────────────
 function PricingPreview({
+  assigneeRole,
   workerProfile,
   estimatedHours,
   complexity,
   roi,
 }: {
+  assigneeRole:   string | null | undefined;
   workerProfile:  WorkerProfile | null | undefined;
   estimatedHours: number | null | undefined;
   complexity:     ComplexityLevel | null | undefined;
   roi:            RoiLevel | null | undefined;
 }) {
   const result = useMemo(() => {
+    // Apenas DEV gera valor; para qualquer outro papel, retorna null
+    if (assigneeRole !== "DEV") return null;
     if (!workerProfile || !estimatedHours || !complexity || !roi) return null;
     return calculateDemandEstimatedValue({ workerProfile, estimatedHours, complexity, roi });
-  }, [workerProfile, estimatedHours, complexity, roi]);
+  }, [assigneeRole, workerProfile, estimatedHours, complexity, roi]);
 
-  if (!result) {
+  // Nenhum responsável selecionado ainda
+  if (!assigneeRole) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-center text-sm text-muted-foreground">
         Preencha responsável, horas, complexidade e ROI para ver a prévia do valor estimado.
@@ -134,6 +151,40 @@ function PricingPreview({
     );
   }
 
+  // Papel sem precificação por hora → valor sempre zero
+  if (assigneeRole !== "DEV") {
+    return (
+      <div className="rounded-lg border bg-muted/20 p-4 space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Prévia do valor estimado
+        </p>
+        <div className="border-t pt-2 flex justify-between items-center">
+          <span className="font-semibold text-brand-text-dark">Valor estimado</span>
+          <span className="font-bold text-lg font-mono text-muted-foreground">
+            {BRL.format(0)}
+          </span>
+        </div>
+        <div className="flex gap-1.5 rounded-md bg-blue-50 border border-blue-100 p-2.5">
+          <Info className="h-3.5 w-3.5 text-blue-500 mt-0.5 shrink-0" />
+          <p className="text-xs text-blue-700">
+            O papel <strong>{ASSIGNABLE_ROLE_LABELS[assigneeRole] ?? assigneeRole}</strong> não
+            gera precificação por hora. Somente Desenvolvedores produzem valor estimado.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // DEV selecionado, mas campos incompletos
+  if (!result) {
+    return (
+      <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-center text-sm text-muted-foreground">
+        Preencha horas, complexidade e ROI para ver a prévia do valor estimado.
+      </div>
+    );
+  }
+
+  // DEV com todos os campos: cálculo completo
   return (
     <div className="rounded-lg border border-brand-accent/40 bg-brand-bg-base p-4 space-y-3">
       <p className="text-xs font-semibold uppercase tracking-wide text-brand-text-muted">
@@ -155,7 +206,6 @@ function PricingPreview({
           </span>
           <span className="font-mono">{result.combinedFactor.toFixed(1)}×</span>
         </div>
-
         <div className="border-t pt-2 flex justify-between items-center">
           <span className="font-semibold text-brand-text-dark">Valor estimado</span>
           <span className="font-bold text-lg text-brand-text-dark font-mono">
@@ -232,9 +282,24 @@ export function DemandForm(props: Props) {
   const watchedRoi        = form.watch("roi" as never) as unknown as RoiLevel | null | undefined;
 
   const selectedAssignee  = props.assignees.find((a) => a.id === watchedAssigneeId) ?? null;
+  const assigneeRole      = selectedAssignee?.role ?? null;
   const workerProfile     = selectedAssignee?.workerProfile ?? null;
   const profileLabel      = workerProfile ? WORKER_PROFILE_LABELS[workerProfile] : "—";
-  const hourlyRateDisplay = workerProfile ? BRL.format(HOURLY_RATES[workerProfile]) : "—";
+  // Apenas DEV tem tabela de valor/hora; os demais papéis têm custo zero
+  const hourlyRateDisplay = !selectedAssignee
+    ? "—"
+    : assigneeRole !== "DEV"
+      ? BRL.format(0)
+      : workerProfile
+        ? BRL.format(HOURLY_RATES[workerProfile])
+        : "—";
+
+  // Agrupa responsáveis por papel para o dropdown
+  const assigneesByRole = ASSIGNABLE_ROLE_ORDER.reduce<Record<string, Assignee[]>>((acc, role) => {
+    const users = props.assignees.filter((a) => a.role === role);
+    if (users.length) acc[role] = users;
+    return acc;
+  }, {});
 
   async function submit(values: FormValues, draft = false) {
     setServerError(null);
@@ -467,11 +532,20 @@ export function DemandForm(props: Props) {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value={NONE_ASSIGNEE}>Sem responsável</SelectItem>
-                          {props.assignees.map((a) => (
-                            <SelectItem key={a.id} value={a.id}>
-                              {a.name}
-                            </SelectItem>
-                          ))}
+                          {ASSIGNABLE_ROLE_ORDER.flatMap((role) => {
+                            const users = assigneesByRole[role];
+                            if (!users?.length) return [];
+                            return [
+                              <SelectGroup key={role}>
+                                <SelectLabel>{ASSIGNABLE_ROLE_LABELS[role]}</SelectLabel>
+                                {users.map((a) => (
+                                  <SelectItem key={a.id} value={a.id}>
+                                    {a.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>,
+                            ];
+                          })}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -593,6 +667,7 @@ export function DemandForm(props: Props) {
 
             {/* Prévia de valor estimado */}
             <PricingPreview
+              assigneeRole={assigneeRole}
               workerProfile={workerProfile}
               estimatedHours={watchedHours}
               complexity={watchedComplexity}

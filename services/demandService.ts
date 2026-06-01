@@ -49,23 +49,20 @@ async function buildPricingSnapshot(
     select: { role: true, isActive: true, workerProfile: true },
   });
 
-  if (
-    !assignee ||
-    !isTechnicalRole(assignee.role) ||
-    !assignee.isActive ||
-    !assignee.workerProfile
-  ) {
-    return {};
-  }
+  if (!assignee || !assignee.isActive) return {};
 
-  // SUPORTE: valor sempre zero (papel de apoio, sem precificação por hora)
-  if (assignee.role === "SUPORTE") {
+  // Apenas DEV tem precificação por hora.
+  // Todos os demais papéis (GESTOR, ARQUITETO, SUPORTE) têm estimatedDemandValue = 0.
+  if (assignee.role !== "DEV") {
     return {
       estimatedDemandValue:    0,
-      assigneeProfileSnapshot: assignee.workerProfile,
+      assigneeProfileSnapshot: assignee.workerProfile ?? undefined,
       hourlyRateSnapshot:      0,
     };
   }
+
+  // DEV: precificação completa por hora — requer perfil técnico
+  if (!assignee.workerProfile) return {};
 
   const pricing = calculateDemandEstimatedValue({
     workerProfile:  assignee.workerProfile,

@@ -32,7 +32,7 @@ export default async function UsuariosPage({
         </Button>
       </div>
 
-      <UserTable users={users} currentUserId={actor.id} />
+      <UserTable users={users} currentUserId={actor.id} defaultSearch={search ?? ""} />
     </div>
   );
 }

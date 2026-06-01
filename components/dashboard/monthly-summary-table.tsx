@@ -1,5 +1,5 @@
 /**
- * MonthlySummaryTable — Tabela de resumo mensal por colaborador
+ * MonthlySummaryTable — Tabela de resultados financeiros por colaborador
  *
  * Mostra, para o período selecionado:
  *  · Valor estimado = SUM(estimatedDemandValue) das demandas aprovadas no mês
@@ -20,6 +20,9 @@ import {
   ClipboardCheck,
   Clock,
   LayoutList,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
 } from "lucide-react";
 
 // ── Formatação ────────────────────────────────────────────────────
@@ -32,6 +35,22 @@ const MONTH_NAMES = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
+// ── Estilos por papel (role) ──────────────────────────────────────
+
+const ROLE_COLOR: Record<string, string> = {
+  DEV:        "text-violet-600",
+  SUPORTE:    "text-teal-600",
+  ARQUITETO:  "text-rose-600",
+};
+
+const ROLE_LABEL: Record<string, string> = {
+  DEV:        "Dev",
+  SUPORTE:    "Suporte",
+  ARQUITETO:  "Arquiteto",
+};
+
+// ── Estilos por perfil ────────────────────────────────────────────
+
 const PROFILE_STYLE: Record<WorkerProfile, string> = {
   JUNIOR:       "bg-slate-100  text-slate-700  border-slate-200",
   PLENO:        "bg-blue-50    text-blue-700   border-blue-200",
@@ -42,25 +61,38 @@ const PROFILE_STYLE: Record<WorkerProfile, string> = {
 // ── Props ─────────────────────────────────────────────────────────
 
 type Props = {
-  data: MonthlyDashboardSummary;
+  data:     MonthlyDashboardSummary;
+  sortBy:   string;
+  sortDir:  string;
 };
 
-// ── Componente ────────────────────────────────────────────────────
+// ── Ícone de sort para cabeçalho ──────────────────────────────────
 
-export function MonthlySummaryTable({ data }: Props) {
+function SortIcon({ col, sortBy, sortDir }: { col: string; sortBy: string; sortDir: string }) {
+  if (sortBy !== col) {
+    return <ArrowUpDown className="inline-block h-3 w-3 ml-0.5 opacity-30" />;
+  }
+  return sortDir === "asc"
+    ? <ArrowUp   className="inline-block h-3 w-3 ml-0.5 opacity-80" />
+    : <ArrowDown className="inline-block h-3 w-3 ml-0.5 opacity-80" />;
+}
+
+// ── Componente principal ──────────────────────────────────────────
+
+export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
   const { month, year, collaborators, totals } = data;
   const monthLabel = `${MONTH_NAMES[month]} / ${year}`;
 
   // ── Sem dados ──────────────────────────────────────────────────
   if (collaborators.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center">
-        <ClipboardCheck className="h-8 w-8 text-muted-foreground/40 mb-3" />
+      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-14 text-center">
+        <ClipboardCheck className="h-9 w-9 text-muted-foreground/30 mb-3" />
         <p className="text-sm font-medium text-muted-foreground">
-          Nenhuma demanda aprovada ou homologada em {monthLabel}
+          Nenhum resultado para o período selecionado
         </p>
         <p className="text-xs text-muted-foreground/60 mt-1">
-          Ajuste o período ou os filtros acima
+          {monthLabel} · Ajuste o período ou os filtros acima
         </p>
       </div>
     );
@@ -69,17 +101,16 @@ export function MonthlySummaryTable({ data }: Props) {
   return (
     <div className="space-y-3">
 
-      {/* Aviso sobre valor final */}
-      <div className="flex items-start gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+      {/* Aviso informativo */}
+      <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
         <InfoIcon className="h-3.5 w-3.5 mt-0.5 shrink-0" />
         <span>
-          <strong>Valor final</strong> = valor estimado das demandas homologadas no período.{" "}
-          <strong>Valor previsto</strong> = carteira total (todos os status, sem filtro de período).{" "}
-          Deflator por atraso e fechamento de RV ainda não foram implementados.
+          Valores informativos.{" "}
+          <strong>Deflator por atraso</strong> e <strong>fechamento de RV</strong> ainda não implementados.
         </span>
       </div>
 
-      {/* Sumário rápido no topo */}
+      {/* ── Mini-cards de resumo ──────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <SummaryMini
           label="Aprovadas no período"
@@ -131,59 +162,96 @@ export function MonthlySummaryTable({ data }: Props) {
         />
       </div>
 
-      {/* Tabela por colaborador */}
-      <div className="overflow-x-auto rounded-lg border">
+      {/* ── Tabela por colaborador ───────────────────────────────── */}
+      <div className="overflow-x-auto rounded-xl border shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-muted/40">
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide" rowSpan={2}>
+            {/* Linha 1 — grupos */}
+            <tr className="border-b bg-muted/30">
+              <th
+                className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                rowSpan={2}
+              >
                 Colaborador
               </th>
-              <th className="px-3 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide" rowSpan={2}>
-                Perfil
+              <th
+                className="px-3 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                rowSpan={2}
+              >
+                Papel / Perfil
               </th>
-              {/* Grupo: Período */}
-              <th className="px-3 py-2 text-center text-xs font-semibold text-emerald-700 uppercase tracking-wide border-l border-dashed" colSpan={3}>
+
+              {/* Aprovadas */}
+              <th
+                className="px-3 py-2 text-center text-xs font-semibold text-emerald-700 uppercase tracking-wide border-l border-dashed"
+                colSpan={3}
+              >
                 Aprovadas no período
               </th>
-              <th className="px-3 py-2 text-center text-xs font-semibold text-green-700 uppercase tracking-wide border-l border-dashed" colSpan={3}>
+
+              {/* Homologadas */}
+              <th
+                className="px-3 py-2 text-center text-xs font-semibold text-green-700 uppercase tracking-wide border-l border-dashed"
+                colSpan={3}
+              >
                 Homologadas no período
               </th>
-              {/* Grupo: Carteira total */}
-              <th className="px-3 py-2 text-center text-xs font-semibold text-blue-700 uppercase tracking-wide border-l border-dashed" colSpan={2}>
+
+              {/* Carteira */}
+              <th
+                className="px-3 py-2 text-center text-xs font-semibold text-blue-700 uppercase tracking-wide border-l border-dashed"
+                colSpan={2}
+              >
                 Carteira total
               </th>
             </tr>
-            <tr className="border-b bg-muted/40">
+
+            {/* Linha 2 — colunas de dados */}
+            <tr className="border-b bg-muted/20">
               {/* Aprovadas */}
-              <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide border-l border-dashed">
+              <th className="px-3 py-2 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide border-l border-dashed">
                 Dem.
               </th>
-              <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Horas est.
+              <th className="px-3 py-2 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                Horas
               </th>
-              <th className="px-3 py-2 text-right text-xs font-semibold text-emerald-700 uppercase tracking-wide">
-                Valor est.
+              <th className={cn(
+                "px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide",
+                sortBy === "estimatedValue" ? "text-emerald-700" : "text-muted-foreground",
+              )}>
+                Valor est. <SortIcon col="estimatedValue" sortBy={sortBy} sortDir={sortDir} />
               </th>
+
               {/* Homologadas */}
-              <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide border-l border-dashed">
+              <th className="px-3 py-2 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide border-l border-dashed">
                 Dem.
               </th>
-              <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Horas ent.
+              <th className="px-3 py-2 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                Horas
               </th>
-              <th className="px-3 py-2 text-right text-xs font-semibold text-green-700 uppercase tracking-wide">
-                Valor final
+              <th className={cn(
+                "px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide",
+                sortBy === "finalValue" ? "text-green-700" : "text-muted-foreground",
+              )}>
+                Valor final <SortIcon col="finalValue" sortBy={sortBy} sortDir={sortDir} />
               </th>
+
               {/* Carteira */}
-              <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide border-l border-dashed">
-                Dem.
+              <th className={cn(
+                "px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide border-l border-dashed",
+                sortBy === "approvedCount" ? "text-emerald-700" : "text-muted-foreground",
+              )}>
+                Dem. <SortIcon col="approvedCount" sortBy={sortBy} sortDir={sortDir} />
               </th>
-              <th className="px-3 py-2 text-right text-xs font-semibold text-blue-700 uppercase tracking-wide">
-                Valor prev.
+              <th className={cn(
+                "px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide",
+                sortBy === "portfolioValue" ? "text-blue-700" : "text-muted-foreground",
+              )}>
+                Valor prev. <SortIcon col="portfolioValue" sortBy={sortBy} sortDir={sortDir} />
               </th>
             </tr>
           </thead>
+
           <tbody className="divide-y">
             {collaborators.map((c, i) => (
               <tr
@@ -198,25 +266,34 @@ export function MonthlySummaryTable({ data }: Props) {
                   {c.assigneeName}
                 </td>
 
-                {/* Perfil */}
+                {/* Papel / Perfil */}
                 <td className="px-3 py-3">
-                  {c.assigneeProfile ? (
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold",
-                        PROFILE_STYLE[c.assigneeProfile],
-                      )}
-                    >
-                      {WORKER_PROFILE_LABELS[c.assigneeProfile]}
+                  <div className="flex flex-col gap-0.5">
+                    <span className={cn(
+                      "text-[10px] font-bold uppercase tracking-wide",
+                      ROLE_COLOR[c.assigneeRole] ?? "text-muted-foreground",
+                    )}>
+                      {ROLE_LABEL[c.assigneeRole] ?? c.assigneeRole}
                     </span>
-                  ) : (
-                    <span className="text-muted-foreground text-xs">—</span>
-                  )}
+                    {c.assigneeProfile ? (
+                      <span className={cn(
+                        "inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                        PROFILE_STYLE[c.assigneeProfile],
+                      )}>
+                        {WORKER_PROFILE_LABELS[c.assigneeProfile]}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                  </div>
                 </td>
 
                 {/* Aprovadas no período */}
                 <td className="px-3 py-3 text-right tabular-nums text-muted-foreground border-l border-dashed">
-                  {c.approvedCount > 0 ? c.approvedCount : <span className="opacity-40">—</span>}
+                  {c.approvedCount > 0
+                    ? <span className={cn(sortBy === "approvedCount" && "font-semibold text-emerald-700")}>{c.approvedCount}</span>
+                    : <span className="opacity-40">—</span>
+                  }
                 </td>
                 <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">
                   {c.approvedHours > 0
@@ -226,7 +303,10 @@ export function MonthlySummaryTable({ data }: Props) {
                 </td>
                 <td className="px-3 py-3 text-right">
                   {c.estimatedValue > 0 ? (
-                    <span className="font-mono font-semibold text-emerald-700">
+                    <span className={cn(
+                      "font-mono font-semibold",
+                      sortBy === "estimatedValue" ? "text-emerald-700" : "text-emerald-600",
+                    )}>
                       {BRL.format(c.estimatedValue)}
                     </span>
                   ) : (
@@ -236,7 +316,10 @@ export function MonthlySummaryTable({ data }: Props) {
 
                 {/* Homologadas no período */}
                 <td className="px-3 py-3 text-right tabular-nums text-muted-foreground border-l border-dashed">
-                  {c.homologatedCount > 0 ? c.homologatedCount : <span className="opacity-40">—</span>}
+                  {c.homologatedCount > 0
+                    ? c.homologatedCount
+                    : <span className="opacity-40">—</span>
+                  }
                 </td>
                 <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">
                   {c.homologatedHours > 0
@@ -246,7 +329,10 @@ export function MonthlySummaryTable({ data }: Props) {
                 </td>
                 <td className="px-3 py-3 text-right">
                   {c.finalValue > 0 ? (
-                    <span className="font-mono font-semibold text-green-700">
+                    <span className={cn(
+                      "font-mono font-semibold",
+                      sortBy === "finalValue" ? "text-green-700" : "text-green-600",
+                    )}>
                       {BRL.format(c.finalValue)}
                     </span>
                   ) : (
@@ -256,11 +342,17 @@ export function MonthlySummaryTable({ data }: Props) {
 
                 {/* Carteira total */}
                 <td className="px-3 py-3 text-right tabular-nums text-muted-foreground border-l border-dashed">
-                  {c.portfolioCount > 0 ? c.portfolioCount : <span className="opacity-40">—</span>}
+                  {c.portfolioCount > 0
+                    ? c.portfolioCount
+                    : <span className="opacity-40">—</span>
+                  }
                 </td>
                 <td className="px-3 py-3 text-right">
                   {c.portfolioValue > 0 ? (
-                    <span className="font-mono font-semibold text-blue-700">
+                    <span className={cn(
+                      "font-mono font-semibold",
+                      sortBy === "portfolioValue" ? "text-blue-700" : "text-blue-600",
+                    )}>
                       {BRL.format(c.portfolioValue)}
                     </span>
                   ) : (
@@ -274,8 +366,11 @@ export function MonthlySummaryTable({ data }: Props) {
           {/* Linha de totais */}
           {collaborators.length > 1 && (
             <tfoot>
-              <tr className="border-t-2 bg-muted/30 font-semibold">
-                <td className="px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground" colSpan={2}>
+              <tr className="border-t-2 bg-muted/40 font-semibold">
+                <td
+                  className="px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground"
+                  colSpan={2}
+                >
                   Total — {collaborators.length} colaborador{collaborators.length !== 1 ? "es" : ""}
                 </td>
                 {/* Aprovadas */}

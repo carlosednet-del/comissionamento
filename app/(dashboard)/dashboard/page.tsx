@@ -17,6 +17,10 @@ type SearchParams = {
   month?:      string;
   year?:       string;
   assigneeId?: string;
+  role?:       string;
+  profile?:    string;
+  sortBy?:     string;
+  sortDir?:    string;
 };
 
 // ── Skeleton do resumo (SSR suspense) ────────────────────────────
@@ -40,17 +44,26 @@ async function MonthlySummarySection({ sp }: { sp: SearchParams }) {
   const now   = new Date();
   const month = Math.max(1, Math.min(12, parseInt(sp.month ?? String(now.getMonth() + 1), 10) || now.getMonth() + 1));
   const year  = parseInt(sp.year ?? String(now.getFullYear()), 10) || now.getFullYear();
-  const assigneeId = sp.assigneeId ?? undefined;
 
   const [summary, collaborators] = await Promise.all([
-    dashboardService.getMonthlySummary(month, year, assigneeId),
+    dashboardService.getMonthlySummary(month, year, {
+      assigneeId: sp.assigneeId,
+      role:       sp.role,
+      profile:    sp.profile,
+      sortBy:     sp.sortBy,
+      sortDir:    sp.sortDir,
+    }),
     dashboardService.getDevCollaborators(),
   ]);
 
   return (
     <>
       <MonthlySummaryFilters collaborators={collaborators} />
-      <MonthlySummaryTable   data={summary} />
+      <MonthlySummaryTable
+        data={summary}
+        sortBy={sp.sortBy   ?? "finalValue"}
+        sortDir={sp.sortDir ?? "desc"}
+      />
     </>
   );
 }

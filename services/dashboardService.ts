@@ -18,13 +18,15 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import type { WorkerProfile } from "@prisma/client";
+import type { WorkerProfile, UserRole } from "@prisma/client";
 
 // ── Tipos públicos ────────────────────────────────────────────────
 
 export type CollaboratorMonthlySummary = {
   assigneeId:      string;
   assigneeName:    string;
+  /** Papel técnico do colaborador (DEV | SUPORTE | ARQUITETO) */
+  assigneeRole:    string;
   assigneeProfile: WorkerProfile | null;
 
   /** Demandas aprovadas (iniciadas) no período */
@@ -67,6 +69,27 @@ export type DevCollaborator = {
   profile: WorkerProfile | null;
 };
 
+// ── Sort options (validação de entrada) ───────────────────────────
+
+export const SORT_OPTIONS = [
+  { value: "finalValue:desc",     label: "Maior valor final"    },
+  { value: "finalValue:asc",      label: "Menor valor final"    },
+  { value: "estimatedValue:desc", label: "Maior valor estimado" },
+  { value: "estimatedValue:asc",  label: "Menor valor estimado" },
+  { value: "portfolioValue:desc", label: "Maior carteira"       },
+  { value: "approvedCount:desc",  label: "Mais aprovadas"       },
+  { value: "name:asc",            label: "Nome A → Z"           },
+  { value: "name:desc",           label: "Nome Z → A"           },
+] as const;
+
+const VALID_SORT_BY  = ["finalValue", "estimatedValue", "portfolioValue", "approvedCount", "name"] as const;
+const VALID_SORT_DIR = ["asc", "desc"] as const;
+type SortBy  = typeof VALID_SORT_BY[number];
+type SortDir = typeof VALID_SORT_DIR[number];
+
+function parseSortBy(s?: string):  SortBy  { return (VALID_SORT_BY  as readonly string[]).includes(s ?? "") ? s as SortBy  : "finalValue"; }
+function parseSortDir(s?: string): SortDir { return (VALID_SORT_DIR as readonly string[]).includes(s ?? "") ? s as SortDir : "desc"; }
+
 // ── Helpers ───────────────────────────────────────────────────────
 
 function periodBounds(month: number, year: number): { start: Date; end: Date } {
@@ -80,59 +103,98 @@ function periodBounds(month: number, year: number): { start: Date; end: Date } {
 export const dashboardService = {
 
   /**
-   * Retorna o resumo mensal de todos os colaboradores (ou de um específico).
-   * O período é determinado pelo mês/ano dos campos approvedAt e homologationDate.
-   * A coluna "carteira total" agrega todas as demandas sem filtro de período.
+   * Retorna o resumo mensal de todos os colaboradores (ou filtrado).
+   *
+   * Filtros disponíveis:
+   *  - assigneeId : um colaborador específico
+   *  - role       : DEV | SUPORTE | ARQUITETO
+   *  - profile    : JUNIOR | PLENO | SENIOR | ESPECIALISTA
+   *  - sortBy     : finalValue | estimatedValue | portfolioValue | approvedCount | name
+   *  - sortDir    : asc | desc
    */
   async getMonthlySummary(
     month: number,
     year:  number,
-    assigneeId?: string,
+    opts: {
+      assigneeId?: string;
+      role?:       string;
+      profile?:    string;
+      sortBy?:     string;
+      sortDir?:    string;
+    } = {},
   ): Promise<MonthlyDashboardSummary> {
+    const {
+      assigneeId,
+      role,
+      profile,
+    } = opts;
+    const sortBy  = parseSortBy(opts.sortBy);
+    const sortDir = parseSortDir(opts.sortDir);
+
     const { start, end } = periodBounds(month, year);
 
-    const assigneeFilter = assigneeId
-      ? { assigneeId }
-      : { assigneeId: { not: null } };
+    // ── Resolver IDs elegíveis baseado em papel/perfil ──────────
+    let assigneeFilter: { assigneeId: string | { in: string[] } | { not: null } };
+
+    if (assigneeId) {
+      assigneeFilter = { assigneeId };
+    } else if (role || profile) {
+      const eligible = await prisma.user.findMany({
+        where: {
+          ...(role
+            ? { role: role as UserRole }
+            : { role: { in: ["DEV", "SUPORTE", "ARQUITETO"] as UserRole[] } }),
+          ...(profile ? { workerProfile: profile as WorkerProfile } : {}),
+        },
+        select: { id: true },
+      });
+      assigneeFilter = { assigneeId: { in: eligible.map(u => u.id) } };
+    } else {
+      assigneeFilter = { assigneeId: { not: null } };
+    }
 
     const demandSelect = {
-      id:                    true,
-      assigneeId:            true,
-      estimatedHours:        true,
-      estimatedDemandValue:  true,
+      id:                      true,
+      assigneeId:              true,
+      estimatedHours:          true,
+      estimatedDemandValue:    true,
       assigneeProfileSnapshot: true,
-      assignee: { select: { id: true, name: true, workerProfile: true } },
+      assignee: { select: { id: true, name: true, workerProfile: true, role: true } },
     } as const;
 
-    // Demandas aprovadas no período (valor estimado)
+    // ── Demandas aprovadas no período (valor estimado) ───────────
     const approvedRaw = await prisma.demand.findMany({
       where: { ...assigneeFilter, approvedAt: { gte: start, lte: end } },
       select: demandSelect,
     });
 
-    // Demandas homologadas no período (valor final)
+    // ── Demandas homologadas no período (valor final) ────────────
     const homologatedRaw = await prisma.demand.findMany({
       where: { ...assigneeFilter, homologationDate: { gte: start, lte: end } },
       select: demandSelect,
     });
 
-    // Carteira total — todas as demandas, sem filtro de período
+    // ── Carteira total — todas as demandas, sem filtro de período
     const portfolioRaw = await prisma.demand.findMany({
       where: assigneeFilter,
       select: {
-        assigneeId:           true,
-        estimatedDemandValue: true,
-        assignee: { select: { id: true, name: true, workerProfile: true } },
+        assigneeId:              true,
+        estimatedDemandValue:    true,
         assigneeProfileSnapshot: true,
+        assignee: { select: { id: true, name: true, workerProfile: true, role: true } },
       },
     });
 
-    // Agrega por colaborador
+    // ── Agrega por colaborador ───────────────────────────────────
     const map = new Map<string, CollaboratorMonthlySummary>();
 
+    type AssigneeShape = {
+      id: string; name: string; workerProfile: WorkerProfile | null; role: string;
+    } | null;
+
     function getOrInit(d: {
-      assigneeId: string | null;
-      assignee: { id: string; name: string; workerProfile: WorkerProfile | null } | null;
+      assigneeId:              string | null;
+      assignee:                AssigneeShape;
       assigneeProfileSnapshot: string | null;
     }): CollaboratorMonthlySummary | null {
       if (!d.assigneeId || !d.assignee) return null;
@@ -140,6 +202,7 @@ export const dashboardService = {
         map.set(d.assigneeId, {
           assigneeId:       d.assigneeId,
           assigneeName:     d.assignee.name,
+          assigneeRole:     d.assignee.role,
           assigneeProfile:  (d.assigneeProfileSnapshot as WorkerProfile | null)
                            ?? d.assignee.workerProfile,
           approvedCount:    0,
@@ -180,10 +243,17 @@ export const dashboardService = {
       c.portfolioValue += d.estimatedDemandValue ?? 0;
     }
 
-    // Ordena por valor final desc, depois por valor estimado desc
-    const collaborators = Array.from(map.values()).sort(
-      (a, b) => b.finalValue - a.finalValue || b.estimatedValue - a.estimatedValue,
-    );
+    // ── Ordena conforme parâmetro ────────────────────────────────
+    const dir = sortDir === "asc" ? 1 : -1;
+    const collaborators = Array.from(map.values()).sort((a, b) => {
+      switch (sortBy) {
+        case "name":           return dir * a.assigneeName.localeCompare(b.assigneeName, "pt-BR");
+        case "estimatedValue": return dir * (a.estimatedValue - b.estimatedValue);
+        case "portfolioValue": return dir * (a.portfolioValue - b.portfolioValue);
+        case "approvedCount":  return dir * (a.approvedCount  - b.approvedCount);
+        default:               return dir * (a.finalValue     - b.finalValue);
+      }
+    });
 
     const totals = collaborators.reduce(
       (acc, c) => ({

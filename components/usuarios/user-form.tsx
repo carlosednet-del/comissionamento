@@ -210,7 +210,7 @@ export function UserForm(props: Props) {
             name={"monthlyBaseSalary" as never}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Salário base mensal (R$)</FormLabel>
+                <FormLabel>Mínimo garantido mensal (R$)</FormLabel>
                 <FormControl>
                   <Input
                     type="number"

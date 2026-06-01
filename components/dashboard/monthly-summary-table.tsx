@@ -5,9 +5,9 @@
  *  · Aprovadas no período   — demandas com approvedAt no mês
  *  · Homologadas no período — demandas com homologationDate no mês (+ teto)
  *  · Carteira total         — todas as demandas, sem filtro de período
- *  · Resultado mensal       — salário base + valor a pagar (excedente)
+ *  · Resultado mensal       — mínimo garantido + valor a pagar (excedente)
  *
- * Valor a pagar = max(0, finalValue − salário base)
+ * Valor a pagar = max(0, min(finalValue − mínimo, max(0, teto − mínimo)))
  *
  * ⚠  Deflator por atraso e fechamento de RV ainda não implementados.
  */
@@ -168,9 +168,9 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
       {/* ── Mini-cards — resultado financeiro ────────────────────── */}
       <div className="grid grid-cols-2 gap-3">
         <SummaryMini
-          label="Folha mensal (salários)"
+          label="Total mínimos garantidos"
           value={BRL.format(totals.totalSalary)}
-          sub="soma dos salários base"
+          sub="soma dos mínimos garantidos"
           icon={Wallet}
           color="text-slate-600"
           bg="bg-slate-50 border-slate-200"
@@ -178,7 +178,7 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
         <SummaryMini
           label="Total a pagar"
           value={BRL.format(totals.totalPayable)}
-          sub="excedente acima do salário"
+          sub="excedente acima do mínimo garantido"
           icon={BadgeDollarSign}
           color="text-violet-700"
           bg="bg-violet-50 border-violet-200"
@@ -234,7 +234,7 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
                 Valor prev. <SortIcon col="portfolioValue" sortBy={sortBy} sortDir={sortDir} />
               </th>
               {/* Resultado */}
-              <th className="px-3 py-2 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide border-l border-dashed">Salário</th>
+              <th className="px-3 py-2 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wide border-l border-dashed">Mín. garantido</th>
               <th className="px-3 py-2 text-right text-[11px] font-semibold text-violet-700 uppercase tracking-wide">A pagar</th>
             </tr>
           </thead>
@@ -326,7 +326,7 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
                     : <span className="text-muted-foreground/40 text-xs">—</span>}
                 </td>
 
-                {/* Resultado — Salário */}
+                {/* Resultado — Mínimo garantido */}
                 <td className="px-3 py-3 text-right border-l border-dashed">
                   {c.baseSalary > 0
                     ? <span className="font-mono text-[11px] text-muted-foreground tabular-nums">{BRL.format(c.baseSalary)}</span>

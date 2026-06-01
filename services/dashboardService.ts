@@ -45,9 +45,13 @@ export type CollaboratorMonthlySummary = {
   monthlyCap:       number | null;
   /** true se finalValue atingiu o teto mensal */
   capReached:       boolean;
-  /** Salário base mensal do colaborador (0 se não preenchido) */
+  /** Mínimo garantido mensal do colaborador (0 se não preenchido) */
   baseSalary:       number;
-  /** Valor a pagar = max(0, finalValue − salário base) */
+  /**
+   * Valor a pagar = max(0, min(finalValue − mínimo, max(0, teto − mínimo)))
+   * · Negativo → 0
+   * · Acima de (teto − mínimo) → trava em (teto − mínimo)
+   */
   payableValue:     number;
 
   /** Carteira total — todas as demandas, sem filtro de período */
@@ -293,8 +297,14 @@ export const dashboardService = {
         }
       }
 
-      // Valor a pagar = excedente acima do salário base (mínimo 0)
-      c.payableValue = Math.max(0, c.finalValue - c.baseSalary);
+      // A pagar = max(0, min(finalValue − mínimo, max(0, teto − mínimo)))
+      // · Se negativo → 0
+      // · Se passar de (teto − mínimo) → trava no teto − mínimo
+      const rawPayable = c.finalValue - c.baseSalary;
+      const payableCap = c.monthlyCap !== null
+        ? Math.max(0, c.monthlyCap - c.baseSalary)
+        : rawPayable; // sem teto: cap = rawPayable (não restringe)
+      c.payableValue = Math.max(0, Math.min(rawPayable, payableCap));
     }
 
     // ── Ordena conforme parâmetro ────────────────────────────────

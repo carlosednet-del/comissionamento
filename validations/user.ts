@@ -8,7 +8,7 @@ const workerProfileRule = z
   .optional()
   .transform((v) => v ?? null);
 
-// salário e teto são floats positivos opcionais
+// mínimo garantido e teto são floats positivos opcionais
 const positiveFloatRule = z
   .number({ invalid_type_error: "Deve ser um número" })
   .min(0, "Deve ser maior ou igual a 0")

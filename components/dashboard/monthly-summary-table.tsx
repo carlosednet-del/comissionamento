@@ -192,7 +192,7 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
               {/* Homologadas */}
               <th
                 className="px-3 py-2 text-center text-xs font-semibold text-green-700 uppercase tracking-wide border-l border-dashed"
-                colSpan={3}
+                colSpan={4}
               >
                 Homologadas no período
               </th>
@@ -234,6 +234,9 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
                 sortBy === "finalValue" ? "text-green-700" : "text-muted-foreground",
               )}>
                 Valor final <SortIcon col="finalValue" sortBy={sortBy} sortDir={sortDir} />
+              </th>
+              <th className="px-3 py-2 text-right text-[11px] font-semibold text-amber-600 uppercase tracking-wide">
+                Teto mensal
               </th>
 
               {/* Carteira */}
@@ -340,6 +343,27 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
                   )}
                 </td>
 
+                {/* Teto mensal */}
+                <td className="px-3 py-3 text-right">
+                  {c.monthlyCap !== null ? (
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span className={cn(
+                        "font-mono text-[11px] font-semibold tabular-nums",
+                        c.capReached ? "text-amber-600" : "text-muted-foreground/50",
+                      )}>
+                        {BRL.format(c.monthlyCap)}
+                      </span>
+                      {c.capReached && (
+                        <span className="inline-flex items-center rounded-full bg-amber-100 border border-amber-200 px-1.5 py-px text-[9px] font-bold uppercase text-amber-700 tracking-wide">
+                          teto
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="opacity-40 text-xs">—</span>
+                  )}
+                </td>
+
                 {/* Carteira total */}
                 <td className="px-3 py-3 text-right tabular-nums text-muted-foreground border-l border-dashed">
                   {c.portfolioCount > 0
@@ -405,6 +429,7 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
                     {BRL.format(totals.finalValue)}
                   </span>
                 </td>
+                <td className="px-3 py-3 text-right text-muted-foreground/40 text-xs">—</td>
                 {/* Carteira */}
                 <td className="px-3 py-3 text-right tabular-nums border-l border-dashed">
                   {totals.portfolioCount}

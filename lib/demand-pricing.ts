@@ -23,6 +23,22 @@ export const HOURLY_RATES: Record<WorkerProfile, number> = {
   ESPECIALISTA: 45,
 };
 
+// ── Teto mensal por perfil (cap de valor final homologado no mês) ─────────────
+
+/**
+ * Valor máximo de demandas homologadas que um colaborador pode acumular
+ * em um único mês, por perfil técnico.
+ *
+ * Quando a soma de estimatedDemandValue das demandas homologadas no período
+ * ultrapassa este limite, o excesso é descartado no cálculo do valor final.
+ */
+export const MONTHLY_CAPS: Record<WorkerProfile, number> = {
+  JUNIOR:        8_000,
+  PLENO:        10_000,
+  SENIOR:       12_000,
+  ESPECIALISTA: 20_000,
+};
+
 // ── Fator combinado (complexidade × ROI) ─────────────────────────────────────
 
 export const COMBINED_FACTORS: Record<ComplexityLevel, Record<RoiLevel, number>> = {

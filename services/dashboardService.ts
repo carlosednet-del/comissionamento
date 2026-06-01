@@ -17,7 +17,8 @@
  *    Deflator por atraso e fechamento de RV/comissão NÃO implementados.
  */
 
-import { prisma } from "@/lib/prisma";
+import { prisma }         from "@/lib/prisma";
+import { MONTHLY_CAPS }   from "@/lib/demand-pricing";
 import type { WorkerProfile, UserRole } from "@prisma/client";
 
 // ── Tipos públicos ────────────────────────────────────────────────
@@ -38,8 +39,12 @@ export type CollaboratorMonthlySummary = {
   /** Demandas homologadas (entregues) no período */
   homologatedCount: number;
   homologatedHours: number;
-  /** Soma de estimatedDemandValue das demandas homologadas no período */
+  /** Soma de estimatedDemandValue das demandas homologadas no período (já aplicado o teto) */
   finalValue:       number;
+  /** Teto mensal do perfil (null se colaborador sem perfil técnico) */
+  monthlyCap:       number | null;
+  /** true se finalValue atingiu o teto mensal */
+  capReached:       boolean;
 
   /** Carteira total — todas as demandas, sem filtro de período */
   portfolioCount: number;
@@ -211,6 +216,8 @@ export const dashboardService = {
           homologatedCount: 0,
           homologatedHours: 0,
           finalValue:       0,
+          monthlyCap:       null,
+          capReached:       false,
           portfolioCount:   0,
           portfolioValue:   0,
         });
@@ -241,6 +248,20 @@ export const dashboardService = {
       if (!c) continue;
       c.portfolioCount++;
       c.portfolioValue += d.estimatedDemandValue ?? 0;
+    }
+
+    // ── Aplica teto mensal ao valor final homologado ─────────────
+    for (const c of map.values()) {
+      if (c.assigneeProfile) {
+        const cap = MONTHLY_CAPS[c.assigneeProfile];
+        c.monthlyCap = cap;
+        if (c.finalValue > cap) {
+          c.finalValue = cap;
+          c.capReached  = true;
+        } else if (c.finalValue === cap && cap > 0) {
+          c.capReached = true;
+        }
+      }
     }
 
     // ── Ordena conforme parâmetro ────────────────────────────────

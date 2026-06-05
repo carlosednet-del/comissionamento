@@ -43,7 +43,8 @@ import {
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
-import { Loader2 } from "lucide-react";
+import { AttachEvidenceDialog } from "@/components/demandas/attach-evidence-dialog";
+import { Loader2, Paperclip } from "lucide-react";
 
 // ── Textarea ─────────────────────────────────────────────────────
 function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { rows?: number }) {
@@ -167,13 +168,27 @@ export function SendToHomologationDialog({ demandId, evidenceCount, trigger }: S
           </DialogDescription>
         </DialogHeader>
 
-        {evidenceCount === 0 && (
-          <Alert>
-            <AlertDescription className="text-amber-700">
-              ⚠ Nenhuma evidência cadastrada. Recomendamos anexar ao menos uma evidência (print, PR, documento) antes de enviar para homologação.
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* Aviso + atalho para anexar evidência */}
+        <div className={`rounded-lg border p-3 text-sm space-y-2 ${
+          evidenceCount === 0
+            ? "border-amber-200 bg-amber-50 text-amber-800"
+            : "border-emerald-200 bg-emerald-50 text-emerald-800"
+        }`}>
+          <p>
+            {evidenceCount === 0
+              ? "⚠ Nenhuma evidência cadastrada. Recomendamos anexar ao menos uma evidência (print, PR, documento) antes de enviar."
+              : `✓ ${evidenceCount} evidência${evidenceCount > 1 ? "s" : ""} cadastrada${evidenceCount > 1 ? "s" : ""}.`}
+          </p>
+          <AttachEvidenceDialog
+            demandId={demandId}
+            trigger={
+              <Button type="button" variant="outline" size="sm" className="gap-1.5 h-7 text-xs">
+                <Paperclip className="h-3.5 w-3.5" />
+                Anexar evidência
+              </Button>
+            }
+          />
+        </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

@@ -34,6 +34,8 @@ export default async function DemandasPage({
     status:     (sp.status    as DemandStatus)    || undefined,
     priority:   (sp.priority  as DemandPriority)  || undefined,
     demandType: (sp.demandType as DemandType)      || undefined,
+    // Solicitante só vê as demandas que criou
+    ...(actor.role === "SOLICITANTE" ? { creatorId: actor.id } : {}),
     page,
     pageSize: 20,
   };

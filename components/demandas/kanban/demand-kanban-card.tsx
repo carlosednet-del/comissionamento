@@ -113,10 +113,12 @@ export function DemandKanbanCard({ demand, actor, evidenceCount = 0 }: Props) {
         )}
       </div>
 
-      {/* Linha 5: Prazo + Valor estimado */}
+      {/* Linha 5: Prazo + Valor estimado (oculto para Solicitante) */}
       <div className="flex flex-wrap items-center gap-1.5">
         <DeadlineBadge date={demand.plannedDeliveryDate} />
-        <EstimatedValueBadge value={demand.estimatedDemandValue} />
+        {actor.role !== "SOLICITANTE" && (
+          <EstimatedValueBadge value={demand.estimatedDemandValue} />
+        )}
       </div>
 
       {/* Linha 6: Ações rápidas */}

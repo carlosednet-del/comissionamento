@@ -31,13 +31,14 @@ import {
 import { Loader2 } from "lucide-react";
 
 const ROLE_OPTIONS = [
-  { value: UserRole.ADMIN,      label: "Administrador" },
-  { value: UserRole.GESTOR,     label: "Gestor" },
-  { value: UserRole.DEV,        label: "Desenvolvedor" },
-  { value: UserRole.SUPORTE,    label: "Suporte" },
-  { value: UserRole.ARQUITETO,  label: "Arquiteto" },
-  { value: UserRole.APROVADOR,  label: "Aprovador" },
-  { value: UserRole.FINANCEIRO, label: "Financeiro" },
+  { value: UserRole.ADMIN,       label: "Administrador" },
+  { value: UserRole.GESTOR,      label: "Gestor" },
+  { value: UserRole.DEV,         label: "Desenvolvedor" },
+  { value: UserRole.SUPORTE,     label: "Suporte" },
+  { value: UserRole.ARQUITETO,   label: "Arquiteto" },
+  { value: UserRole.APROVADOR,   label: "Aprovador" },
+  { value: UserRole.FINANCEIRO,  label: "Financeiro" },
+  { value: UserRole.SOLICITANTE, label: "Solicitante" },
 ];
 
 const TECHNICAL_ROLES: UserRole[] = [UserRole.DEV, UserRole.SUPORTE, UserRole.ARQUITETO];

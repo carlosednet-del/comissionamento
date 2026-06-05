@@ -104,6 +104,7 @@ export type DemandFilters = {
   priority?:      DemandPriority;
   demandType?:    DemandType;
   assigneeId?:    string;
+  creatorId?:     string;
   requesterArea?: string;
   search?:        string;
   createdFrom?:   Date;

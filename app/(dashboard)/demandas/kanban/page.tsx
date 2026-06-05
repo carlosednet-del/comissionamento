@@ -70,12 +70,15 @@ export default async function KanbanPage({
   const actor   = toPermissionUser(session);
   const sp      = await searchParams;
 
-  // Roles que não precisam do toggle "Minhas demandas" (técnicos já são filtrados automaticamente)
-  const showMyDemandsToggle = actor.role !== "FINANCEIRO" && actor.role !== "APROVADOR";
+  // SOLICITANTE e papéis com filtro automático não precisam do toggle
+  const showMyDemandsToggle =
+    actor.role !== "FINANCEIRO" &&
+    actor.role !== "APROVADOR" &&
+    actor.role !== "SOLICITANTE"; // sempre vê só as suas próprias
 
   // Filtro de responsável só faz sentido para quem enxerga todos (ADMIN / GESTOR / APROVADOR / FINANCEIRO)
   const showAssigneeFilter =
-    actor.role === "ADMIN" || actor.role === "GESTOR" ||
+    actor.role === "ADMIN"    || actor.role === "GESTOR" ||
     actor.role === "APROVADOR" || actor.role === "FINANCEIRO";
 
   // Lista de usuários assignáveis para o dropdown de responsável

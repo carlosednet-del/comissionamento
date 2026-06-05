@@ -70,6 +70,7 @@ export const demandRepository = {
       priority,
       demandType,
       assigneeId,
+      creatorId,
       requesterArea,
       search,
       createdFrom,
@@ -85,6 +86,7 @@ export const demandRepository = {
       ...(priority      && { priority }),
       ...(demandType    && { demandType }),
       ...(assigneeId    && { assigneeId }),
+      ...(creatorId     && { creatorId }),
       ...(requesterArea && {
         requesterArea: { contains: requesterArea, mode: "insensitive" as const },
       }),

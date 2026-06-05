@@ -47,13 +47,15 @@ export const KANBAN_COLUMN_LABELS: Record<DemandStatus, string> = {
 // ── Visibilidade por perfil ──────────────────────────────────────
 
 const ROLE_VISIBLE_STATUSES: Record<string, DemandStatus[]> = {
-  ADMIN:      KANBAN_COLUMN_ORDER,
-  GESTOR:     KANBAN_COLUMN_ORDER,
-  DEV:        KANBAN_COLUMN_ORDER, // filtrado por assigneeId no repositório
-  SUPORTE:    KANBAN_COLUMN_ORDER, // idem
-  ARQUITETO:  KANBAN_COLUMN_ORDER, // idem
-  APROVADOR:  ["AGUARDANDO_HOMOLOGACAO", "HOMOLOGADA_PRODUCAO", "CONCLUIDA"],
-  FINANCEIRO: ["HOMOLOGADA_PRODUCAO", "CONCLUIDA"],
+  ADMIN:       KANBAN_COLUMN_ORDER,
+  GESTOR:      KANBAN_COLUMN_ORDER,
+  DEV:         KANBAN_COLUMN_ORDER, // filtrado por assigneeId no repositório
+  SUPORTE:     KANBAN_COLUMN_ORDER, // idem
+  ARQUITETO:   KANBAN_COLUMN_ORDER, // idem
+  APROVADOR:   ["AGUARDANDO_HOMOLOGACAO", "HOMOLOGADA_PRODUCAO", "CONCLUIDA"],
+  FINANCEIRO:  ["HOMOLOGADA_PRODUCAO", "CONCLUIDA"],
+  // Solicitante vê todas as colunas das suas próprias demandas (read-only)
+  SOLICITANTE: KANBAN_COLUMN_ORDER,
 };
 
 // ── Tipos públicos ────────────────────────────────────────────────
@@ -106,6 +108,9 @@ export const demandKanbanService = {
     const devFilter =
       isTechnicalRole(actor.role) ? { assigneeId: actor.id } : {};
 
+    // Solicitante: sempre filtra pelas demandas que criou (onlyMine = creatorId)
+    const forcedOnlyMine = actor.role === "SOLICITANTE" ? true : filters.onlyMine;
+
     const demands = await demandRepository.findKanbanDemands({
       search:         filters.search,
       statuses:       filters.statuses,
@@ -119,7 +124,7 @@ export const demandKanbanService = {
       deadlineStatus: filters.deadlineStatus,
       deliveryFrom:   filters.deliveryFrom,
       deliveryTo:     filters.deliveryTo,
-      onlyMine:       filters.onlyMine,
+      onlyMine:       forcedOnlyMine,
       currentUserId:  actor.id,
       visibleStatuses,
       sortBy:         filters.sortBy,

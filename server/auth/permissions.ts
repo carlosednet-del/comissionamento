@@ -43,13 +43,14 @@ function isTechnical(role: string): boolean {
 export function canViewDemand(actor: UserForPermission, demand: DemandForPermission): boolean {
   if (actor.role === "ADMIN" || actor.role === "GESTOR") return true;
   if (isTechnical(actor.role)) return demand.assigneeId === actor.id || demand.creatorId === actor.id;
-  if (actor.role === "APROVADOR")  return ["AGUARDANDO_HOMOLOGACAO", "HOMOLOGADA_PRODUCAO", "CONCLUIDA"].includes(demand.status);
-  if (actor.role === "FINANCEIRO") return ["HOMOLOGADA_PRODUCAO", "CONCLUIDA"].includes(demand.status);
+  if (actor.role === "APROVADOR")    return ["AGUARDANDO_HOMOLOGACAO", "HOMOLOGADA_PRODUCAO", "CONCLUIDA"].includes(demand.status);
+  if (actor.role === "FINANCEIRO")   return ["HOMOLOGADA_PRODUCAO", "CONCLUIDA"].includes(demand.status);
+  if (actor.role === "SOLICITANTE")  return demand.creatorId === actor.id; // só as próprias demandas
   return false;
 }
 
 export function canCreateDemand(actor: UserForPermission): boolean {
-  return actor.role === "ADMIN" || actor.role === "GESTOR";
+  return actor.role === "ADMIN" || actor.role === "GESTOR" || actor.role === "SOLICITANTE";
 }
 
 export function canEditDemand(actor: UserForPermission, demand: DemandForPermission): boolean {

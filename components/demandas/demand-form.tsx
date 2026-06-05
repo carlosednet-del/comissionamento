@@ -35,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save, Send, Info } from "lucide-react";
+import { Loader2, Save, Send, Info, FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   HOURLY_RATES,
@@ -304,30 +304,8 @@ export function DemandForm(props: Props) {
   async function submit(values: FormValues, draft = false) {
     setServerError(null);
 
-    // ── Validação manual dos campos obrigatórios para demanda (não-rascunho) ──
-    if (!draft && isCreate) {
-      const v = values as CreateDemandInput;
-      let hasError = false;
-
-      if (!v.assigneeId) {
-        form.setError("assigneeId" as never, { message: "Responsável técnico é obrigatório para criar a demanda" });
-        hasError = true;
-      }
-      if (!v.estimatedHours) {
-        form.setError("estimatedHours" as never, { message: "Horas estimadas são obrigatórias" });
-        hasError = true;
-      }
-      if (!v.complexity) {
-        form.setError("complexity" as never, { message: "Complexidade é obrigatória" });
-        hasError = true;
-      }
-      if (!v.roi) {
-        form.setError("roi" as never, { message: "ROI / Impacto estratégico é obrigatório" });
-        hasError = true;
-      }
-
-      if (hasError) return;
-    }
+    // Campos de execução técnica são opcionais na criação —
+    // devem ser preenchidos durante a fase de análise.
 
     if (isCreate) {
       const payload = { ...(values as CreateDemandInput), saveAsDraft: draft };
@@ -502,12 +480,215 @@ export function DemandForm(props: Props) {
           </CardContent>
         </Card>
 
-        {/* ── Bloco 3 — Execução técnica ───────────────────────────────── */}
-        <Card className="card-accent-top">
-          <CardHeader className="card-header-gradient">
-            <CardTitle className="text-base text-brand-text-dark">Execução técnica</CardTitle>
+        {/* ── Bloco 3 — Contexto de negócio ───────────────────────────── */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Contexto de negócio</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="businessProblem"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Problema de negócio</FormLabel>
+                  <FormDescription>Qual problema ou oportunidade motivou esta demanda?</FormDescription>
+                  <FormControl>
+                    <Textarea rows={3} placeholder="Descreva o problema…" {...field} value={field.value ?? ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="expectedResult"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Resultado esperado</FormLabel>
+                  <FormControl>
+                    <Textarea rows={2} placeholder="O que se espera ao concluir esta demanda?" {...field} value={field.value ?? ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="impactDescription"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Impacto</FormLabel>
+                    <FormControl>
+                      <Textarea rows={2} placeholder="Quais áreas / processos serão impactados?" {...field} value={field.value ?? ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="dependencies"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Dependências</FormLabel>
+                    <FormControl>
+                      <Textarea rows={2} placeholder="Há dependências de outros sistemas ou times?" {...field} value={field.value ?? ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="risks"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Riscos</FormLabel>
+                    <FormControl>
+                      <Textarea rows={2} placeholder="Quais riscos foram identificados?" {...field} value={field.value ?? ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="observations"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Observações</FormLabel>
+                    <FormControl>
+                      <Textarea rows={2} placeholder="Alguma informação adicional relevante?" {...field} value={field.value ?? ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ── Bloco 4 — Prazo ──────────────────────────────────────────── */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Prazo</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="plannedStartDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Início previsto</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        value={toDateInput(field.value)}
+                        onChange={(e) =>
+                          field.onChange(e.target.value ? new Date(e.target.value) : null)
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="plannedDeliveryDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Entrega prevista <span className="text-destructive">*</span></FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        value={toDateInput(field.value)}
+                        onChange={(e) =>
+                          field.onChange(e.target.value ? new Date(e.target.value) : null)
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Campos de realização — apenas em edição */}
+              {!isCreate && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name={"actualStartDate" as never}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Início real</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            value={toDateInput((field as { value: Date | null }).value)}
+                            onChange={(e) =>
+                              field.onChange(e.target.value ? new Date(e.target.value) : null)
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name={"actualDeliveryDate" as never}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Entrega real</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            value={toDateInput((field as { value: Date | null }).value)}
+                            onChange={(e) =>
+                              field.onChange(e.target.value ? new Date(e.target.value) : null)
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ── Bloco 5 — Execução técnica (fase de análise) ────────────── */}
+        <Card className="border-blue-200">
+          <CardHeader className="bg-blue-50/60 border-b border-blue-100 rounded-t-lg pb-3">
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-base text-blue-900 flex items-center gap-2">
+                <FlaskConical className="h-4 w-4 text-blue-500" />
+                Execução técnica
+              </CardTitle>
+              <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-100 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700 uppercase tracking-wide">
+                Fase de análise
+              </span>
+            </div>
+            {isCreate && (
+              <p className="text-xs text-blue-600/80 mt-1">
+                Estes campos são opcionais na criação e devem ser preenchidos durante a análise técnica da demanda.
+              </p>
+            )}
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
             {/* Row 1 — Responsável + campos derivados (readonly) */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="lg:col-span-2">
@@ -516,9 +697,7 @@ export function DemandForm(props: Props) {
                   name={"assigneeId" as never}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
-                        Responsável técnico{!isCreate && <span className="text-destructive ml-1">*</span>}
-                      </FormLabel>
+                      <FormLabel>Responsável técnico</FormLabel>
                       <Select
                         onValueChange={(v) => {
                           field.onChange(v === NONE_ASSIGNEE ? null : v);
@@ -554,7 +733,7 @@ export function DemandForm(props: Props) {
                 />
               </div>
 
-              {/* Perfil técnico — derivado do responsável, readonly (sem FormField) */}
+              {/* Perfil técnico — derivado do responsável, readonly */}
               <div className="space-y-2">
                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                   Perfil técnico
@@ -567,7 +746,7 @@ export function DemandForm(props: Props) {
                 />
               </div>
 
-              {/* Valor/hora — derivado do responsável, readonly (sem FormField) */}
+              {/* Valor/hora — derivado do responsável, readonly */}
               <div className="space-y-2">
                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                   Valor / hora
@@ -673,196 +852,6 @@ export function DemandForm(props: Props) {
               complexity={watchedComplexity}
               roi={watchedRoi}
             />
-          </CardContent>
-        </Card>
-
-        {/* ── Bloco 4 — Contexto de negócio ───────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Contexto de negócio</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="businessProblem"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Problema de negócio</FormLabel>
-                  <FormDescription>Qual problema ou oportunidade motivou esta demanda?</FormDescription>
-                  <FormControl>
-                    <Textarea rows={3} placeholder="Descreva o problema…" {...field} value={field.value ?? ""} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="expectedResult"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Resultado esperado</FormLabel>
-                  <FormControl>
-                    <Textarea rows={2} placeholder="O que se espera ao concluir esta demanda?" {...field} value={field.value ?? ""} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="impactDescription"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Impacto</FormLabel>
-                    <FormControl>
-                      <Textarea rows={2} placeholder="Quais áreas / processos serão impactados?" {...field} value={field.value ?? ""} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="dependencies"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Dependências</FormLabel>
-                    <FormControl>
-                      <Textarea rows={2} placeholder="Há dependências de outros sistemas ou times?" {...field} value={field.value ?? ""} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="risks"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Riscos</FormLabel>
-                    <FormControl>
-                      <Textarea rows={2} placeholder="Quais riscos foram identificados?" {...field} value={field.value ?? ""} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="observations"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Observações</FormLabel>
-                    <FormControl>
-                      <Textarea rows={2} placeholder="Alguma informação adicional relevante?" {...field} value={field.value ?? ""} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ── Bloco 5 — Prazo ──────────────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Prazo</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="plannedStartDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Início previsto</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        value={toDateInput(field.value)}
-                        onChange={(e) =>
-                          field.onChange(e.target.value ? new Date(e.target.value) : null)
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="plannedDeliveryDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Entrega prevista <span className="text-destructive">*</span></FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        value={toDateInput(field.value)}
-                        onChange={(e) =>
-                          field.onChange(e.target.value ? new Date(e.target.value) : null)
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Campos de realização — apenas em edição */}
-              {!isCreate && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name={"actualStartDate" as never}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Início real</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="date"
-                            value={toDateInput((field as { value: Date | null }).value)}
-                            onChange={(e) =>
-                              field.onChange(e.target.value ? new Date(e.target.value) : null)
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name={"actualDeliveryDate" as never}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Entrega real</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="date"
-                            value={toDateInput((field as { value: Date | null }).value)}
-                            onChange={(e) =>
-                              field.onChange(e.target.value ? new Date(e.target.value) : null)
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
-            </div>
           </CardContent>
         </Card>
 

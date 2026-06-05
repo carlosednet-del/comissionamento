@@ -30,7 +30,7 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard",  icon: LayoutDashboard, roles: ["ADMIN", "GESTOR", "FINANCEIRO"] },
+  { href: "/dashboard", label: "Dashboard",  icon: LayoutDashboard, roles: ["ADMIN", "GESTOR", "FINANCEIRO", "DEV"] },
   { href: "/demandas",        label: "Demandas",   icon: ClipboardList },
   { href: "/demandas/kanban", label: "Kanban",      icon: LayoutGrid },
   { href: "/usuarios",        label: "Usuários",    icon: Users, roles: ["ADMIN"] },

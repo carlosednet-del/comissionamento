@@ -53,11 +53,13 @@ const PROFILE_CHIPS = [
 
 type Props = {
   collaborators: DevCollaborator[];
+  /** true para DEV: oculta colaborador, papel e perfil (vê só a si mesmo) */
+  isSelfOnly?:   boolean;
 };
 
 // ── Componente ────────────────────────────────────────────────────
 
-export function MonthlySummaryFilters({ collaborators }: Props) {
+export function MonthlySummaryFilters({ collaborators, isSelfOnly = false }: Props) {
   const router       = useRouter();
   const pathname     = usePathname();
   const searchParams = useSearchParams();
@@ -171,8 +173,8 @@ export function MonthlySummaryFilters({ collaborators }: Props) {
         {/* Separador visual */}
         <div className="hidden sm:block self-end h-9 w-px bg-border mx-0.5" />
 
-        {/* Colaborador */}
-        {collaborators.length > 0 && (
+        {/* Colaborador — oculto para visão pessoal (DEV) */}
+        {!isSelfOnly && collaborators.length > 0 && (
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Colaborador</Label>
             <Select value={selectedCollab} onValueChange={(v) => update("assigneeId", v)}>
@@ -221,43 +223,45 @@ export function MonthlySummaryFilters({ collaborators }: Props) {
         )}
       </div>
 
-      {/* ── Linha 2: Chips de Papel e Perfil ─────────────────────── */}
-      <div className="flex flex-wrap items-start gap-x-6 gap-y-2 pt-0.5 border-t">
+      {/* ── Linha 2: Chips de Papel e Perfil — ocultos para visão pessoal ── */}
+      {!isSelfOnly && (
+        <div className="flex flex-wrap items-start gap-x-6 gap-y-2 pt-0.5 border-t">
 
-        {/* Papel (role) */}
-        <div className="flex items-center gap-2 pt-2">
-          <span className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">
-            Papel
-          </span>
-          <div className="flex flex-wrap gap-1">
-            {ROLE_CHIPS.map((r) => (
-              <Chip
-                key={r.value}
-                label={r.label}
-                active={selectedRole === r.value}
-                onClick={() => update("role", r.value)}
-              />
-            ))}
+          {/* Papel (role) */}
+          <div className="flex items-center gap-2 pt-2">
+            <span className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">
+              Papel
+            </span>
+            <div className="flex flex-wrap gap-1">
+              {ROLE_CHIPS.map((r) => (
+                <Chip
+                  key={r.value}
+                  label={r.label}
+                  active={selectedRole === r.value}
+                  onClick={() => update("role", r.value)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Perfil */}
+          <div className="flex items-center gap-2 pt-2">
+            <span className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">
+              Perfil
+            </span>
+            <div className="flex flex-wrap gap-1">
+              {PROFILE_CHIPS.map((p) => (
+                <Chip
+                  key={p.value}
+                  label={p.label}
+                  active={selectedProfile === p.value}
+                  onClick={() => update("profile", p.value)}
+                />
+              ))}
+            </div>
           </div>
         </div>
-
-        {/* Perfil */}
-        <div className="flex items-center gap-2 pt-2">
-          <span className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">
-            Perfil
-          </span>
-          <div className="flex flex-wrap gap-1">
-            {PROFILE_CHIPS.map((p) => (
-              <Chip
-                key={p.value}
-                label={p.label}
-                active={selectedProfile === p.value}
-                onClick={() => update("profile", p.value)}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

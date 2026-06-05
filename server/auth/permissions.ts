@@ -140,7 +140,12 @@ export function canViewFinancialData(actor: UserForPermission): boolean {
 }
 
 export function canViewDashboard(actor: UserForPermission): boolean {
-  return actor.role === "ADMIN" || actor.role === "GESTOR" || actor.role === "FINANCEIRO";
+  return (
+    actor.role === "ADMIN"     ||
+    actor.role === "GESTOR"    ||
+    actor.role === "FINANCEIRO"||
+    actor.role === "DEV"       // DEV vê apenas seus próprios números
+  );
 }
 
 export function canViewReports(actor: UserForPermission): boolean {

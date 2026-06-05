@@ -48,17 +48,42 @@ export const authService = {
   }) {
     const admin = createAdminClient();
 
-    const { data, error } = await admin.auth.admin.createUser({
-      email: params.email,
-      password: params.password,
+    const authPayload = {
+      email:         params.email,
+      password:      params.password,
       email_confirm: true,
-      user_metadata: {
-        role: params.role,
-        isActive: params.isActive,
-      },
-    });
+      user_metadata: { role: params.role, isActive: params.isActive },
+    };
 
-    if (error) throw new AuthError(`Erro ao criar usuário no Auth: ${error.message}`);
+    const { data, error } = await admin.auth.admin.createUser(authPayload);
+
+    // E-mail já cadastrado no Auth mas sem registro no banco (usuário excluído
+    // permanentemente enquanto a remoção do Auth falhou silenciosamente).
+    // Localiza o usuário órfão pelo e-mail, remove e recria.
+    if (error) {
+      const isEmailTaken =
+        error.message.includes("already been registered") ||
+        error.message.includes("already registered")      ||
+        error.message.includes("already exists");
+
+      if (isEmailTaken) {
+        // Lista usuários (até 1 000 — suficiente para a maioria dos ambientes)
+        const { data: list } = await admin.auth.admin.listUsers({ perPage: 1000, page: 1 });
+        const orphan = list?.users?.find((u) => u.email === params.email);
+
+        if (orphan) {
+          await admin.auth.admin.deleteUser(orphan.id);
+
+          // Tenta criar novamente após limpar o órfão
+          const { data: retry, error: retryErr } = await admin.auth.admin.createUser(authPayload);
+          if (retryErr) throw new AuthError(`Erro ao criar usuário no Auth: ${retryErr.message}`);
+          return retry.user;
+        }
+      }
+
+      throw new AuthError(`Erro ao criar usuário no Auth: ${error.message}`);
+    }
+
     return data.user;
   },
 

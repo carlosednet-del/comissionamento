@@ -227,9 +227,13 @@ export const userService = {
     if (existing.authUserId) {
       try {
         await authService.deleteAuthUser(existing.authUserId);
-      } catch {
-        // Falha silenciosa: o usuário já foi removido do banco — não reverter
-        // (pode já ter sido deletado do Auth manualmente)
+      } catch (authErr) {
+        // Não reverte a transação — o banco já está limpo.
+        // Loga para facilitar diagnóstico (ex.: usuário já removido do Auth).
+        console.warn(
+          `[deleteUser] falha ao remover authUserId ${existing.authUserId} do Supabase Auth:`,
+          authErr instanceof Error ? authErr.message : authErr,
+        );
       }
     }
   },

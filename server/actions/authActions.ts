@@ -6,11 +6,22 @@ import { loginSchema, type LoginInput } from "@/validations/auth";
 import type { ActionResult } from "@/types";
 import { ZodError } from "zod";
 
-export async function loginAction(input: LoginInput): Promise<ActionResult> {
+/** Papéis que têm acesso ao dashboard. Os demais caem em /demandas. */
+const DASHBOARD_ROLES = ["ADMIN", "GESTOR", "FINANCEIRO", "DEV"];
+
+export async function loginAction(input: LoginInput): Promise<ActionResult<{ redirectTo: string }>> {
   try {
     loginSchema.parse(input);
     await authService.login(input);
-    return { success: true, data: undefined };
+
+    // Descobre o papel do usuário para redirecionar corretamente
+    const { getCurrentUser } = await import("@/server/auth/helpers");
+    const user = await getCurrentUser();
+    const redirectTo = user && DASHBOARD_ROLES.includes(user.role)
+      ? "/dashboard"
+      : "/demandas";
+
+    return { success: true, data: { redirectTo } };
   } catch (error) {
     if (error instanceof ZodError) {
       return { success: false, error: "Dados inválidos", details: error.flatten() };

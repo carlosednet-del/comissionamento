@@ -3,7 +3,16 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { UserRole } from "@prisma/client";
 
 const PUBLIC_ROUTES = ["/login", "/acesso-bloqueado", "/sem-perfil", "/api/auth/callback"];
-const ADMIN_ROUTES = ["/usuarios", "/parametros"];
+const ADMIN_ROUTES  = ["/usuarios", "/parametros"];
+
+/** Papéis que têm acesso ao dashboard financeiro */
+const DASHBOARD_ROLES: UserRole[] = ["ADMIN", "GESTOR", "FINANCEIRO", "DEV"];
+
+/** Retorna a página inicial correta conforme o papel */
+function homeFor(role: UserRole | undefined): string {
+  if (!role) return "/demandas";
+  return DASHBOARD_ROLES.includes(role) ? "/dashboard" : "/demandas";
+}
 
 function isPublicRoute(pathname: string) {
   return PUBLIC_ROUTES.some((r) => pathname.startsWith(r));
@@ -59,11 +68,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Usuário autenticado tentando acessar /login → dashboard
+  // Usuário autenticado tentando acessar /login → redireciona para a página inicial do papel
   if (user && pathname === "/login") {
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = "/dashboard";
-    return NextResponse.redirect(dashboardUrl);
+    const role = user.user_metadata?.role as UserRole | undefined;
+    const home = homeFor(role);
+    const homeUrl = request.nextUrl.clone();
+    homeUrl.pathname = home;
+    return NextResponse.redirect(homeUrl);
   }
 
   // Checar se usuário está inativo via metadata (sem DB query)
@@ -75,15 +86,23 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(blockedUrl);
     }
 
+    const role = user.user_metadata?.role as UserRole | undefined;
+
     // Verificar permissão ADMIN para rotas administrativas
     if (isAdminRoute(pathname)) {
-      const role = user.user_metadata?.role as UserRole | undefined;
       if (role !== "ADMIN") {
-        const dashboardUrl = request.nextUrl.clone();
-        dashboardUrl.pathname = "/dashboard";
-        dashboardUrl.searchParams.set("error", "sem-permissao");
-        return NextResponse.redirect(dashboardUrl);
+        const dest = request.nextUrl.clone();
+        dest.pathname = homeFor(role);
+        dest.searchParams.set("error", "sem-permissao");
+        return NextResponse.redirect(dest);
       }
+    }
+
+    // Bloquear /dashboard para papéis sem acesso (ex.: SOLICITANTE, APROVADOR)
+    if (pathname.startsWith("/dashboard") && !DASHBOARD_ROLES.includes(role as UserRole)) {
+      const dest = request.nextUrl.clone();
+      dest.pathname = "/demandas";
+      return NextResponse.redirect(dest);
     }
   }
 

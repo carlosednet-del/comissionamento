@@ -40,7 +40,7 @@ export function LoginForm() {
       return;
     }
 
-    router.push("/dashboard");
+    router.push(result.data?.redirectTo ?? "/demandas");
     router.refresh();
   }
 

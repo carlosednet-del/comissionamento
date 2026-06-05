@@ -1,7 +1,8 @@
 "use server";
 
-import { prisma }    from "@/lib/prisma";
-import { requireAuth } from "@/server/auth/helpers";
+import { prisma }          from "@/lib/prisma";
+import { requireAuth }     from "@/server/auth/helpers";
+import { applyDeflator }   from "@/lib/demand-pricing";
 import type { ActionResult } from "@/types";
 
 // ── Tipos públicos ─────────────────────────────────────────────────
@@ -12,9 +13,16 @@ export type StatementDemand = {
   status:               string;
   estimatedHours:       number | null;
   estimatedDemandValue: number | null;
-  approvedAt:           string | null; // ISO string — seguro para serializar
+  // Deflator (relevante para demandas homologadas)
+  deflatedValue:        number;
+  workingDaysLate:      number;
+  deflatorFactor:       number;
+  isLate:               boolean;
+  // Datas — ISO string para serializar
+  approvedAt:           string | null;
   homologationDate:     string | null;
   plannedDeliveryDate:  string | null;
+  actualDeliveryDate:   string | null;
 };
 
 export type CollaboratorStatementData = {
@@ -44,6 +52,7 @@ export async function getCollaboratorStatementAction(
       approvedAt:           true,
       homologationDate:     true,
       plannedDeliveryDate:  true,
+      actualDeliveryDate:   true,
     } as const;
 
     const [approvedRaw, homologatedRaw] = await Promise.all([
@@ -59,22 +68,33 @@ export async function getCollaboratorStatementAction(
       }),
     ]);
 
-    const toStatement = (d: typeof approvedRaw[number]): StatementDemand => ({
-      id:                   d.id,
-      title:                d.title,
-      status:               d.status,
-      estimatedHours:       d.estimatedHours,
-      estimatedDemandValue: d.estimatedDemandValue,
-      approvedAt:           d.approvedAt?.toISOString() ?? null,
-      homologationDate:     d.homologationDate?.toISOString() ?? null,
-      plannedDeliveryDate:  d.plannedDeliveryDate?.toISOString() ?? null,
-    });
+    const toStatement = (d: typeof approvedRaw[number], isHomologated = false): StatementDemand => {
+      const originalValue = d.estimatedDemandValue ?? 0;
+      const deflResult    = isHomologated
+        ? applyDeflator(originalValue, d.actualDeliveryDate, d.plannedDeliveryDate)
+        : { originalValue, deflatedValue: originalValue, workingDaysLate: 0, factor: 1, isLate: false };
+      return {
+        id:                   d.id,
+        title:                d.title,
+        status:               d.status,
+        estimatedHours:       d.estimatedHours,
+        estimatedDemandValue: d.estimatedDemandValue,
+        deflatedValue:        deflResult.deflatedValue,
+        workingDaysLate:      deflResult.workingDaysLate,
+        deflatorFactor:       deflResult.factor,
+        isLate:               deflResult.isLate,
+        approvedAt:           d.approvedAt?.toISOString() ?? null,
+        homologationDate:     d.homologationDate?.toISOString() ?? null,
+        plannedDeliveryDate:  d.plannedDeliveryDate?.toISOString() ?? null,
+        actualDeliveryDate:   d.actualDeliveryDate?.toISOString() ?? null,
+      };
+    };
 
     return {
       success: true,
       data: {
-        approvedDemands:    approvedRaw.map(toStatement),
-        homologatedDemands: homologatedRaw.map(toStatement),
+        approvedDemands:    approvedRaw.map((d) => toStatement(d, false)),
+        homologatedDemands: homologatedRaw.map((d) => toStatement(d, true)),
       },
     };
   } catch (e) {

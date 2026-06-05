@@ -5,7 +5,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Eye, Loader2, Clock, TrendingUp, CheckCircle2, Wallet, BadgeDollarSign, ExternalLink } from "lucide-react";
+import { Eye, Loader2, Clock, TrendingUp, CheckCircle2, Wallet, BadgeDollarSign, ExternalLink, AlertTriangle } from "lucide-react";
 import { getCollaboratorStatementAction } from "@/server/actions/dashboardActions";
 import type { CollaboratorStatementData, StatementDemand } from "@/server/actions/dashboardActions";
 import type { CollaboratorMonthlySummary } from "@/services/dashboardService";
@@ -56,14 +56,22 @@ function DemandRow({
   dateLabel,
   dateValue,
   valueColor,
+  showDeflator = false,
 }: {
-  d:          StatementDemand;
-  dateLabel:  string;
-  dateValue:  string | null;
-  valueColor: string;
+  d:              StatementDemand;
+  dateLabel:      string;
+  dateValue:      string | null;
+  valueColor:     string;
+  showDeflator?:  boolean;
 }) {
+  const original = d.estimatedDemandValue ?? 0;
+  const hasDefl  = showDeflator && d.isLate && d.deflatorFactor < 1;
+
   return (
-    <tr className="border-b last:border-b-0 hover:bg-muted/30 transition-colors">
+    <tr className={cn(
+      "border-b last:border-b-0 transition-colors",
+      hasDefl ? "bg-red-50/40 hover:bg-red-50/70" : "hover:bg-muted/30",
+    )}>
       <td className="py-2.5 pl-3 pr-2">
         <a
           href={`/demandas/${d.id}`}
@@ -76,11 +84,30 @@ function DemandRow({
           </span>
           <ExternalLink className="h-3 w-3 mt-0.5 shrink-0 opacity-0 group-hover:opacity-60 transition-opacity" />
         </a>
-        <span className="text-[10px] text-muted-foreground mt-0.5">
-          {dateLabel}: {fmtDate(dateValue)}
-        </span>
+        <div className="flex flex-wrap items-center gap-x-2 mt-0.5">
+          <span className="text-[10px] text-muted-foreground">
+            {dateLabel}: {fmtDate(dateValue)}
+          </span>
+          {showDeflator && d.plannedDeliveryDate && d.actualDeliveryDate && (
+            <span className="text-[10px] text-muted-foreground">
+              · Prazo: {fmtDate(d.plannedDeliveryDate)} → Entrega: {fmtDate(d.actualDeliveryDate)}
+            </span>
+          )}
+        </div>
+        {/* Badge de atraso */}
+        {hasDefl && (
+          <span className="inline-flex items-center gap-1 mt-1 rounded-full border border-red-200 bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+            <AlertTriangle className="h-2.5 w-2.5" />
+            {d.workingDaysLate} DU de atraso · fator {d.deflatorFactor.toFixed(2).replace(".", ",")}
+          </span>
+        )}
+        {showDeflator && !d.isLate && d.actualDeliveryDate && (
+          <span className="inline-flex items-center gap-1 mt-1 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-700">
+            ✓ No prazo
+          </span>
+        )}
       </td>
-      <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground text-sm whitespace-nowrap">
+      <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground text-sm whitespace-nowrap align-top pt-3">
         {d.estimatedHours != null && d.estimatedHours > 0 ? (
           <span className="flex items-center justify-end gap-1">
             <Clock className="h-3 w-3" />
@@ -88,11 +115,23 @@ function DemandRow({
           </span>
         ) : <span className="opacity-40">—</span>}
       </td>
-      <td className="py-2.5 pl-3 pr-4 text-right tabular-nums whitespace-nowrap">
-        {d.estimatedDemandValue != null && d.estimatedDemandValue > 0 ? (
-          <span className={cn("font-mono font-semibold text-sm", valueColor)}>
-            {BRL.format(d.estimatedDemandValue)}
-          </span>
+      <td className="py-2.5 pl-3 pr-4 text-right tabular-nums whitespace-nowrap align-top pt-3">
+        {original > 0 ? (
+          <div className="flex flex-col items-end gap-0.5">
+            {/* Valor original (riscado se houve deflação) */}
+            <span className={cn(
+              "font-mono font-semibold text-sm",
+              hasDefl ? "line-through text-muted-foreground/50 text-xs" : valueColor,
+            )}>
+              {BRL.format(original)}
+            </span>
+            {/* Valor deflacionado */}
+            {hasDefl && (
+              <span className="font-mono font-semibold text-sm text-red-600">
+                {BRL.format(d.deflatedValue)}
+              </span>
+            )}
+          </div>
         ) : <span className="text-muted-foreground/40 text-xs">—</span>}
       </td>
     </tr>
@@ -105,23 +144,29 @@ function DemandSection({
   title,
   icon: Icon,
   demands,
-  total,
+  rawTotal,
+  deflatedTotal,
   totalHours,
   dateLabel,
   dateKey,
   valueColor,
   headerColor,
+  showDeflator = false,
 }: {
-  title:       string;
-  icon:        React.ElementType;
-  demands:     StatementDemand[];
-  total:       number;
-  totalHours:  number;
-  dateLabel:   string;
-  dateKey:     keyof StatementDemand;
-  valueColor:  string;
-  headerColor: string;
+  title:          string;
+  icon:           React.ElementType;
+  demands:        StatementDemand[];
+  rawTotal:       number;
+  deflatedTotal:  number;
+  totalHours:     number;
+  dateLabel:      string;
+  dateKey:        keyof StatementDemand;
+  valueColor:     string;
+  headerColor:    string;
+  showDeflator?:  boolean;
 }) {
+  const hasDeflation = showDeflator && rawTotal !== deflatedTotal;
+
   return (
     <div className="rounded-lg border overflow-hidden">
       <div className={cn("flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wide", headerColor)}>
@@ -135,7 +180,14 @@ function DemandSection({
               <Clock className="h-3 w-3" />{totalHours.toFixed(1)}h
             </span>
           )}
-          <span className={valueColor}>{BRL.format(total)}</span>
+          {hasDeflation ? (
+            <span className="flex items-center gap-1.5">
+              <span className="line-through text-muted-foreground/60 text-[11px]">{BRL.format(rawTotal)}</span>
+              <span className={valueColor}>{BRL.format(deflatedTotal)}</span>
+            </span>
+          ) : (
+            <span className={valueColor}>{BRL.format(deflatedTotal)}</span>
+          )}
         </span>
       </div>
 
@@ -154,7 +206,7 @@ function DemandSection({
                 Horas
               </th>
               <th className="py-1.5 pl-3 pr-4 text-right text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                Valor
+                {showDeflator ? "Valor (após deflator)" : "Valor"}
               </th>
             </tr>
           </thead>
@@ -166,6 +218,7 @@ function DemandSection({
                 dateLabel={dateLabel}
                 dateValue={d[dateKey] as string | null}
                 valueColor={valueColor}
+                showDeflator={showDeflator}
               />
             ))}
           </tbody>
@@ -321,12 +374,14 @@ export function CollaboratorStatementModal({ c, month, year }: Props) {
                   title="Aprovadas no período"
                   icon={TrendingUp}
                   demands={data.approvedDemands}
-                  total={c.estimatedValue}
+                  rawTotal={c.estimatedValue}
+                  deflatedTotal={c.estimatedValue}
                   totalHours={c.approvedHours}
                   dateLabel="Aprovada em"
                   dateKey="approvedAt"
                   valueColor="text-emerald-700"
                   headerColor="bg-emerald-50 text-emerald-800 border-b"
+                  showDeflator={false}
                 />
 
                 {/* Demandas homologadas */}
@@ -334,12 +389,14 @@ export function CollaboratorStatementModal({ c, month, year }: Props) {
                   title="Homologadas no período"
                   icon={CheckCircle2}
                   demands={data.homologatedDemands}
-                  total={c.finalValue}
+                  rawTotal={c.homologatedRawValue}
+                  deflatedTotal={c.finalValue}
                   totalHours={c.homologatedHours}
                   dateLabel="Homologada em"
                   dateKey="homologationDate"
                   valueColor="text-green-700"
                   headerColor="bg-green-50 text-green-800 border-b"
+                  showDeflator={true}
                 />
 
                 {/* Resumo financeiro — estilo extrato bancário */}
@@ -350,15 +407,34 @@ export function CollaboratorStatementModal({ c, month, year }: Props) {
                   </div>
 
                   <div className="divide-y">
+                    {/* Linha bruta — só aparece se houve deflação */}
+                    {c.deflationTotal > 0 && (
+                      <FinancialRow
+                        label="Subtotal bruto homologado"
+                        value={BRL.format(c.homologatedRawValue)}
+                        valueClass="text-muted-foreground"
+                      />
+                    )}
+
+                    {/* Deflação */}
+                    {c.deflationTotal > 0 && (
+                      <FinancialRow
+                        label={`(−) Deflação por atraso`}
+                        value={`− ${BRL.format(c.deflationTotal)}`}
+                        valueClass="text-red-600"
+                      />
+                    )}
+
                     <FinancialRow
-                      label="Valor final homologado"
+                      label={c.deflationTotal > 0 ? "Valor final após deflação" : "Valor final homologado"}
                       value={BRL.format(c.finalValue)}
                       valueClass="text-green-700"
+                      border={c.deflationTotal > 0}
                     />
 
                     {c.monthlyCap !== null && (
                       <FinancialRow
-                        label={`Teto mensal${c.capReached ? " (atingido ⚠)" : ""}`}
+                        label={`Teto mensal${c.capReached ? " ⚠ atingido" : ""}`}
                         value={BRL.format(c.monthlyCap)}
                         valueClass={c.capReached ? "text-amber-600" : "text-muted-foreground"}
                       />
@@ -392,10 +468,19 @@ export function CollaboratorStatementModal({ c, month, year }: Props) {
                   </div>
 
                   {/* Rodapé informativo */}
-                  <div className="bg-muted/20 px-4 py-2.5 border-t flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                    <BadgeDollarSign className="h-3 w-3 shrink-0" />
-                    Valor a pagar = max(0, min(final − mínimo, teto − mínimo)).
-                    Deflator por atraso e fechamento de RV ainda não implementados.
+                  <div className="bg-muted/20 px-4 py-2.5 border-t space-y-1">
+                    <p className="flex items-start gap-1.5 text-[10px] text-muted-foreground">
+                      <BadgeDollarSign className="h-3 w-3 shrink-0 mt-0.5" />
+                      A pagar = max(0, min(final − mínimo, teto − mínimo)).
+                    </p>
+                    <p className="flex items-start gap-1.5 text-[10px] text-muted-foreground">
+                      <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+                      Deflator: 1DU = ×0,75 · 2DU = ×0,50 · 3DU = ×0,25 · 4DU = ×0,10 · 5+DU = ×0.
+                      Atraso = data de entrega real vs. prazo previsto (dias úteis seg–sex).
+                    </p>
+                    <p className="text-[10px] text-muted-foreground italic pl-4">
+                      Fechamento de RV ainda não implementado.
+                    </p>
                   </div>
                 </div>
               </>

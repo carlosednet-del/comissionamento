@@ -71,6 +71,84 @@ export const ROI_LABELS: Record<RoiLevel, string> = {
   ESTRATEGICO: "Estratégico",
 };
 
+// ── Deflator por atraso ──────────────────────────────────────────────────────
+/**
+ * Fator multiplicador aplicado ao valor da demanda conforme dias úteis de atraso.
+ * 0 DU  = sem atraso → fator 1,00 (nenhum desconto)
+ * 1 DU  → 0,75  (−25 %)
+ * 2 DU  → 0,50  (−50 %)
+ * 3 DU  → 0,25  (−75 %)
+ * 4 DU  → 0,10  (−90 %)
+ * 5+ DU → 0,00  (valor zerado)
+ *
+ * "DU" = Dia Útil = dias de semana (seg–sex), feriados nacionais não considerados.
+ * Base: actualDeliveryDate − plannedDeliveryDate.
+ */
+export const DEFLATOR_FACTORS: Record<number, number> = {
+  0: 1.00,
+  1: 0.75,
+  2: 0.50,
+  3: 0.25,
+  4: 0.10,
+};
+
+export function getDeflatorFactor(workingDaysLate: number): number {
+  if (workingDaysLate <= 0) return 1.00;
+  return DEFLATOR_FACTORS[workingDaysLate] ?? 0;
+}
+
+/** Conta dias úteis (seg–sex) entre duas datas (exclusive start, inclusive end). */
+export function countWorkingDays(start: Date, end: Date): number {
+  if (end <= start) return 0;
+  let count = 0;
+  const d = new Date(start);
+  d.setDate(d.getDate() + 1);
+  const endNorm = new Date(end);
+  endNorm.setHours(23, 59, 59, 999);
+  while (d <= endNorm) {
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) count++;
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
+
+export type DeflatorResult = {
+  originalValue:    number;
+  deflatedValue:    number;
+  workingDaysLate:  number;
+  factor:           number;
+  isLate:           boolean;
+};
+
+/**
+ * Calcula o valor deflacionado de uma demanda com base nas datas de entrega.
+ * Se não houver datas suficientes, retorna sem deflação (fator 1,00).
+ */
+export function applyDeflator(
+  value:          number,
+  actualDelivery: Date | string | null | undefined,
+  plannedDelivery: Date | string | null | undefined,
+): DeflatorResult {
+  if (!actualDelivery || !plannedDelivery) {
+    return { originalValue: value, deflatedValue: value, workingDaysLate: 0, factor: 1.00, isLate: false };
+  }
+  const actual  = new Date(actualDelivery);
+  const planned = new Date(plannedDelivery);
+  actual.setHours(0, 0, 0, 0);
+  planned.setHours(0, 0, 0, 0);
+
+  if (actual <= planned) {
+    return { originalValue: value, deflatedValue: value, workingDaysLate: 0, factor: 1.00, isLate: false };
+  }
+
+  const workingDaysLate = countWorkingDays(planned, actual);
+  const factor          = getDeflatorFactor(workingDaysLate);
+  const deflatedValue   = Math.round(value * factor * 100) / 100;
+
+  return { originalValue: value, deflatedValue, workingDaysLate, factor, isLate: true };
+}
+
 // ── Resultado do cálculo ─────────────────────────────────────────────────────
 
 export type DemandPricingResult = {

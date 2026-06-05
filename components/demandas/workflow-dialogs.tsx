@@ -170,7 +170,7 @@ export function SendToHomologationDialog({ demandId, evidenceCount, trigger }: S
         {evidenceCount === 0 && (
           <Alert>
             <AlertDescription className="text-amber-700">
-              ⚠ Nenhuma evidência cadastrada. Você precisa adicionar ao menos uma evidência antes de enviar para homologação.
+              ⚠ Nenhuma evidência cadastrada. Recomendamos anexar ao menos uma evidência (print, PR, documento) antes de enviar para homologação.
             </AlertDescription>
           </Alert>
         )}
@@ -220,7 +220,11 @@ export function SendToHomologationDialog({ demandId, evidenceCount, trigger }: S
               <Button type="button" variant="outline" onClick={close} disabled={form.formState.isSubmitting}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting || evidenceCount === 0}>
+              <Button
+                type="submit"
+                disabled={form.formState.isSubmitting}
+                className="bg-orange-500 hover:bg-orange-600 text-white"
+              >
                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Enviar para homologação
               </Button>

@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * MonthlySummaryTable — Tabela de resultados financeiros por colaborador
  *
@@ -28,6 +30,7 @@ import {
   ArrowUp,
   ArrowUpDown,
 } from "lucide-react";
+import { CollaboratorStatementModal } from "./collaborator-statement-modal";
 
 // ── Formatação ────────────────────────────────────────────────────
 
@@ -85,6 +88,7 @@ function SortIcon({ col, sortBy, sortDir }: { col: string; sortBy: string; sortD
 
 export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
   const { month, year, collaborators, totals } = data;
+  // month e year extraídos de data para passar ao modal de extrato
   const monthLabel = `${MONTH_NAMES[month]} / ${year}`;
 
   if (collaborators.length === 0) {
@@ -191,6 +195,7 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
           <thead>
             {/* Linha 1 — grupos */}
             <tr className="border-b bg-muted/30">
+              <th className="w-8 px-2 py-3" rowSpan={2} />
               <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide" rowSpan={2}>
                 Colaborador
               </th>
@@ -248,6 +253,10 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
                   i % 2 === 0 ? "bg-background" : "bg-muted/10",
                 )}
               >
+                {/* Botão olho */}
+                <td className="px-2 py-3 text-center">
+                  <CollaboratorStatementModal c={c} month={month} year={year} />
+                </td>
                 {/* Nome */}
                 <td className="px-4 py-3 font-medium text-brand-text-dark">{c.assigneeName}</td>
 
@@ -350,6 +359,7 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
           {collaborators.length > 1 && (
             <tfoot>
               <tr className="border-t-2 bg-muted/40 font-semibold">
+                <td className="px-2 py-3" />
                 <td className="px-4 py-3 text-xs uppercase tracking-wide text-muted-foreground" colSpan={2}>
                   Total — {collaborators.length} colaborador{collaborators.length !== 1 ? "es" : ""}
                 </td>

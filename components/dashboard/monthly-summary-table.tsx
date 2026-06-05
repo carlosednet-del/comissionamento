@@ -29,6 +29,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  TrendingDown,
 } from "lucide-react";
 import { CollaboratorStatementModal } from "./collaborator-statement-modal";
 
@@ -170,7 +171,7 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
       </div>
 
       {/* ── Mini-cards — resultado financeiro ────────────────────── */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <SummaryMini
           label="Total mínimos garantidos"
           value={BRL.format(totals.totalSalary)}
@@ -178,6 +179,14 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
           icon={Wallet}
           color="text-slate-600"
           bg="bg-slate-50 border-slate-200"
+        />
+        <SummaryMini
+          label="Total deflacionado"
+          value={totals.totalDeflation > 0 ? `− ${BRL.format(totals.totalDeflation)}` : BRL.format(0)}
+          sub={totals.totalDeflation > 0 ? "desconto por atraso na entrega" : "sem atrasos no período"}
+          icon={TrendingDown}
+          color={totals.totalDeflation > 0 ? "text-red-600" : "text-muted-foreground"}
+          bg={totals.totalDeflation > 0 ? "bg-red-50 border-red-200" : "bg-muted/30 border-muted"}
         />
         <SummaryMini
           label="Total a pagar"
@@ -208,6 +217,9 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
               <th className="px-3 py-2 text-center text-xs font-semibold text-green-700 uppercase tracking-wide border-l border-dashed" colSpan={4}>
                 Homologadas no período
               </th>
+              <th className="px-3 py-2 text-center text-xs font-semibold text-red-600 uppercase tracking-wide border-l border-dashed" colSpan={1}>
+                Deflação
+              </th>
               <th className="px-3 py-2 text-center text-xs font-semibold text-blue-700 uppercase tracking-wide border-l border-dashed" colSpan={2}>
                 Carteira total
               </th>
@@ -231,6 +243,8 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
                 Valor final <SortIcon col="finalValue" sortBy={sortBy} sortDir={sortDir} />
               </th>
               <th className="px-3 py-2 text-right text-[11px] font-semibold text-amber-600 uppercase tracking-wide">Teto</th>
+              {/* Deflação */}
+              <th className="px-3 py-2 text-right text-[11px] font-semibold text-red-600 uppercase tracking-wide border-l border-dashed">Desconto</th>
               {/* Carteira */}
               <th className={cn("px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide border-l border-dashed", sortBy === "approvedCount" ? "text-emerald-700" : "text-muted-foreground")}>
                 Dem. <SortIcon col="approvedCount" sortBy={sortBy} sortDir={sortDir} />
@@ -325,6 +339,20 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
                   )}
                 </td>
 
+                {/* Deflação */}
+                <td className="px-3 py-3 text-right border-l border-dashed">
+                  {c.deflationTotal > 0 ? (
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span className="font-mono font-semibold text-red-600 text-sm tabular-nums">
+                        − {BRL.format(c.deflationTotal)}
+                      </span>
+                      <span className="text-[9px] text-red-400 uppercase tracking-wide">deflator</span>
+                    </div>
+                  ) : (
+                    <span className="opacity-40 text-xs">—</span>
+                  )}
+                </td>
+
                 {/* Carteira */}
                 <td className="px-3 py-3 text-right tabular-nums text-muted-foreground border-l border-dashed">
                   {c.portfolioCount > 0 ? c.portfolioCount : <span className="opacity-40">—</span>}
@@ -388,6 +416,14 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
                   <span className="font-mono text-green-700">{BRL.format(totals.finalValue)}</span>
                 </td>
                 <td className="px-3 py-3 text-right text-muted-foreground/40 text-xs">—</td>
+                {/* Deflação total */}
+                <td className="px-3 py-3 text-right border-l border-dashed">
+                  {totals.totalDeflation > 0 ? (
+                    <span className="font-mono text-red-600">− {BRL.format(totals.totalDeflation)}</span>
+                  ) : (
+                    <span className="text-muted-foreground/40 text-xs">—</span>
+                  )}
+                </td>
                 {/* Carteira */}
                 <td className="px-3 py-3 text-right tabular-nums border-l border-dashed">{totals.portfolioCount}</td>
                 <td className="px-3 py-3 text-right">

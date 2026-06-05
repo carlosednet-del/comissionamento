@@ -16,9 +16,19 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { activateUserAction, deactivateUserAction } from "@/server/actions/userActions";
+import { activateUserAction, deactivateUserAction, deleteUserAction } from "@/server/actions/userActions";
 import {
-  MoreHorizontal, Pencil, UserCheck, UserX,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  MoreHorizontal, Pencil, UserCheck, UserX, Trash2,
   Search, ChevronsUpDown, ChevronUp, ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -50,6 +60,9 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
   const [searchPending, startSearch] = useTransition();
   const [actionPending, startAction] = useTransition();
   const [loadingId, setLoadingId]    = useState<string | null>(null);
+
+  // Estado para o dialog de exclusão
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   // Busca (URL-based → servidor filtra → contagem correta no cabeçalho)
   const [localSearch, setLocalSearch] = useState(defaultSearch);
@@ -112,6 +125,18 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
     });
   }
 
+  function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    setDeleteTarget(null);
+    setLoadingId(id);
+    startAction(async () => {
+      await deleteUserAction(id);
+      router.refresh();
+      setLoadingId(null);
+    });
+  }
+
   // ── Cabeçalho de coluna clicável ────────────────────────────────
   function SortHead({ field, children, className }: {
     field: SortField; children: React.ReactNode; className?: string;
@@ -130,6 +155,49 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
   }
 
   return (
+    <>
+    {/* ── Dialog de confirmação de exclusão ──────────────────────── */}
+    <AlertDialog open={!!deleteTarget} onOpenChange={(v) => { if (!v) setDeleteTarget(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+            <Trash2 className="h-5 w-5" />
+            Excluir usuário permanentemente
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-3 text-sm">
+              <p>
+                Você está prestes a excluir <strong className="text-foreground">{deleteTarget?.name}</strong> do sistema.
+              </p>
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-1 text-destructive">
+                <p className="font-semibold">Esta ação é irreversível e irá remover:</p>
+                <ul className="list-disc list-inside space-y-0.5 text-xs">
+                  <li>Todas as demandas criadas pelo usuário</li>
+                  <li>Todas as evidências adicionadas pelo usuário</li>
+                  <li>Todos os logs de auditoria do usuário</li>
+                  <li>O acesso ao sistema (conta Supabase Auth)</li>
+                  <li>Qualquer outro rastro no banco de dados</li>
+                </ul>
+              </div>
+              <p className="text-muted-foreground">
+                Demandas em andamento onde este usuário era responsável serão mantidas, mas ficarão sem responsável atribuído.
+              </p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDeleteConfirm}
+            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Sim, excluir permanentemente
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
     <div className="space-y-3">
       {/* ── Barra de busca ───────────────────────────────────────── */}
       <div className="relative max-w-sm">
@@ -212,6 +280,15 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
                           Ativar
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive font-medium"
+                        disabled={user.id === currentUserId}
+                        onClick={() => setDeleteTarget({ id: user.id, name: user.name })}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Excluir permanentemente
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -221,5 +298,6 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
         </Table>
       </div>
     </div>
+    </>
   );
 }

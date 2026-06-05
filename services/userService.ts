@@ -2,6 +2,7 @@ import { userRepository } from "@/repositories/userRepository";
 import { auditService } from "@/services/auditService";
 import { authService } from "@/services/authService";
 import { permissionService } from "@/services/permissionService";
+import { prisma } from "@/lib/prisma";
 import { createUserSchema, updateUserSchema, type CreateUserInput, type UpdateUserInput } from "@/validations/user";
 import type { UserFilters } from "@/types";
 import type { UserForPermission } from "@/server/auth/permissions";
@@ -171,5 +172,65 @@ export const userService = {
     });
 
     return updated;
+  },
+
+  /**
+   * Exclusão permanente de usuário.
+   *
+   * Remove todos os rastros do usuário no sistema:
+   *  1. Evidências criadas por ele (em qualquer demanda)
+   *  2. Logs de auditoria criados por ele
+   *  3. Demandas que ele criou (+ cascade nas evidências dessas demandas)
+   *  4. Nullifica participação como responsável, aprovador, homologador e cancelador
+   *     em demandas de terceiros
+   *  5. Remove o registro User do banco
+   *  6. Remove o usuário do Supabase Auth
+   *
+   * Restrições:
+   *  · Apenas ADMIN pode executar
+   *  · ADMIN não pode excluir a si mesmo
+   */
+  async deleteUser(id: string, actor: UserForPermission) {
+    if (actor.role !== "ADMIN") {
+      throw new Error("Apenas administradores podem excluir usuários.");
+    }
+    if (actor.id === id) {
+      throw new Error("Você não pode excluir a sua própria conta.");
+    }
+
+    const existing = await userRepository.findById(id);
+    if (!existing) throw new UserNotFoundError(id);
+
+    // ── Remoção em transação ─────────────────────────────────────
+    await prisma.$transaction(async (tx) => {
+      // 1. Evidências criadas por este usuário em qualquer demanda
+      await tx.demandEvidence.deleteMany({ where: { createdById: id } });
+
+      // 2. Logs de auditoria criados por este usuário
+      await tx.auditLog.deleteMany({ where: { userId: id } });
+
+      // 3. Demandas criadas por este usuário
+      //    (cascade no schema → demand_evidences são deletadas automaticamente)
+      await tx.demand.deleteMany({ where: { creatorId: id } });
+
+      // 4. Nullifica referências em demandas de outros usuários
+      await tx.demand.updateMany({ where: { assigneeId:      id }, data: { assigneeId:      null } });
+      await tx.demand.updateMany({ where: { approvedById:    id }, data: { approvedById:    null } });
+      await tx.demand.updateMany({ where: { homologatedById: id }, data: { homologatedById: null } });
+      await tx.demand.updateMany({ where: { canceledById:    id }, data: { canceledById:    null } });
+
+      // 5. Remove o usuário do banco
+      await tx.user.delete({ where: { id } });
+    });
+
+    // 6. Remove do Supabase Auth (fora da transação — operação externa)
+    if (existing.authUserId) {
+      try {
+        await authService.deleteAuthUser(existing.authUserId);
+      } catch {
+        // Falha silenciosa: o usuário já foi removido do banco — não reverter
+        // (pode já ter sido deletado do Auth manualmente)
+      }
+    }
   },
 };

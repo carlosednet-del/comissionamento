@@ -77,6 +77,16 @@ export async function deactivateUserAction(id: string): Promise<ActionResult> {
   }
 }
 
+export async function deleteUserAction(id: string): Promise<ActionResult> {
+  try {
+    const actor = await requireAuth();
+    await userService.deleteUser(id, toPermissionUser(actor));
+    return { success: true, data: undefined, message: "Usuário excluído permanentemente" };
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
 export async function getCurrentUserAction() {
   const { getCurrentUser } = await import("@/server/auth/helpers");
   return getCurrentUser();

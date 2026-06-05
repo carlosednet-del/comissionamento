@@ -5,6 +5,7 @@ import { DemandKanbanBoard }             from "@/components/demandas/kanban/dema
 import { DemandKanbanFilters }           from "@/components/demandas/kanban/demand-kanban-filters";
 import { Button }  from "@/components/ui/button";
 import { LayoutList, LayoutGrid } from "lucide-react";
+import { prisma } from "@/lib/prisma";
 import type { DemandPriority, DemandType, ComplexityLevel, RoiLevel } from "@prisma/client";
 import { Suspense } from "react";
 
@@ -19,7 +20,11 @@ type SearchParams = {
   deadlineStatus?: string;
   sortBy?:        string;
   onlyMine?:      string;
+  assigneeId?:    string;
+  requesterName?: string;
 };
+
+export type KanbanAssignee = { id: string; name: string; role: string };
 
 function KanbanSkeleton() {
   return (
@@ -49,6 +54,8 @@ async function KanbanContent({ searchParams }: { searchParams: SearchParams }) {
     deadlineStatus: (sp.deadlineStatus as "overdue" | "today" | "soon" | "ok") || undefined,
     sortBy:         (sp.sortBy as "priority" | "deadline" | "created" | "title") || undefined,
     onlyMine:       sp.onlyMine === "true",
+    assigneeId:     sp.assigneeId    || undefined,
+    requesterName:  sp.requesterName || undefined,
   });
 
   return <DemandKanbanBoard board={board} actor={actor} />;
@@ -63,8 +70,25 @@ export default async function KanbanPage({
   const actor   = toPermissionUser(session);
   const sp      = await searchParams;
 
-  // Roles que não precisam do toggle "Minhas demandas" (DEV já é filtrado automaticamente)
+  // Roles que não precisam do toggle "Minhas demandas" (técnicos já são filtrados automaticamente)
   const showMyDemandsToggle = actor.role !== "FINANCEIRO" && actor.role !== "APROVADOR";
+
+  // Filtro de responsável só faz sentido para quem enxerga todos (ADMIN / GESTOR / APROVADOR / FINANCEIRO)
+  const showAssigneeFilter =
+    actor.role === "ADMIN" || actor.role === "GESTOR" ||
+    actor.role === "APROVADOR" || actor.role === "FINANCEIRO";
+
+  // Lista de usuários assignáveis para o dropdown de responsável
+  const assignees: KanbanAssignee[] = showAssigneeFilter
+    ? await prisma.user.findMany({
+        where: {
+          role:     { in: ["DEV", "GESTOR", "ARQUITETO", "SUPORTE"] },
+          isActive: true,
+        },
+        select: { id: true, name: true, role: true },
+        orderBy: { name: "asc" },
+      })
+    : [];
 
   return (
     <div className="space-y-4">
@@ -93,7 +117,11 @@ export default async function KanbanPage({
       </div>
 
       {/* Filtros */}
-      <DemandKanbanFilters showMyDemandsToggle={showMyDemandsToggle} />
+      <DemandKanbanFilters
+        showMyDemandsToggle={showMyDemandsToggle}
+        showAssigneeFilter={showAssigneeFilter}
+        assignees={assignees}
+      />
 
       {/* Board */}
       <Suspense fallback={<KanbanSkeleton />}>

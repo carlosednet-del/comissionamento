@@ -10,6 +10,7 @@ export type KanbanFilters = {
   demandType?:    DemandType;
   assigneeId?:    string;
   requesterArea?: string;
+  requesterName?: string;
   complexity?:    ComplexityLevel;
   roi?:           RoiLevel;
   deadlineStatus?: "overdue" | "today" | "soon" | "ok";
@@ -140,6 +141,7 @@ export const demandRepository = {
       demandType,
       assigneeId,
       requesterArea,
+      requesterName,
       complexity,
       roi,
       deadlineStatus,
@@ -192,6 +194,9 @@ export const demandRepository = {
         : {}),
       ...(requesterArea  && {
         requesterArea: { contains: requesterArea, mode: "insensitive" as const },
+      }),
+      ...(requesterName  && {
+        requesterName: { contains: requesterName, mode: "insensitive" as const },
       }),
       ...(search && {
         OR: [

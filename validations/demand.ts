@@ -154,6 +154,7 @@ export const kanbanFiltersSchema = z.object({
   demandType:    z.nativeEnum(DemandType).optional(),
   assigneeId:    z.string().optional(),
   requesterArea: z.string().optional(),
+  requesterName: z.string().optional(),
   complexity:    z.nativeEnum(ComplexityLevel).optional(),
   roi:           z.nativeEnum(RoiLevel).optional(),
   deadlineStatus: z.enum(["overdue", "today", "soon", "ok"]).optional(),

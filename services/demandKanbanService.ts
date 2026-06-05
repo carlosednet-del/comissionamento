@@ -113,6 +113,7 @@ export const demandKanbanService = {
       demandType:     filters.demandType,
       assigneeId:     filters.assigneeId ?? devFilter.assigneeId,
       requesterArea:  filters.requesterArea,
+      requesterName:  filters.requesterName,
       complexity:     filters.complexity,
       roi:            filters.roi,
       deadlineStatus: filters.deadlineStatus,

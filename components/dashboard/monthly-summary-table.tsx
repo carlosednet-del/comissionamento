@@ -244,7 +244,7 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
               </th>
               <th className="px-3 py-2 text-right text-[11px] font-semibold text-amber-600 uppercase tracking-wide">Teto</th>
               {/* Deflação */}
-              <th className="px-3 py-2 text-right text-[11px] font-semibold text-red-600 uppercase tracking-wide border-l border-dashed">Desconto</th>
+              <th className="px-4 py-2 text-right text-[11px] font-semibold text-red-600 uppercase tracking-wide border-l border-dashed min-w-[140px]">Desconto</th>
               {/* Carteira */}
               <th className={cn("px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide border-l border-dashed", sortBy === "approvedCount" ? "text-emerald-700" : "text-muted-foreground")}>
                 Dem. <SortIcon col="approvedCount" sortBy={sortBy} sortDir={sortDir} />
@@ -340,14 +340,11 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
                 </td>
 
                 {/* Deflação */}
-                <td className="px-3 py-3 text-right border-l border-dashed">
+                <td className="px-4 py-3 text-right border-l border-dashed min-w-[140px]">
                   {c.deflationTotal > 0 ? (
-                    <div className="flex flex-col items-end gap-0.5">
-                      <span className="font-mono font-semibold text-red-600 text-sm tabular-nums">
-                        − {BRL.format(c.deflationTotal)}
-                      </span>
-                      <span className="text-[9px] text-red-400 uppercase tracking-wide">deflator</span>
-                    </div>
+                    <span className="font-mono font-semibold text-red-600 tabular-nums">
+                      − {BRL.format(c.deflationTotal)}
+                    </span>
                   ) : (
                     <span className="opacity-40 text-xs">—</span>
                   )}

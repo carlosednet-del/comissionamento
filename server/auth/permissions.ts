@@ -136,7 +136,13 @@ export function canAttachEvidence(actor: UserForPermission, demand: DemandForPer
 // ── Permissões financeiras ───────────────────────────────────────
 
 export function canViewFinancialData(actor: UserForPermission): boolean {
-  return actor.role === "ADMIN" || actor.role === "FINANCEIRO" || actor.role === "GESTOR";
+  // DEV vê dados financeiros próprios (filtrados por assigneeId na página)
+  return (
+    actor.role === "ADMIN"     ||
+    actor.role === "FINANCEIRO"||
+    actor.role === "GESTOR"    ||
+    actor.role === "DEV"
+  );
 }
 
 export function canViewDashboard(actor: UserForPermission): boolean {

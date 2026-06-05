@@ -89,8 +89,8 @@ const ASSIGNABLE_ROLE_LABELS: Record<string, string> = {
   SUPORTE:    "Suporte",
 };
 
-type CreateMode = { mode: "create"; assignees: Assignee[] };
-type EditMode   = { mode: "edit"; demand: DemandWithRelations; assignees: Assignee[] };
+type CreateMode = { mode: "create"; assignees: Assignee[]; actorRole: string };
+type EditMode   = { mode: "edit"; demand: DemandWithRelations; assignees: Assignee[]; actorRole: string };
 type Props = CreateMode | EditMode;
 
 // ── Opções ────────────────────────────────────────────────────────────────────
@@ -229,6 +229,9 @@ export function DemandForm(props: Props) {
   const router   = useRouter();
   const isCreate = props.mode === "create";
   const demand   = !isCreate ? (props as EditMode).demand : null;
+
+  /** Apenas GESTOR e ADMIN podem editar o bloco "Análise técnica" */
+  const canEditAnalysis = props.actorRole === "GESTOR" || props.actorRole === "ADMIN";
 
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -575,12 +578,38 @@ export function DemandForm(props: Props) {
           </CardContent>
         </Card>
 
-        {/* ── Bloco 4 — Prazo ──────────────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Prazo</CardTitle>
+        {/* ── Bloco 4/5 — Análise técnica (Prazo + Execução) ────────────── */}
+        <Card className={canEditAnalysis ? "border-blue-200" : "border-muted opacity-80"}>
+          <CardHeader className={cn(
+            "border-b rounded-t-lg pb-3",
+            canEditAnalysis ? "bg-blue-50/60 border-blue-100" : "bg-muted/30 border-muted",
+          )}>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className={cn(
+                "text-base flex items-center gap-2",
+                canEditAnalysis ? "text-blue-900" : "text-muted-foreground",
+              )}>
+                <FlaskConical className={cn("h-4 w-4", canEditAnalysis ? "text-blue-500" : "text-muted-foreground")} />
+                Análise técnica
+              </CardTitle>
+              <span className={cn(
+                "inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide",
+                canEditAnalysis
+                  ? "border-blue-200 bg-blue-100 text-blue-700"
+                  : "border-muted bg-muted/50 text-muted-foreground",
+              )}>
+                {canEditAnalysis ? "Gestor / Admin" : "Somente Gestor"}
+              </span>
+            </div>
+            <p className={cn("text-xs mt-1", canEditAnalysis ? "text-blue-600/80" : "text-muted-foreground/70")}>
+              {canEditAnalysis
+                ? "Preencha o prazo, responsável e detalhes técnicos da demanda."
+                : "Este bloco é preenchido pelo Gestor durante a análise técnica. Campos em modo de leitura."}
+            </p>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-4">
+
+            {/* ── Prazo ──────────────────────────────────────────────── */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
@@ -591,6 +620,7 @@ export function DemandForm(props: Props) {
                     <FormControl>
                       <Input
                         type="date"
+                        disabled={!canEditAnalysis}
                         value={toDateInput(field.value)}
                         onChange={(e) =>
                           field.onChange(e.target.value ? new Date(e.target.value) : null)
@@ -607,16 +637,25 @@ export function DemandForm(props: Props) {
                 name="plannedDeliveryDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Entrega prevista <span className="text-destructive">*</span></FormLabel>
+                    <FormLabel>
+                      Entrega prevista
+                      {canEditAnalysis && <span className="text-destructive ml-1">*</span>}
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="date"
+                        disabled={!canEditAnalysis}
                         value={toDateInput(field.value)}
                         onChange={(e) =>
                           field.onChange(e.target.value ? new Date(e.target.value) : null)
                         }
                       />
                     </FormControl>
+                    {canEditAnalysis && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Gestor pode definir datas retroativas.
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -634,6 +673,7 @@ export function DemandForm(props: Props) {
                         <FormControl>
                           <Input
                             type="date"
+                            disabled={!canEditAnalysis}
                             value={toDateInput((field as { value: Date | null }).value)}
                             onChange={(e) =>
                               field.onChange(e.target.value ? new Date(e.target.value) : null)
@@ -654,6 +694,7 @@ export function DemandForm(props: Props) {
                         <FormControl>
                           <Input
                             type="date"
+                            disabled={!canEditAnalysis}
                             value={toDateInput((field as { value: Date | null }).value)}
                             onChange={(e) =>
                               field.onChange(e.target.value ? new Date(e.target.value) : null)
@@ -667,28 +708,8 @@ export function DemandForm(props: Props) {
                 </>
               )}
             </div>
-          </CardContent>
-        </Card>
 
-        {/* ── Bloco 5 — Execução técnica (fase de análise) ────────────── */}
-        <Card className="border-blue-200">
-          <CardHeader className="bg-blue-50/60 border-b border-blue-100 rounded-t-lg pb-3">
-            <div className="flex items-center justify-between gap-3">
-              <CardTitle className="text-base text-blue-900 flex items-center gap-2">
-                <FlaskConical className="h-4 w-4 text-blue-500" />
-                Execução técnica
-              </CardTitle>
-              <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-100 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700 uppercase tracking-wide">
-                Fase de análise
-              </span>
-            </div>
-            {isCreate && (
-              <p className="text-xs text-blue-600/80 mt-1">
-                Estes campos são opcionais na criação e devem ser preenchidos durante a análise técnica da demanda.
-              </p>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-4 pt-4">
+            {/* ── Execução técnica ───────────────────────────────────── */}
             {/* Row 1 — Responsável + campos derivados (readonly) */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="lg:col-span-2">
@@ -699,6 +720,7 @@ export function DemandForm(props: Props) {
                     <FormItem>
                       <FormLabel>Responsável técnico</FormLabel>
                       <Select
+                        disabled={!canEditAnalysis}
                         onValueChange={(v) => {
                           field.onChange(v === NONE_ASSIGNEE ? null : v);
                         }}
@@ -774,6 +796,7 @@ export function DemandForm(props: Props) {
                         min={0.5}
                         step={0.5}
                         placeholder="Ex.: 8"
+                        disabled={!canEditAnalysis}
                         value={(field as { value: number | undefined }).value ?? ""}
                         onChange={(e) =>
                           field.onChange(
@@ -794,6 +817,7 @@ export function DemandForm(props: Props) {
                   <FormItem>
                     <FormLabel>Complexidade</FormLabel>
                     <Select
+                      disabled={!canEditAnalysis}
                       onValueChange={field.onChange}
                       value={(field as { value: ComplexityLevel | null }).value ?? ""}
                     >
@@ -822,6 +846,7 @@ export function DemandForm(props: Props) {
                   <FormItem>
                     <FormLabel>ROI / Impacto estratégico</FormLabel>
                     <Select
+                      disabled={!canEditAnalysis}
                       onValueChange={field.onChange}
                       value={(field as { value: RoiLevel | null }).value ?? ""}
                     >
@@ -844,14 +869,16 @@ export function DemandForm(props: Props) {
               />
             </div>
 
-            {/* Prévia de valor estimado */}
-            <PricingPreview
-              assigneeRole={assigneeRole}
-              workerProfile={workerProfile}
-              estimatedHours={watchedHours}
-              complexity={watchedComplexity}
-              roi={watchedRoi}
-            />
+            {/* Prévia de valor estimado — só exibe se GESTOR/ADMIN */}
+            {canEditAnalysis && (
+              <PricingPreview
+                assigneeRole={assigneeRole}
+                workerProfile={workerProfile}
+                estimatedHours={watchedHours}
+                complexity={watchedComplexity}
+                roi={watchedRoi}
+              />
+            )}
           </CardContent>
         </Card>
 

@@ -65,9 +65,9 @@ const createDemandBase = z.object({
   risks:             z.string().optional(),
   observations:      z.string().optional(),
 
-  // Bloco 5 — Prazo
+  // Bloco 5 — Prazo (preenchido pelo Gestor na análise)
   plannedStartDate:    z.coerce.date().optional().nullable(),
-  plannedDeliveryDate: z.coerce.date({ required_error: "Data de entrega é obrigatória" }),
+  plannedDeliveryDate: z.coerce.date().optional().nullable(),
 
   // Controle interno
   // creatorId é opcional no schema do formulário — o server action injeta o valor real.

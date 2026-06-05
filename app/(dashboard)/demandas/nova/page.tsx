@@ -42,7 +42,7 @@ export default async function NovaDemandaPage() {
         </p>
       </div>
 
-      <DemandForm mode="create" assignees={assignees} />
+      <DemandForm mode="create" assignees={assignees} actorRole={actor.role} />
     </div>
   );
 }

@@ -24,6 +24,19 @@ import {
   canDeleteDemand,
 } from "@/server/auth/permissions";
 
+// ── Validação de data de entrega ──────────────────────────────────
+// Regra: entrega não pode ser no passado.
+// Exceção: GESTOR e ADMIN podem definir datas retroativas.
+function assertDeliveryDate(date: Date | null | undefined, actor: UserForPermission) {
+  if (!date) return;
+  if (actor.role === "GESTOR" || actor.role === "ADMIN") return;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (date < today) {
+    throw new Error("A data de entrega prevista não pode ser anterior a hoje.");
+  }
+}
+
 // ── Tipos internos de pricing ─────────────────────────────────────
 
 type PricingSnapshot = {
@@ -132,6 +145,9 @@ export const demandService = {
     const data = createDemandSchema.parse(input);
     const { saveAsDraft, ...demandData } = data;
 
+    // Valida data de entrega (não pode ser no passado, exceto GESTOR/ADMIN)
+    assertDeliveryDate(demandData.plannedDeliveryDate ?? null, actor);
+
     // Backend recalcula pricing — nunca confia no frontend
     const pricing = saveAsDraft
       ? {}
@@ -173,6 +189,9 @@ export const demandService = {
 
     const demandPerm = { id: existing.id, creatorId: existing.creatorId, assigneeId: existing.assigneeId, status: existing.status };
     if (!canEditDemand(actor, demandPerm)) throw new DemandPermissionError("editar esta demanda");
+
+    // Valida data de entrega (não pode ser no passado, exceto GESTOR/ADMIN)
+    assertDeliveryDate(data.plannedDeliveryDate ?? null, actor);
 
     // Papéis técnicos só podem editar campos operacionais
     let payload = data;

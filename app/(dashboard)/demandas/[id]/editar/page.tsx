@@ -62,7 +62,7 @@ export default async function EditarDemandaPage({
         <p className="text-sm text-muted-foreground line-clamp-1">{demand.title}</p>
       </div>
 
-      <DemandForm mode="edit" demand={demand} assignees={assignees} />
+      <DemandForm mode="edit" demand={demand} assignees={assignees} actorRole={actor.role} />
     </div>
   );
 }

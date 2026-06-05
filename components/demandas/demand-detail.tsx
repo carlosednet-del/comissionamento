@@ -31,7 +31,7 @@ import { AuditTimeline }    from "./audit-timeline";
 import { WorkflowSection }  from "./workflow-section";
 import {
   Pencil, ExternalLink, Clock, Calendar, User,
-  Building2, Layers, Trash2,
+  Building2, Layers, Trash2, ImageIcon,
 } from "lucide-react";
 import { COMPLEXITY_LABELS, ROI_LABELS, WORKER_PROFILE_LABELS } from "@/lib/demand-pricing";
 import type { ComplexityLevel, RoiLevel, WorkerProfile } from "@prisma/client";
@@ -262,27 +262,46 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
                 <p className="text-sm text-muted-foreground">Nenhuma evidência anexada.</p>
               ) : (
                 <ul className="space-y-2">
-                  {demand.evidences.map((ev) => (
-                    <li key={ev.id} className="flex items-start gap-3 rounded-md border p-3">
-                      <ExternalLink className="h-4 w-4 mt-0.5 text-brand-primary shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <a
-                          href={ev.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm font-medium text-brand-primary hover:underline"
-                        >
-                          {ev.title}
-                        </a>
-                        {ev.description && (
-                          <p className="text-xs text-muted-foreground mt-0.5">{ev.description}</p>
+                  {demand.evidences.map((ev) => {
+                    const isImage = /\.(jpe?g|png|gif|webp|svg)(\?.*)?$/i.test(ev.url) ||
+                      ev.url.includes("/evidence-images/");
+                    return (
+                      <li key={ev.id} className="rounded-md border overflow-hidden">
+                        {/* Thumbnail para imagens */}
+                        {isImage && (
+                          <a href={ev.url} target="_blank" rel="noopener noreferrer" className="block">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={ev.url}
+                              alt={ev.title}
+                              className="w-full max-h-48 object-contain bg-muted/20"
+                            />
+                          </a>
                         )}
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          por {ev.createdBy?.name ?? "sistema"} — {fmtDate(ev.createdAt)}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
+                        <div className="flex items-start gap-3 p-3">
+                          {isImage
+                            ? <ImageIcon className="h-4 w-4 mt-0.5 text-brand-primary shrink-0" />
+                            : <ExternalLink className="h-4 w-4 mt-0.5 text-brand-primary shrink-0" />}
+                          <div className="flex-1 min-w-0">
+                            <a
+                              href={ev.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-medium text-brand-primary hover:underline"
+                            >
+                              {ev.title}
+                            </a>
+                            {ev.description && (
+                              <p className="text-xs text-muted-foreground mt-0.5">{ev.description}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              por {ev.createdBy?.name ?? "sistema"} — {fmtDate(ev.createdAt)}
+                            </p>
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </CardContent>

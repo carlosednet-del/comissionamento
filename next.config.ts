@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((s) => s.trim())
@@ -7,7 +6,9 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  outputFileTracingRoot: path.join(__dirname),
+  // Garante que o file-tracing aponte para este projeto e não para
+  // um package-lock.json pai detectado automaticamente.
+  outputFileTracingRoot: process.cwd(),
   experimental: {
     serverActions: {
       allowedOrigins,

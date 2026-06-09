@@ -19,6 +19,7 @@
 
 import { prisma }                       from "@/lib/prisma";
 import { MONTHLY_CAPS, applyDeflator }  from "@/lib/demand-pricing";
+import { pricingConfigService }         from "@/services/pricingConfigService";
 import type { WorkerProfile, UserRole } from "@prisma/client";
 
 // ── Tipos públicos ────────────────────────────────────────────────
@@ -294,10 +295,15 @@ export const dashboardService = {
     }
 
     // ── Aplica teto e calcula valor a pagar ─────────────────────
+    // Busca taxas efetivas do banco (admin pode ter customizado) — uma vez só
+    const effectiveRates = await pricingConfigService.getEffectiveRates();
+
     for (const c of map.values()) {
       // Teto efetivo: individual (se preenchido) sobrepõe o de perfil
       const individualCap = userIndividualCaps.get(c.assigneeId) ?? null;
-      const profileCap    = c.assigneeProfile ? MONTHLY_CAPS[c.assigneeProfile] : null;
+      const profileCap    = c.assigneeProfile
+        ? (effectiveRates[c.assigneeProfile]?.monthlyCap ?? MONTHLY_CAPS[c.assigneeProfile])
+        : null;
       const effectiveCap  = individualCap ?? profileCap;
 
       if (effectiveCap !== null) {

@@ -11,7 +11,8 @@ import {
   type ChangeDemandStatusInput,
 } from "@/validations/demand";
 import { createEvidenceSchema, type CreateEvidenceInput } from "@/validations/evidence";
-import { calculateDemandEstimatedValue, isTechnicalRole } from "@/lib/demand-pricing";
+import { calculateDemandEstimatedValue, isTechnicalRole, HOURLY_RATES } from "@/lib/demand-pricing";
+import { pricingConfigService } from "@/services/pricingConfigService";
 import type { DemandFilters }    from "@/types";
 import type { DemandStatus, WorkerProfile } from "@prisma/client";
 import type { UserForPermission } from "@/server/auth/permissions";
@@ -77,6 +78,11 @@ async function buildPricingSnapshot(
   // DEV: precificação completa por hora — requer perfil técnico
   if (!assignee.workerProfile) return {};
 
+  // Busca taxa efetiva do banco (admin pode ter configurado um valor diferente do default)
+  const effectiveRates = await pricingConfigService.getEffectiveRates();
+  const effectiveHourlyRate = effectiveRates[assignee.workerProfile]?.hourlyRate
+    ?? HOURLY_RATES[assignee.workerProfile];
+
   const pricing = calculateDemandEstimatedValue({
     workerProfile:  assignee.workerProfile,
     estimatedHours,
@@ -84,6 +90,7 @@ async function buildPricingSnapshot(
     complexity: complexity as any,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     roi:        roi as any,
+    hourlyRateOverride: effectiveHourlyRate,
   });
 
   return {

@@ -205,3 +205,14 @@ model AuditLog {
   @@index([userId])
   @@map("audit_logs")
 }
+
+/// Configuração de precificação por perfil — editável pelo ADMIN via UI.
+/// Valores ausentes no banco caem de volta para os defaults em lib/demand-pricing.ts.
+model HourlyRateConfig {
+  profile     WorkerProfile @id
+  ratePerHour Float
+  monthlyCap  Float
+  updatedAt   DateTime      @updatedAt
+
+  @@map("hourly_rate_configs")
+}

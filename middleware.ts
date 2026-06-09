@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { UserRole } from "@prisma/client";
 
 const PUBLIC_ROUTES = ["/login", "/acesso-bloqueado", "/sem-perfil", "/api/auth/callback"];
-const ADMIN_ROUTES  = ["/usuarios", "/parametros"];
+const ADMIN_ROUTES  = ["/usuarios", "/configuracoes", "/parametros"];
 
 /** Papéis que têm acesso ao dashboard financeiro */
 const DASHBOARD_ROLES: UserRole[] = ["ADMIN", "GESTOR", "FINANCEIRO", "DEV"];

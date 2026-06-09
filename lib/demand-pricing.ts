@@ -172,14 +172,16 @@ export type DemandPricingResult = {
  *    independentemente do perfil — trate isso em buildPricingSnapshot.
  */
 export function calculateDemandEstimatedValue(params: {
-  workerProfile:  WorkerProfile;
-  estimatedHours: number;
-  complexity:     ComplexityLevel;
-  roi:            RoiLevel;
+  workerProfile:      WorkerProfile;
+  estimatedHours:     number;
+  complexity:         ComplexityLevel;
+  roi:                RoiLevel;
+  /** Valor/hora customizado (ex: vindo do banco). Sobrepõe HOURLY_RATES quando fornecido. */
+  hourlyRateOverride?: number;
 }): DemandPricingResult {
-  const { workerProfile, estimatedHours, complexity, roi } = params;
+  const { workerProfile, estimatedHours, complexity, roi, hourlyRateOverride } = params;
 
-  const hourlyRate     = HOURLY_RATES[workerProfile];
+  const hourlyRate     = hourlyRateOverride ?? HOURLY_RATES[workerProfile];
   const combinedFactor = COMBINED_FACTORS[complexity][roi];
   const estimatedValue = hourlyRate * estimatedHours * combinedFactor;
 

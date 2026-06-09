@@ -13,6 +13,7 @@ import {
   LogOut,
   ChevronRight,
   Layers,
+  Settings2,
 } from "lucide-react";
 import type { UserRole } from "@prisma/client";
 
@@ -33,7 +34,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard",  icon: LayoutDashboard, roles: ["ADMIN", "GESTOR", "FINANCEIRO", "DEV"] },
   { href: "/demandas",        label: "Demandas",   icon: ClipboardList },
   { href: "/demandas/kanban", label: "Kanban",      icon: LayoutGrid },
-  { href: "/usuarios",        label: "Usuários",    icon: Users, roles: ["ADMIN"] },
+  { href: "/usuarios",        label: "Usuários",      icon: Users,     roles: ["ADMIN"] },
+  { href: "/configuracoes",   label: "Configurações", icon: Settings2, roles: ["ADMIN"] },
 ];
 
 export function Sidebar({ user }: { user: SidebarUser }) {

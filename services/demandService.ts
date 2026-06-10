@@ -78,10 +78,15 @@ async function buildPricingSnapshot(
   // DEV: precificação completa por hora — requer perfil técnico
   if (!assignee.workerProfile) return {};
 
-  // Busca taxa efetiva do banco (admin pode ter configurado um valor diferente do default)
-  const effectiveRates = await pricingConfigService.getEffectiveRates();
+  // Busca taxas efetivas do banco (admin pode ter customizado)
+  const effectiveRates  = await pricingConfigService.getEffectiveRates();
+  const effectiveMatrix = await pricingConfigService.getEffectiveCombinedFactors();
+
   const effectiveHourlyRate = effectiveRates[assignee.workerProfile]?.hourlyRate
     ?? HOURLY_RATES[assignee.workerProfile];
+  const effectiveCombinedFactor =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (effectiveMatrix as Record<string, Record<string, number>>)[complexity as string]?.[roi as string];
 
   const pricing = calculateDemandEstimatedValue({
     workerProfile:  assignee.workerProfile,
@@ -90,7 +95,8 @@ async function buildPricingSnapshot(
     complexity: complexity as any,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     roi:        roi as any,
-    hourlyRateOverride: effectiveHourlyRate,
+    hourlyRateOverride:     effectiveHourlyRate,
+    combinedFactorOverride: effectiveCombinedFactor,
   });
 
   return {

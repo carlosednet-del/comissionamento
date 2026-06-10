@@ -216,3 +216,24 @@ model HourlyRateConfig {
 
   @@map("hourly_rate_configs")
 }
+
+/// Fator combinado (complexidade × ROI) customizável pelo ADMIN.
+model CombinedFactorConfig {
+  complexity ComplexityLevel
+  roi        RoiLevel
+  factor     Float
+  updatedAt  DateTime        @updatedAt
+
+  @@id([complexity, roi])
+  @@map("combined_factor_configs")
+}
+
+/// Fator do deflator por dias de atraso (0–5) customizável pelo ADMIN.
+/// daysLate=5 representa "5 ou mais DU".
+model DeflatorConfig {
+  daysLate  Int      @id
+  factor    Float
+  updatedAt DateTime @updatedAt
+
+  @@map("deflator_configs")
+}

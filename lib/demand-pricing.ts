@@ -92,9 +92,15 @@ export const DEFLATOR_FACTORS: Record<number, number> = {
   4: 0.10,
 };
 
-export function getDeflatorFactor(workingDaysLate: number): number {
+export function getDeflatorFactor(
+  workingDaysLate: number,
+  factorsOverride?: Record<number, number>,
+): number {
   if (workingDaysLate <= 0) return 1.00;
-  return DEFLATOR_FACTORS[workingDaysLate] ?? 0;
+  const factors = factorsOverride ?? DEFLATOR_FACTORS;
+  // Para 5+ DU usamos a chave 5; se não existir, retorna 0
+  const key = Math.min(workingDaysLate, 5);
+  return factors[key] ?? 0;
 }
 
 /** Conta dias úteis (seg–sex) entre duas datas (exclusive start, inclusive end). */
@@ -126,9 +132,10 @@ export type DeflatorResult = {
  * Se não houver datas suficientes, retorna sem deflação (fator 1,00).
  */
 export function applyDeflator(
-  value:          number,
-  actualDelivery: Date | string | null | undefined,
+  value:           number,
+  actualDelivery:  Date | string | null | undefined,
   plannedDelivery: Date | string | null | undefined,
+  deflatorFactorsOverride?: Record<number, number>,
 ): DeflatorResult {
   if (!actualDelivery || !plannedDelivery) {
     return { originalValue: value, deflatedValue: value, workingDaysLate: 0, factor: 1.00, isLate: false };
@@ -143,7 +150,7 @@ export function applyDeflator(
   }
 
   const workingDaysLate = countWorkingDays(planned, actual);
-  const factor          = getDeflatorFactor(workingDaysLate);
+  const factor          = getDeflatorFactor(workingDaysLate, deflatorFactorsOverride);
   const deflatedValue   = Math.round(value * factor * 100) / 100;
 
   return { originalValue: value, deflatedValue, workingDaysLate, factor, isLate: true };
@@ -172,17 +179,19 @@ export type DemandPricingResult = {
  *    independentemente do perfil — trate isso em buildPricingSnapshot.
  */
 export function calculateDemandEstimatedValue(params: {
-  workerProfile:      WorkerProfile;
-  estimatedHours:     number;
-  complexity:         ComplexityLevel;
-  roi:                RoiLevel;
+  workerProfile:         WorkerProfile;
+  estimatedHours:        number;
+  complexity:            ComplexityLevel;
+  roi:                   RoiLevel;
   /** Valor/hora customizado (ex: vindo do banco). Sobrepõe HOURLY_RATES quando fornecido. */
-  hourlyRateOverride?: number;
+  hourlyRateOverride?:    number;
+  /** Fator combinado customizado (ex: vindo do banco). Sobrepõe COMBINED_FACTORS quando fornecido. */
+  combinedFactorOverride?: number;
 }): DemandPricingResult {
-  const { workerProfile, estimatedHours, complexity, roi, hourlyRateOverride } = params;
+  const { workerProfile, estimatedHours, complexity, roi, hourlyRateOverride, combinedFactorOverride } = params;
 
-  const hourlyRate     = hourlyRateOverride ?? HOURLY_RATES[workerProfile];
-  const combinedFactor = COMBINED_FACTORS[complexity][roi];
+  const hourlyRate     = hourlyRateOverride    ?? HOURLY_RATES[workerProfile];
+  const combinedFactor = combinedFactorOverride ?? COMBINED_FACTORS[complexity][roi];
   const estimatedValue = hourlyRate * estimatedHours * combinedFactor;
 
   return { hourlyRate, estimatedHours, combinedFactor, estimatedValue };

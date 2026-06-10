@@ -273,11 +273,14 @@ export const dashboardService = {
       c.estimatedValue += d.estimatedDemandValue ?? 0;
     }
 
+    // Busca fatores efetivos do deflator (uma vez, fora do loop)
+    const effectiveDeflatorFactors = await pricingConfigService.getEffectiveDeflatorFactors();
+
     for (const d of homologatedRaw) {
       const c = getOrInit(d);
       if (!c) continue;
       const originalValue = d.estimatedDemandValue ?? 0;
-      const deflResult    = applyDeflator(originalValue, d.actualDeliveryDate, d.plannedDeliveryDate);
+      const deflResult    = applyDeflator(originalValue, d.actualDeliveryDate, d.plannedDeliveryDate, effectiveDeflatorFactors);
       c.homologatedCount++;
       c.homologatedHours    += d.estimatedHours ?? 0;
       c.homologatedRawValue += originalValue;

@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ── Brand palette: Blue Tech (default) ────────────────────── */
+    --brand-primary:       204 100% 30%;   /* #005C99 */
+    --brand-primary-hover: 198 100% 36%;   /* #007EB5 */
+    --brand-accent:        198  54% 64%;   /* #71B7D5 */
+    --brand-bg-light:      205  36% 90%;   /* #DCE9F0 */
+    --brand-bg-mid:        208  23% 75%;   /* #AFC2D0 */
+    --brand-bg-base:       204  50% 98%;   /* #F8FBFD */
+    --brand-text-dark:     207  39% 17%;   /* #1A2E3B */
+    --brand-text-body:     204  40% 32%;   /* #315A70 */
+    --brand-text-muted:    200  23% 63%;   /* #87ACB9 */
+
+    /* ── shadcn/ui tokens ───────────────────────────────────────── */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: var(--brand-primary);
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: var(--brand-primary);
+
+    --radius: 0.5rem;
+  }
+
+  /* ── Paleta Petróleo / Graphite ─────────────────────────────────
+   * Ativada pelo botão de troca de tema (ThemeToggle).
+   * O atributo data-theme="petroleum" é colocado no <html>.
+   * ──────────────────────────────────────────────────────────────── */
+  :root[data-theme="petroleum"] {
+    --brand-primary:       204  39% 32%;   /* #315A70 */
+    --brand-primary-hover: 196  42% 42%;   /* #3F8298 */
+    --brand-accent:        200  23% 63%;   /* #87ACB9 */
+    --brand-bg-light:      210   9% 85%;   /* #D3D8DD */
+    --brand-bg-mid:        207  37% 24%;   /* #274455 */
+    --brand-bg-base:         0   0% 100%;  /* #FFFFFF  */
+    --brand-text-dark:     207  35% 16%;   /* #1A2C36 */
+    --brand-text-body:     203  26% 33%;   /* #3F5A6A */
+    --brand-text-muted:    200  23% 63%;   /* #87ACB9 */
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+  }
+}
+
+/* ── Gradiente nos cabeçalhos dos cards ──────────────────────────
+ * Dá um leve toque de profundidade sem sobrescrever o shadcn Card.
+ * ─────────────────────────────────────────────────────────────── */
+@layer components {
+  .card-header-gradient {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--brand-bg-light) / 0.45) 0%,
+      hsl(var(--background))            100%
+    );
+    border-bottom: 1px solid hsl(var(--brand-bg-light) / 0.6);
+  }
+
+  /* Barra colorida no topo de cards de destaque */
+  .card-accent-top {
+    border-top: 3px solid hsl(var(--brand-primary));
+  }
+}

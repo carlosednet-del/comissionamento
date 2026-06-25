@@ -1,0 +1,252 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// -------------------------------------------------------
+// Enums
+// -------------------------------------------------------
+
+enum UserRole {
+  ADMIN
+  DIRETOR
+  GESTOR
+  DEV
+  SUPORTE
+  ARQUITETO
+  APROVADOR
+  FINANCEIRO
+  SOLICITANTE
+}
+
+enum WorkerProfile {
+  JUNIOR
+  PLENO
+  SENIOR
+  ESPECIALISTA
+}
+
+enum ComplexityLevel {
+  BAIXA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+enum RoiLevel {
+  BAIXO
+  MEDIO
+  ALTO
+  ESTRATEGICO
+}
+
+enum DemandType {
+  NOVA_SOLUCAO
+  EVOLUCAO_PRODUCAO
+  CORRECAO
+  AUTOMACAO
+  DASHBOARD
+  INTEGRACAO
+  OUTRO
+}
+
+enum DemandPriority {
+  BAIXA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+enum DemandStatus {
+  RASCUNHO
+  ABERTA
+  EM_ANALISE
+  PRIORIZACAO_DIRETORIA
+  APROVADA
+  EM_DESENVOLVIMENTO
+  AGUARDANDO_HOMOLOGACAO
+  HOMOLOGADA_PRODUCAO
+  REPROVADA
+  CANCELADA
+  CONCLUIDA
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  STATUS_CHANGE
+  APPROVAL
+  REJECTION
+  HOMOLOGATION
+  DEVELOPMENT_STARTED
+  SENT_TO_HOMOLOGATION
+  DEMAND_CANCELED
+  EVIDENCE_ADDED
+  SENT_TO_DIRECTOR_PRIORITIZATION
+  DIRECTOR_PRIORITY_SET
+  DEMAND_PRIORITIZED_AND_APPROVED
+  DEMAND_RETURNED_FROM_DIRECTOR_PRIORITIZATION
+}
+
+// -------------------------------------------------------
+// Models
+// -------------------------------------------------------
+
+model User {
+  id            String         @id @default(cuid())
+  authUserId    String?        @unique
+  name          String
+  email         String         @unique
+  role              UserRole       @default(DEV)
+  workerProfile     WorkerProfile?
+  isActive          Boolean        @default(true)
+  /// Salário base mensal (R$). Só o excedente acima do salário é "a pagar".
+  monthlyBaseSalary Float?
+  /// Teto mensal individual (R$). Sobrepõe o teto de perfil quando preenchido.
+  monthlyCapValue   Float?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  createdDemands     Demand[]         @relation("DemandCreator")
+  assignedDemands    Demand[]         @relation("DemandAssignee")
+  approvedDemands    Demand[]         @relation("DemandApprover")
+  homologatedDemands Demand[]         @relation("DemandHomologator")
+  canceledDemands    Demand[]         @relation("DemandCanceler")
+  prioritizedDemands Demand[]         @relation("DemandPrioritizer")
+  auditLogs          AuditLog[]
+  createdEvidences   DemandEvidence[] @relation("EvidenceCreator")
+
+  @@map("users")
+}
+
+model Demand {
+  id                   String         @id @default(cuid())
+  title                String
+  description          String
+  requesterArea        String
+  requesterName        String
+  requesterEmail       String?
+  demandType           DemandType
+  priority             DemandPriority @default(MEDIA)
+  status               DemandStatus   @default(RASCUNHO)
+  systemAffected       String?
+  businessProblem      String?
+  expectedResult       String?
+  impactDescription    String?
+  dependencies         String?
+  risks                String?
+  observations         String?
+  estimatedHours          Float?
+  complexity              ComplexityLevel?
+  roi                     RoiLevel?
+  estimatedDemandValue    Float?
+  assigneeProfileSnapshot WorkerProfile?
+  hourlyRateSnapshot      Float?
+  plannedStartDate        DateTime?
+  plannedDeliveryDate  DateTime?
+  actualStartDate      DateTime?
+  actualDeliveryDate   DateTime?
+  homologationDate     DateTime?
+  assigneeId           String?
+  creatorId            String
+  approvedById         String?
+  homologatedById      String?
+  canceledById         String?
+  prioritizedById      String?
+  directorPriorityOrder Int?
+  prioritizedAt        DateTime?
+  prioritizationNotes  String?
+  approvedAt           DateTime?
+  canceledAt           DateTime?
+  cancellationReason   String?
+  rejectionReason      String?
+  deliveryNotes        String?
+  homologationNotes    String?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  assignee      User?            @relation("DemandAssignee",    fields: [assigneeId],    references: [id])
+  creator       User             @relation("DemandCreator",     fields: [creatorId],     references: [id])
+  approvedBy    User?            @relation("DemandApprover",    fields: [approvedById],  references: [id])
+  homologatedBy User?            @relation("DemandHomologator", fields: [homologatedById], references: [id])
+  canceledBy    User?            @relation("DemandCanceler",    fields: [canceledById],  references: [id])
+  prioritizedBy User?            @relation("DemandPrioritizer", fields: [prioritizedById], references: [id])
+  evidences     DemandEvidence[]
+
+  @@index([status])
+  @@index([priority])
+  @@index([creatorId])
+  @@index([assigneeId])
+  @@map("demands")
+}
+
+model DemandEvidence {
+  id          String   @id @default(cuid())
+  demandId    String
+  title       String
+  url         String
+  description String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  demand    Demand @relation(fields: [demandId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation("EvidenceCreator", fields: [createdById], references: [id])
+
+  @@map("demand_evidences")
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  entity    String
+  entityId  String
+  action    AuditAction
+  oldValue  Json?
+  newValue  Json?
+  userId    String
+  createdAt DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+/// Configuração de precificação por perfil — editável pelo ADMIN via UI.
+/// Valores ausentes no banco caem de volta para os defaults em lib/demand-pricing.ts.
+model HourlyRateConfig {
+  profile     WorkerProfile @id
+  ratePerHour Float
+  monthlyCap  Float
+  updatedAt   DateTime      @updatedAt
+
+  @@map("hourly_rate_configs")
+}
+
+/// Fator combinado (complexidade × ROI) customizável pelo ADMIN.
+model CombinedFactorConfig {
+  complexity ComplexityLevel
+  roi        RoiLevel
+  factor     Float
+  updatedAt  DateTime        @updatedAt
+
+  @@id([complexity, roi])
+  @@map("combined_factor_configs")
+}
+
+/// Fator do deflator por dias de atraso (0–5) customizável pelo ADMIN.
+/// daysLate=5 representa "5 ou mais DU".
+model DeflatorConfig {
+  daysLate  Int      @id
+  factor    Float
+  updatedAt DateTime @updatedAt
+
+  @@map("deflator_configs")
+}

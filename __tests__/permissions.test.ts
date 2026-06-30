@@ -118,46 +118,69 @@ describe("canCreateDemand", () => {
 });
 
 // -------------------------------------------------------
-// canEditDemand
+// canEditDemand — restrição por status (RASCUNHO | ABERTA)
 // -------------------------------------------------------
 describe("canEditDemand", () => {
-  it("ADMIN pode editar qualquer demanda", () => {
-    expect(canEditDemand(user("ADMIN", "a"), demand("b", null))).toBe(true);
+  // ── Status editável: RASCUNHO e ABERTA ─────────────────────────
+  it("ADMIN pode editar demanda em RASCUNHO", () => {
+    expect(canEditDemand(user("ADMIN", "a"), demand("b", null, "RASCUNHO"))).toBe(true);
   });
 
-  it("GESTOR pode editar demanda que criou", () => {
-    expect(canEditDemand(user("GESTOR", "g"), demand("g", null))).toBe(true);
+  it("ADMIN pode editar demanda em ABERTA", () => {
+    expect(canEditDemand(user("ADMIN", "a"), demand("b", null, "ABERTA"))).toBe(true);
   });
 
-  it("GESTOR pode editar demanda de outro", () => {
-    expect(canEditDemand(user("GESTOR", "g"), demand("outro", null))).toBe(true);
+  it("ADMIN não pode editar demanda em EM_ANALISE", () => {
+    expect(canEditDemand(user("ADMIN", "a"), demand("b", null, "EM_ANALISE"))).toBe(false);
   });
 
-  it("DEV pode editar demanda atribuída a ele", () => {
-    expect(canEditDemand(user("DEV", "dev1"), demand("gestor", "dev1"))).toBe(true);
+  it("ADMIN não pode editar demanda em PRIORIZACAO_DIRETORIA", () => {
+    expect(canEditDemand(user("ADMIN", "a"), demand("b", null, "PRIORIZACAO_DIRETORIA"))).toBe(false);
   });
 
-  it("DEV pode editar demanda que criou", () => {
-    expect(canEditDemand(user("DEV", "dev1"), demand("dev1", null))).toBe(true);
+  it("ADMIN não pode editar demanda em APROVADA", () => {
+    expect(canEditDemand(user("ADMIN", "a"), demand("b", null, "APROVADA"))).toBe(false);
+  });
+
+  it("GESTOR pode editar demanda em RASCUNHO", () => {
+    expect(canEditDemand(user("GESTOR", "g"), demand("g", null, "RASCUNHO"))).toBe(true);
+  });
+
+  it("GESTOR pode editar demanda de outro em ABERTA", () => {
+    expect(canEditDemand(user("GESTOR", "g"), demand("outro", null, "ABERTA"))).toBe(true);
+  });
+
+  it("GESTOR não pode editar demanda em EM_ANALISE", () => {
+    expect(canEditDemand(user("GESTOR", "g"), demand("g", null, "EM_ANALISE"))).toBe(false);
+  });
+
+  // ── DEV não edita dados gerais da demanda ──────────────────────
+  it("DEV não pode editar demanda atribuída a ele (edição geral não permitida)", () => {
+    expect(canEditDemand(user("DEV", "dev1"), demand("gestor", "dev1", "ABERTA"))).toBe(false);
+  });
+
+  it("DEV não pode editar demanda que criou (edição geral não permitida)", () => {
+    expect(canEditDemand(user("DEV", "dev1"), demand("dev1", null, "ABERTA"))).toBe(false);
   });
 
   it("DEV não pode editar demanda de outro dev", () => {
-    expect(canEditDemand(user("DEV", "dev1"), demand("gestor", "dev2"))).toBe(false);
+    expect(canEditDemand(user("DEV", "dev1"), demand("gestor", "dev2", "ABERTA"))).toBe(false);
+  });
+
+  // ── SOLICITANTE: só demandas próprias em RASCUNHO / ABERTA ─────
+  it("SOLICITANTE pode editar demanda que criou (RASCUNHO)", () => {
+    expect(canEditDemand(user("SOLICITANTE", "s1"), demand("s1", null, "RASCUNHO"))).toBe(true);
   });
 
   it("SOLICITANTE pode editar demanda que criou (ABERTA)", () => {
     expect(canEditDemand(user("SOLICITANTE", "s1"), demand("s1", null, "ABERTA"))).toBe(true);
   });
 
-  it("SOLICITANTE pode editar demanda que criou (RASCUNHO)", () => {
-    expect(canEditDemand(user("SOLICITANTE", "s1"), demand("s1", null, "RASCUNHO"))).toBe(true);
-  });
-
-  it("SOLICITANTE não pode editar demanda em análise", () => {
+  it("SOLICITANTE não pode editar própria demanda em EM_ANALISE", () => {
     expect(canEditDemand(user("SOLICITANTE", "s1"), demand("s1", null, "EM_ANALISE"))).toBe(false);
   });
 
-  it("SOLICITANTE não pode editar demanda aprovada", () => {
+  it("SOLICITANTE não pode editar própria demanda em APROVADA", () => {
     expect(canEditDemand(user("SOLICITANTE", "s1"), demand("s1", null, "APROVADA"))).toBe(false);
   });
 
@@ -165,8 +188,13 @@ describe("canEditDemand", () => {
     expect(canEditDemand(user("SOLICITANTE", "s1"), demand("s2", null, "ABERTA"))).toBe(false);
   });
 
-  it("FINANCEIRO não pode editar demanda de terceiros", () => {
-    expect(canEditDemand(user("FINANCEIRO", "f1"), demand("gestor", "dev1"))).toBe(false);
+  // ── Outros papéis não editam demandas ──────────────────────────
+  it("FINANCEIRO não pode editar demanda", () => {
+    expect(canEditDemand(user("FINANCEIRO", "f1"), demand("gestor", "dev1", "ABERTA"))).toBe(false);
+  });
+
+  it("APROVADOR não pode editar demanda", () => {
+    expect(canEditDemand(user("APROVADOR", "apr"), demand("g", "dev1", "ABERTA"))).toBe(false);
   });
 });
 

@@ -28,16 +28,21 @@ import { deleteDemandAction } from "@/server/actions/demandActions";
 import { StatusBadge } from "./status-badge";
 import { PriorityBadge } from "./priority-badge";
 import { TypeBadge } from "./type-badge";
-import { Eye, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Eye, Trash2, ChevronLeft, ChevronRight, TrendingDown } from "lucide-react";
+import { calculateBenchmarkEconomy } from "@/lib/benchmark/calculateBenchmarkEconomy";
+import type { WorkerProfile } from "@prisma/client";
 const DATE_FMT = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+const BRL      = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const PCT      = new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 });
 
 type Props = {
-  demands:    DemandSummary[];
-  total:      number;
-  page:       number;
-  pageSize:   number;
-  totalPages: number;
-  canDelete?: boolean;
+  demands:       DemandSummary[];
+  total:         number;
+  page:          number;
+  pageSize:      number;
+  totalPages:    number;
+  canDelete?:    boolean;
+  showBenchmark?: boolean;
 };
 
 function fmtDate(d: Date | string | null | undefined): string {
@@ -47,7 +52,7 @@ function fmtDate(d: Date | string | null | undefined): string {
   return DATE_FMT.format(date);
 }
 
-export function DemandTable({ demands, total, page, pageSize, totalPages, canDelete = false }: Props) {
+export function DemandTable({ demands, total, page, pageSize, totalPages, canDelete = false, showBenchmark = false }: Props) {
   const router = useRouter();
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [isPending, startTransition]    = useTransition();
@@ -127,6 +132,8 @@ export function DemandTable({ demands, total, page, pageSize, totalPages, canDel
               <TableHead>Status</TableHead>
               <TableHead>Responsável</TableHead>
               <TableHead>Entrega prevista</TableHead>
+              {showBenchmark && <TableHead className="text-right">Bench ajustado</TableHead>}
+              {showBenchmark && <TableHead className="text-right">Economia</TableHead>}
               <TableHead className={canDelete ? "w-20 text-right" : "w-12 text-right"} />
             </TableRow>
           </TableHeader>
@@ -156,6 +163,42 @@ export function DemandTable({ demands, total, page, pageSize, totalPages, canDel
                     {fmtDate(d.plannedDeliveryDate)}
                   </span>
                 </TableCell>
+                {showBenchmark && (() => {
+                  if (!d.estimatedHours || !d.assigneeProfileSnapshot) {
+                    return (
+                      <>
+                        <TableCell className="text-right text-xs text-muted-foreground">—</TableCell>
+                        <TableCell className="text-right text-xs text-muted-foreground">—</TableCell>
+                      </>
+                    );
+                  }
+                  const bench = calculateBenchmarkEconomy({
+                    estimatedHours: d.estimatedHours,
+                    workerProfile:  d.assigneeProfileSnapshot as WorkerProfile,
+                    ourHourlyRate:  d.hourlyRateSnapshot ?? undefined,
+                    ourValue:       d.estimatedDemandValue ?? undefined,
+                  });
+                  return (
+                    <>
+                      <TableCell className="text-right text-xs tabular-nums font-medium">
+                        {BRL.format(bench.marketBenchAdjusted)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {bench.economy > 0 ? (
+                          <span className="inline-flex items-center gap-0.5 text-xs font-medium text-emerald-700">
+                            <TrendingDown className="h-3 w-3" />
+                            {BRL.format(bench.economy)}
+                            <span className="text-emerald-500 text-[10px]">
+                              ({PCT.format(bench.economyPercent)})
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    </>
+                  );
+                })()}
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     <Button asChild variant="ghost" size="icon" className="h-8 w-8">

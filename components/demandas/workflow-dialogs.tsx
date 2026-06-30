@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/form";
 import { AttachEvidenceDialog } from "@/components/demandas/attach-evidence-dialog";
 import { Loader2, Paperclip } from "lucide-react";
+import { toast } from "sonner";
 
 // ── Textarea ─────────────────────────────────────────────────────
 function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { rows?: number }) {
@@ -96,7 +97,8 @@ const CONFIRM_ACTIONS: Record<ConfirmAction, (id: string) => Promise<{ success: 
   start:              startDevelopmentAction,
   return:             returnToDevelopmentAction,
   sendToDirector:     sendToDirectorPrioritizationAction,
-  returnFromDirector: returnFromDirectorPrioritizationAction,
+  // returnFromDirector é tratado por ReturnFromDirectorDialog (requer motivo)
+  returnFromDirector: (_id) => Promise.resolve({ success: false, error: "Use ReturnFromDirectorDialog" }),
 };
 
 export function ConfirmTransitionDialog({
@@ -410,7 +412,9 @@ export function RejectDemandDialog({ demandId, trigger }: RejectProps) {
 
 // ── 5b. Priorizar e aprovar (Diretoria) ──────────────────────────
 const prioritizeSchema = z.object({
-  directorPriorityOrder: z.coerce.number().int().min(1, "Ordem deve ser >= 1"),
+  directorPriorityOrder: z.coerce.number().int()
+    .min(1, "Ordem deve ser >= 1")
+    .max(100, "Ordem deve ser <= 100"),
   prioritizationNotes: z.string().optional(),
 });
 type PrioritizeFormValues = z.infer<typeof prioritizeSchema>;
@@ -437,6 +441,7 @@ export function PrioritizeAndApproveDialog({ demandId, trigger }: PrioritizeProp
     if (!result.success) { setError(result.error ?? "Erro"); return; }
     close();
     form.reset();
+    toast.success("Demanda priorizada e aprovada com sucesso.");
     rerender();
   }
 
@@ -445,9 +450,9 @@ export function PrioritizeAndApproveDialog({ demandId, trigger }: PrioritizeProp
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Priorizar e aprovar pela diretoria</DialogTitle>
+          <DialogTitle>Priorizar e aprovar demanda</DialogTitle>
           <DialogDescription>
-            Defina a ordem de prioridade da diretoria e aprove esta demanda para desenvolvimento.
+            Defina a ordem de prioridade da diretoria para liberar a demanda para desenvolvimento.
           </DialogDescription>
         </DialogHeader>
 
@@ -458,10 +463,13 @@ export function PrioritizeAndApproveDialog({ demandId, trigger }: PrioritizeProp
               name="directorPriorityOrder"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Ordem de prioridade <span className="text-destructive">*</span></FormLabel>
+                  <FormLabel>Prioridade da diretoria <span className="text-destructive">*</span></FormLabel>
                   <FormControl>
-                    <Input type="number" min={1} {...field} />
+                    <Input type="number" min={1} max={100} {...field} />
                   </FormControl>
+                  <p className="text-[11px] text-muted-foreground">
+                    Use 1 para maior prioridade e 100 para menor prioridade.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}
@@ -495,6 +503,84 @@ export function PrioritizeAndApproveDialog({ demandId, trigger }: PrioritizeProp
                 className="bg-indigo-600 hover:bg-indigo-700 text-white">
                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Priorizar e aprovar
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── 5c. Devolver da priorização da diretoria ────────────────────
+const returnFromDirectorSchema = z.object({
+  returnReason: z.string().min(5, "Informe o motivo da devolução (mín. 5 caracteres)"),
+});
+type ReturnFromDirectorFormValues = z.infer<typeof returnFromDirectorSchema>;
+
+type ReturnFromDirectorProps = {
+  demandId: string;
+  trigger:  React.ReactNode;
+};
+
+export function ReturnFromDirectorDialog({ demandId, trigger }: ReturnFromDirectorProps) {
+  const { open, setOpen, error, setError, close, rerender } = useWorkflowDialog();
+
+  const form = useForm<ReturnFromDirectorFormValues>({
+    resolver: zodResolver(returnFromDirectorSchema),
+    defaultValues: { returnReason: "" },
+  });
+
+  async function onSubmit(values: ReturnFromDirectorFormValues) {
+    setError(null);
+    const result = await returnFromDirectorPrioritizationAction(demandId, values.returnReason);
+    if (!result.success) { setError(result.error ?? "Erro"); return; }
+    close();
+    form.reset();
+    rerender();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setError(null); form.reset(); } }}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Devolver para análise</DialogTitle>
+          <DialogDescription>
+            A demanda voltará para análise técnica para revisão antes de nova priorização.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="returnReason"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Motivo da devolução <span className="text-destructive">*</span></FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Informe o motivo pelo qual esta demanda está sendo devolvida para análise…"
+                      rows={3}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={close} disabled={form.formState.isSubmitting}>
+                Cancelar
+              </Button>
+              <Button type="submit" variant="outline" disabled={form.formState.isSubmitting}
+                className="border-amber-300 text-amber-700 hover:bg-amber-50">
+                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Devolver para análise
               </Button>
             </DialogFooter>
           </form>

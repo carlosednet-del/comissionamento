@@ -195,8 +195,8 @@ export const demandWorkflowService = {
     });
   },
 
-  // 3c. PRIORIZACAO_DIRETORIA → EM_ANALISE (devolução)
-  async returnFromDirectorPrioritization(id: string, actor: UserForPermission) {
+  // 3c. PRIORIZACAO_DIRETORIA → EM_ANALISE (devolução com motivo obrigatório)
+  async returnFromDirectorPrioritization(id: string, actor: UserForPermission, reason: string) {
     const demand = await getDemand(id);
 
     if (demand.status !== "PRIORIZACAO_DIRETORIA") {
@@ -204,6 +204,9 @@ export const demandWorkflowService = {
     }
     if (!canPrioritizeDemand(actor)) {
       throw new WorkflowError("Apenas ADMIN ou DIRETOR podem devolver demandas para análise");
+    }
+    if (!reason?.trim() || reason.trim().length < 5) {
+      throw new WorkflowError("Motivo da devolução é obrigatório (mín. 5 caracteres)");
     }
 
     await demandRepository.updateStatus(id, "EM_ANALISE");
@@ -213,7 +216,7 @@ export const demandWorkflowService = {
       entityId: id,
       action:   "DEMAND_RETURNED_FROM_DIRECTOR_PRIORITIZATION",
       oldValue: { status: demand.status },
-      newValue: { status: "EM_ANALISE" },
+      newValue: { status: "EM_ANALISE", returnReason: reason.trim() },
       userId:   actor.id,
     });
   },

@@ -40,6 +40,7 @@ const ROLE_OPTIONS = [
   { value: UserRole.APROVADOR,   label: "Aprovador" },
   { value: UserRole.FINANCEIRO,  label: "Financeiro" },
   { value: UserRole.SOLICITANTE, label: "Solicitante" },
+  { value: UserRole.DAP,         label: "DAP" },
 ];
 
 const TECHNICAL_ROLES: UserRole[] = [UserRole.DEV, UserRole.SUPORTE, UserRole.ARQUITETO];

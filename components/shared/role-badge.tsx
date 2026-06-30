@@ -11,6 +11,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   APROVADOR:   "Aprovador",
   FINANCEIRO:  "Financeiro",
   SOLICITANTE: "Solicitante",
+  DAP:         "DAP",
 };
 
 const ROLE_VARIANTS: Record<UserRole, "default" | "secondary" | "destructive" | "outline"> = {
@@ -23,6 +24,7 @@ const ROLE_VARIANTS: Record<UserRole, "default" | "secondary" | "destructive" | 
   APROVADOR:   "outline",
   FINANCEIRO:  "outline",
   SOLICITANTE: "outline",
+  DAP:         "outline",
 };
 
 export function RoleBadge({ role }: { role: UserRole }) {

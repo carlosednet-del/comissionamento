@@ -22,6 +22,7 @@ import {
   RejectDemandDialog,
   CancelDemandDialog,
   PrioritizeAndApproveDialog,
+  ReturnFromDirectorDialog,
 } from "./workflow-dialogs";
 import {
   FolderOpen,
@@ -308,11 +309,8 @@ export function WorkflowSection({ demand, actor }: Props) {
                 />
               )}
               {canReturnFromDirector && (
-                <ConfirmTransitionDialog
-                  demandId={demand.id} action="returnFromDirector"
-                  title="Devolver para análise"
-                  description="A demanda voltará para análise técnica para revisão antes de nova priorização."
-                  confirmLabel="Devolver para análise"
+                <ReturnFromDirectorDialog
+                  demandId={demand.id}
                   trigger={<TriggerBtn type="returnFromDirector" />}
                 />
               )}

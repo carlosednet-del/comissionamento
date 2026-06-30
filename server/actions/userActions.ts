@@ -87,6 +87,16 @@ export async function deleteUserAction(id: string): Promise<ActionResult> {
   }
 }
 
+export async function forcePasswordResetAction(userId: string): Promise<ActionResult> {
+  try {
+    const actor = await requireAuth();
+    await userService.forcePasswordReset(userId, toPermissionUser(actor));
+    return { success: true, data: undefined, message: "Reset de senha solicitado. O usuário deverá trocar a senha no próximo acesso." };
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
 export async function getCurrentUserAction() {
   const { getCurrentUser } = await import("@/server/auth/helpers");
   return getCurrentUser();

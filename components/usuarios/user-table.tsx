@@ -16,7 +16,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { activateUserAction, deactivateUserAction, deleteUserAction } from "@/server/actions/userActions";
+import { activateUserAction, deactivateUserAction, deleteUserAction, forcePasswordResetAction } from "@/server/actions/userActions";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,8 +30,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   MoreHorizontal, Pencil, UserCheck, UserX, Trash2,
-  Search, ChevronsUpDown, ChevronUp, ChevronDown,
+  Search, ChevronsUpDown, ChevronUp, ChevronDown, KeyRound,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 // ── Tipos ─────────────────────────────────────────────────────────
@@ -61,8 +63,9 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
   const [actionPending, startAction] = useTransition();
   const [loadingId, setLoadingId]    = useState<string | null>(null);
 
-  // Estado para o dialog de exclusão
+  // Estado para os dialogs de ação
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [resetTarget,  setResetTarget]  = useState<{ id: string; name: string } | null>(null);
 
   // Busca (URL-based → servidor filtra → contagem correta no cabeçalho)
   const [localSearch, setLocalSearch] = useState(defaultSearch);
@@ -137,6 +140,23 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
     });
   }
 
+  function handleForceResetConfirm() {
+    if (!resetTarget) return;
+    const id = resetTarget.id;
+    setResetTarget(null);
+    setLoadingId(id);
+    startAction(async () => {
+      const result = await forcePasswordResetAction(id);
+      if (result.success) {
+        toast.success(result.message ?? "Reset de senha solicitado.");
+      } else {
+        toast.error(result.error ?? "Erro ao solicitar reset.");
+      }
+      router.refresh();
+      setLoadingId(null);
+    });
+  }
+
   // ── Cabeçalho de coluna clicável ────────────────────────────────
   function SortHead({ field, children, className }: {
     field: SortField; children: React.ReactNode; className?: string;
@@ -198,6 +218,40 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
       </AlertDialogContent>
     </AlertDialog>
 
+    {/* ── Dialog de confirmação de reset de senha ────────────────── */}
+    <AlertDialog open={!!resetTarget} onOpenChange={(v) => { if (!v) setResetTarget(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+            <KeyRound className="h-5 w-5" />
+            Forçar troca de senha
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2 text-sm">
+              <p>
+                O usuário <strong className="text-foreground">{resetTarget?.name}</strong> será obrigado a
+                cadastrar uma nova senha no próximo acesso.
+              </p>
+              <p className="text-muted-foreground">
+                O acesso atual não é revogado imediatamente, mas qualquer nova navegação
+                redirecionará para a tela de troca de senha.
+              </p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleForceResetConfirm}
+            className="bg-amber-600 hover:bg-amber-700 text-white"
+          >
+            <KeyRound className="mr-2 h-4 w-4" />
+            Confirmar reset
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
     <div className="space-y-3">
       {/* ── Barra de busca ───────────────────────────────────────── */}
       <div className="relative max-w-sm">
@@ -241,7 +295,17 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
                 <TableCell className="text-muted-foreground text-sm">{user.email}</TableCell>
                 <TableCell><RoleBadge role={user.role} /></TableCell>
                 <TableCell><WorkerProfileBadge profile={user.workerProfile} /></TableCell>
-                <TableCell><ActiveStatusBadge isActive={user.isActive} /></TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <ActiveStatusBadge isActive={user.isActive} />
+                    {user.forcePasswordChange && (
+                      <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 bg-amber-50 gap-1">
+                        <KeyRound className="h-3 w-3" />
+                        Senha temp.
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="text-muted-foreground text-sm">
                   {new Date(user.createdAt).toLocaleDateString("pt-BR")}
                 </TableCell>
@@ -280,6 +344,15 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
                           Ativar
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-amber-600 focus:text-amber-600"
+                        disabled={user.id === currentUserId}
+                        onClick={() => setResetTarget({ id: user.id, name: user.name })}
+                      >
+                        <KeyRound className="mr-2 h-4 w-4" />
+                        Forçar reset de senha
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive font-medium"

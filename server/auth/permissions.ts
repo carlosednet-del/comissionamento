@@ -61,16 +61,17 @@ export function canCreateDemand(actor: UserForPermission): boolean {
   return actor.isActive;
 }
 
+export const DEMAND_EDITABLE_STATUSES: readonly DemandStatus[] = ["RASCUNHO", "ABERTA"];
+
 export function canEditDemand(actor: UserForPermission, demand: DemandForPermission): boolean {
-  // ADMIN, DIRETOR e GESTOR editam qualquer demanda
+  // Demandas em análise ou posterior não podem ser editadas livremente — use o fluxo
+  if (!(DEMAND_EDITABLE_STATUSES as readonly string[]).includes(demand.status)) return false;
+  // ADMIN, DIRETOR e GESTOR podem editar em RASCUNHO ou ABERTA
   if (isMaster(actor.role) || actor.role === "GESTOR") return true;
-  // SOLICITANTE: apenas demandas próprias e somente enquanto ainda não entraram em análise
-  if (actor.role === "SOLICITANTE") {
-    if (demand.creatorId !== actor.id) return false;
-    return demand.status === "RASCUNHO" || demand.status === "ABERTA";
-  }
-  // Demais papéis editam as demandas que criaram ou das quais são responsáveis
-  return demand.creatorId === actor.id || demand.assigneeId === actor.id;
+  // SOLICITANTE: apenas as próprias demandas
+  if (actor.role === "SOLICITANTE") return demand.creatorId === actor.id;
+  // DEV/SUPORTE/ARQUITETO/APROVADOR/FINANCEIRO não editam dados gerais
+  return false;
 }
 
 export function canAssignDemand(actor: UserForPermission, demand: DemandForPermission): boolean {
@@ -105,7 +106,8 @@ export function canChangeDemandStatus(
       return role === "GESTOR";
 
     case "APROVADA":
-      return role === "GESTOR";
+      // Aprovação exclusiva via prioritizeAndApproveDemand (ADMIN/DIRETOR)
+      return false;
 
     case "EM_DESENVOLVIMENTO":
       if (isTechnical(role)) return demand.assigneeId === actor.id;
@@ -187,6 +189,55 @@ export function canViewDashboard(actor: UserForPermission): boolean {
 
 export function canViewReports(actor: UserForPermission): boolean {
   return isMaster(actor.role) || actor.role === "GESTOR" || actor.role === "FINANCEIRO";
+}
+
+export function canViewBenchmark(actor: UserForPermission): boolean {
+  return actor.role === "ADMIN" || actor.role === "DIRETOR" || actor.role === "GESTOR";
+}
+
+// ── Permissões de extrato mensal ─────────────────────────────────
+
+export function canViewMyStatement(actor: UserForPermission): boolean {
+  return actor.role === "DEV" || isMaster(actor.role);
+}
+
+export function canSignStatement(
+  actor: UserForPermission,
+  statement: { developerId: string },
+): boolean {
+  return actor.role === "DEV" && actor.id === statement.developerId;
+}
+
+export function canExportStatement(
+  actor: UserForPermission,
+  statement: { developerId: string },
+): boolean {
+  if (isMaster(actor.role)) return true;
+  return actor.role === "DEV" && actor.id === statement.developerId;
+}
+
+// ── Permissões de senha ───────────────────────────────────────────
+
+export function canForcePasswordReset(actor: UserForPermission): boolean {
+  return isMaster(actor.role) || actor.role === "GESTOR";
+}
+
+// ── Permissões de fechamento DAP ─────────────────────────────────
+
+function isDapRole(role: string): boolean {
+  return role === "DAP" || isMaster(role) || role === "FINANCEIRO";
+}
+
+export function canAccessDapClosing(actor: UserForPermission): boolean {
+  return isDapRole(actor.role);
+}
+
+export function canViewDapClosing(actor: UserForPermission): boolean {
+  return isDapRole(actor.role);
+}
+
+export function canExportDapVariables(actor: UserForPermission): boolean {
+  return isDapRole(actor.role);
 }
 
 // ── Verificação de rota ──────────────────────────────────────────

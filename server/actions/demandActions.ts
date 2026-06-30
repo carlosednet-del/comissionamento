@@ -186,6 +186,7 @@ export async function getDemandStatsAction() {
 function revalidateDemand(id: string) {
   revalidatePath("/demandas");
   revalidatePath(`/demandas/${id}`);
+  revalidatePath("/demandas/kanban");
 }
 
 export async function openDemandAction(id: string): Promise<ActionResult<void>> {
@@ -302,10 +303,13 @@ export async function prioritizeAndApproveAction(
   } catch (e) { return handleError(e); }
 }
 
-export async function returnFromDirectorPrioritizationAction(id: string): Promise<ActionResult<void>> {
+export async function returnFromDirectorPrioritizationAction(
+  id: string,
+  reason: string,
+): Promise<ActionResult<void>> {
   try {
     const session = await requireAuth();
-    await demandWorkflowService.returnFromDirectorPrioritization(id, toPermissionUser(session));
+    await demandWorkflowService.returnFromDirectorPrioritization(id, toPermissionUser(session), reason);
     revalidateDemand(id);
     return { success: true, data: undefined };
   } catch (e) { return handleError(e); }

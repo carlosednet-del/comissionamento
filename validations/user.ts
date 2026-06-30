@@ -15,6 +15,7 @@ const ALL_ROLES = [
   "APROVADOR",
   "FINANCEIRO",
   "SOLICITANTE",
+  "DAP",
 ] as const;
 
 const roleSchema = z.enum(ALL_ROLES);

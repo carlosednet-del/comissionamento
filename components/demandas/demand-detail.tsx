@@ -8,7 +8,7 @@ import { useState, useTransition } from "react";
 import { useRouter }               from "next/navigation";
 import type { DemandWithRelations, AuditLog } from "@/types";
 import type { UserForPermission }             from "@/server/auth/permissions";
-import { canEditDemand, canAttachEvidence, canDeleteDemand } from "@/server/auth/permissions";
+import { canEditDemand, canAttachEvidence, canDeleteDemand, canViewBenchmark } from "@/server/auth/permissions";
 import { deleteDemandAction }      from "@/server/actions/demandActions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button }    from "@/components/ui/button";
@@ -29,6 +29,7 @@ import { TypeBadge }        from "./type-badge";
 import { AttachEvidenceDialog } from "./attach-evidence-dialog";
 import { AuditTimeline }    from "./audit-timeline";
 import { WorkflowSection }  from "./workflow-section";
+import { BenchmarkSummaryCard } from "@/components/benchmark/BenchmarkSummaryCard";
 import {
   Pencil, ExternalLink, Clock, Calendar, User,
   Building2, Layers, Trash2, ImageIcon,
@@ -80,6 +81,11 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
   const canEdit   = canEditDemand(actor, demandPerm);
   const canAttach = canAttachEvidence(actor, demandPerm);
   const canDelete = canDeleteDemand(actor);
+  const showBenchmark =
+    canViewBenchmark(actor) &&
+    demand.estimatedHours != null &&
+    demand.estimatedHours > 0 &&
+    demand.assigneeProfileSnapshot != null;
 
   function handleDelete() {
     startTransition(async () => {
@@ -369,6 +375,15 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
               </dl>
             </CardContent>
           </Card>
+          {/* Benchmark */}
+          {showBenchmark && (
+            <BenchmarkSummaryCard
+              estimatedHours={demand.estimatedHours!}
+              workerProfile={demand.assigneeProfileSnapshot as WorkerProfile}
+              ourHourlyRate={demand.hourlyRateSnapshot ?? undefined}
+              ourValue={demand.estimatedDemandValue ?? undefined}
+            />
+          )}
         </div>
       </div>
 

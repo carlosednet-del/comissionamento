@@ -143,6 +143,16 @@ export const demandKanbanService = {
       if (col) col.push(d);
     }
 
+    // Coluna PRIORIZACAO_DIRETORIA: ordenar por directorPriorityOrder asc (nulls last)
+    const dirCol = grouped.get("PRIORIZACAO_DIRETORIA");
+    if (dirCol) {
+      dirCol.sort((a, b) => {
+        const ao = a.directorPriorityOrder ?? Infinity;
+        const bo = b.directorPriorityOrder ?? Infinity;
+        return ao - bo;
+      });
+    }
+
     // Filtra colunas pela seleção do usuário (se especificada)
     const targetStatuses =
       filters.statuses && filters.statuses.length > 0

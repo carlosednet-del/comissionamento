@@ -1,11 +1,13 @@
 import { requireAuth, toPermissionUser } from "@/server/auth/helpers";
 import { prisma }            from "@/lib/prisma";
 import { dashboardService }  from "@/services/dashboardService";
+import { canViewBenchmark }  from "@/server/auth/permissions";
+import { calculateBenchmarkTotals } from "@/lib/benchmark/calculateBenchmarkTotals";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MonthlySummaryFilters } from "@/components/dashboard/monthly-summary-filters";
 import { MonthlySummaryTable }   from "@/components/dashboard/monthly-summary-table";
 import { Separator }             from "@/components/ui/separator";
-import { Users, ClipboardList, CheckCircle, Clock } from "lucide-react";
+import { Users, ClipboardList, CheckCircle, Clock, BarChart3, TrendingDown } from "lucide-react";
 import { Suspense } from "react";
 
 export const metadata = { title: "Dashboard — Gestor de Demandas" };
@@ -119,6 +121,27 @@ export default async function DashboardPage({
   ]);
 
   const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+  const PCT = new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const showBenchmark = canViewBenchmark(actor);
+  let benchTotals = null;
+  if (showBenchmark) {
+    const benchDemands = await prisma.demand.findMany({
+      where: {
+        ...demandWhere,
+        estimatedHours: { gt: 0 },
+        assigneeProfileSnapshot: { not: null },
+        status: { notIn: ["CANCELADA", "REPROVADA"] },
+      },
+      select: {
+        estimatedHours:          true,
+        assigneeProfileSnapshot: true,
+        estimatedDemandValue:    true,
+        hourlyRateSnapshot:      true,
+      },
+    });
+    benchTotals = calculateBenchmarkTotals(benchDemands);
+  }
 
   return (
     <div className="space-y-6">
@@ -209,6 +232,81 @@ export default async function DashboardPage({
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Cards de benchmark — apenas ADMIN / DIRETOR / GESTOR ── */}
+      {showBenchmark && benchTotals && benchTotals.count > 0 && (
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card className="border-indigo-200 bg-indigo-50/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-indigo-700 flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Valor nosso total
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold font-mono text-indigo-700">
+                  {BRL.format(benchTotals.totalOurValue)}
+                </p>
+                <p className="text-xs text-indigo-500 mt-0.5">
+                  {benchTotals.count} demanda{benchTotals.count !== 1 ? "s" : ""} com dados de senioridade
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-violet-200 bg-violet-50/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-violet-700 flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Bench de mercado ajustado
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold font-mono text-violet-700">
+                  {BRL.format(benchTotals.totalMarketBenchAdjusted)}
+                </p>
+                <p className="text-xs text-violet-500 mt-0.5">
+                  Custo equivalente de mercado (acelerador 10%)
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-emerald-200 bg-emerald-50/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-emerald-700 flex items-center gap-2">
+                  <TrendingDown className="h-4 w-4" />
+                  Economia estimada total
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold font-mono text-emerald-700">
+                  {BRL.format(benchTotals.totalEconomy)}
+                </p>
+                <p className="text-xs text-emerald-500 mt-0.5">
+                  Bench ajustado − valor nosso (demandas ativas)
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-teal-200 bg-teal-50/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-teal-700 flex items-center gap-2">
+                  <TrendingDown className="h-4 w-4" />
+                  % média de economia
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold font-mono text-teal-700">
+                  {PCT.format(benchTotals.averageEconomyPercent)}
+                </p>
+                <p className="text-xs text-teal-500 mt-0.5">
+                  Economia / bench ajustado total
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
 
       {/* ── Resumo mensal — mesmo título e layout do admin ── */}
       <Separator />

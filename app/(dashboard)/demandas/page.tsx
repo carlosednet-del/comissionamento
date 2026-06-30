@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAuth, toPermissionUser } from "@/server/auth/helpers";
-import { canCreateDemand, canDeleteDemand } from "@/server/auth/permissions";
+import { canCreateDemand, canDeleteDemand, canViewBenchmark } from "@/server/auth/permissions";
 import { demandService } from "@/services/demandService";
 import { DemandStats } from "@/components/demandas/demand-stats";
 import { DemandFilters } from "@/components/demandas/demand-filters";
@@ -47,8 +47,9 @@ export default async function DemandasPage({
     demandService.getStats(),
   ]);
 
-  const userCanCreate = canCreateDemand(actor);
-  const userCanDelete = canDeleteDemand(actor);
+  const userCanCreate    = canCreateDemand(actor);
+  const userCanDelete    = canDeleteDemand(actor);
+  const userCanBenchmark = canViewBenchmark(actor);
 
   return (
     <div className="space-y-6">
@@ -92,6 +93,7 @@ export default async function DemandasPage({
         pageSize={result.pageSize}
         totalPages={result.totalPages}
         canDelete={userCanDelete}
+        showBenchmark={userCanBenchmark}
       />
     </div>
   );

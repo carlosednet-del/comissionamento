@@ -19,7 +19,6 @@ import { WORKER_PROFILE_LABELS }         from "@/lib/demand-pricing";
 import { cn }                            from "@/lib/utils";
 import type { WorkerProfile }            from "@prisma/client";
 import {
-  InfoIcon,
   TrendingUp,
   ClipboardCheck,
   Clock,
@@ -108,15 +107,6 @@ export function MonthlySummaryTable({ data, sortBy, sortDir }: Props) {
 
   return (
     <div className="space-y-3">
-
-      {/* ── Aviso ──────────────────────────────────────────────────── */}
-      <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
-        <InfoIcon className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-        <span>
-          Valores informativos.{" "}
-          <strong>Deflator por atraso</strong> e <strong>fechamento de RV</strong> ainda não implementados.
-        </span>
-      </div>
 
       {/* ── Mini-cards — indicadores de volume e valor ───────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

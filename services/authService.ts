@@ -52,7 +52,7 @@ export const authService = {
       email:         params.email,
       password:      params.password,
       email_confirm: true,
-      user_metadata: { role: params.role, isActive: params.isActive },
+      user_metadata: { role: params.role, isActive: params.isActive, forcePasswordChange: true },
     };
 
     const { data, error } = await admin.auth.admin.createUser(authPayload);
@@ -87,8 +87,11 @@ export const authService = {
     return data.user;
   },
 
-  /** Atualiza metadata do usuário no Supabase Auth (mantém role e isActive em sincronia) */
-  async updateAuthUserMetadata(authUserId: string, metadata: { role?: UserRole; isActive?: boolean }) {
+  /** Atualiza metadata do usuário no Supabase Auth (merges com metadata existente). */
+  async updateAuthUserMetadata(
+    authUserId: string,
+    metadata: { role?: UserRole; isActive?: boolean; forcePasswordChange?: boolean },
+  ) {
     const admin = createAdminClient();
 
     const { error } = await admin.auth.admin.updateUserById(authUserId, {
@@ -96,6 +99,16 @@ export const authService = {
     });
 
     if (error) throw new AuthError(`Erro ao atualizar metadata no Auth: ${error.message}`);
+  },
+
+  /** Atualiza a senha do usuário autenticado via sessão atual (não requer admin). */
+  async updateCurrentUserPassword(newPassword: string): Promise<void> {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+      data: { forcePasswordChange: false },
+    });
+    if (error) throw new AuthError(`Erro ao atualizar senha: ${error.message}`);
   },
 
   /** Remove usuário do Supabase Auth */

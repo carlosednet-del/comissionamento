@@ -58,6 +58,9 @@ const createDemandBase = z.object({
   complexity:     z.nativeEnum(ComplexityLevel).optional().nullable(),
   roi:            z.nativeEnum(RoiLevel).optional().nullable(),
 
+  // Bloco 3b — Sistema(s) afetado(s) (required para não-rascunho)
+  systemAffected: z.string().trim().optional(),
+
   // Bloco 4 — Contexto de negócio (required para não-rascunho via superRefine)
   businessProblem:   z.string().trim().optional(),
   expectedResult:    z.string().trim().optional(),
@@ -65,6 +68,10 @@ const createDemandBase = z.object({
   dependencies:      z.string().trim().optional(),
   risks:             z.string().trim().optional(),
   observations:      z.string().trim().optional(),
+
+  // Bloco 4b — Critérios de aceite (required para não-rascunho via superRefine)
+  acceptanceCriteria: z.string().trim().optional(),
+  expectedEvidence:   z.string().trim().optional(),
 
   // Bloco 5 — Prazo (preenchido pelo Gestor na análise)
   plannedStartDate:    z.coerce.date().optional().nullable(),
@@ -112,12 +119,15 @@ export const createDemandSchema = createDemandBase.superRefine((data, ctx) => {
       });
     }
 
+    addContextIssue(ctx, data.systemAffected,     3, "Informe o(s) sistema(s) afetado(s) por esta demanda.",                                      "systemAffected");
     addContextIssue(ctx, data.businessProblem,   10, "Informe o problema ou oportunidade que motivou esta demanda.",                              "businessProblem");
     addContextIssue(ctx, data.expectedResult,    10, "Informe o resultado esperado ao concluir esta demanda.",                                    "expectedResult");
     addContextIssue(ctx, data.impactDescription,  5, "Informe quais áreas, processos ou indicadores serão impactados.",                           "impactDescription");
     addContextIssue(ctx, data.dependencies,       3, "Informe as dependências da demanda. Se não houver, preencha 'Não há dependências'.",         "dependencies");
     addContextIssue(ctx, data.risks,              3, "Informe os riscos identificados. Se não houver, preencha 'Não há riscos'.",                  "risks");
     addContextIssue(ctx, data.observations,       3, "Informe observações relevantes. Se não houver, preencha 'Não há observações'.",              "observations");
+    addContextIssue(ctx, data.acceptanceCriteria,10, "Informe os critérios de aceite (o que deve ser verdadeiro para a demanda ser considerada concluída).", "acceptanceCriteria");
+    addContextIssue(ctx, data.expectedEvidence,   5, "Informe as evidências esperadas (prints, dados, logs) para validar a conclusão.",           "expectedEvidence");
   }
 });
 

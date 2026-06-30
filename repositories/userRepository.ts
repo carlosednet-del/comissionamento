@@ -38,16 +38,21 @@ export const userRepository = {
   ) {
     return prisma.user.create({
       data: {
-        authUserId:        data.authUserId,
-        name:              data.name,
-        email:             data.email,
-        role:              data.role,
-        workerProfile:     data.workerProfile     ?? null,
-        monthlyBaseSalary: data.monthlyBaseSalary ?? null,
-        monthlyCapValue:   data.monthlyCapValue   ?? null,
-        isActive:          data.isActive          ?? true,
+        authUserId:          data.authUserId,
+        name:                data.name,
+        email:               data.email,
+        role:                data.role,
+        workerProfile:       data.workerProfile     ?? null,
+        monthlyBaseSalary:   data.monthlyBaseSalary ?? null,
+        monthlyCapValue:     data.monthlyCapValue   ?? null,
+        isActive:            data.isActive          ?? true,
+        forcePasswordChange: true,
       },
     });
+  },
+
+  async setForcePasswordChange(id: string, value: boolean) {
+    return prisma.user.update({ where: { id }, data: { forcePasswordChange: value } });
   },
 
   async update(id: string, data: UpdateUserInput) {

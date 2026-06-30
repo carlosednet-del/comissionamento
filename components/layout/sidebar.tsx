@@ -14,6 +14,8 @@ import {
   ChevronRight,
   Layers,
   Settings2,
+  FileText,
+  FileSpreadsheet,
 } from "lucide-react";
 import type { UserRole } from "@prisma/client";
 
@@ -34,6 +36,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard",  icon: LayoutDashboard, roles: ["ADMIN", "GESTOR", "FINANCEIRO", "DEV"] },
   { href: "/demandas",        label: "Demandas",   icon: ClipboardList },
   { href: "/demandas/kanban", label: "Kanban",      icon: LayoutGrid },
+  { href: "/meu-extrato",     label: "Meu Extrato",     icon: FileText,        roles: ["DEV", "ADMIN", "DIRETOR"] },
+  { href: "/fechamento-dap",  label: "Fechamento DAP",  icon: FileSpreadsheet, roles: ["DAP", "ADMIN", "DIRETOR", "FINANCEIRO"] },
   { href: "/usuarios",        label: "Usuários",      icon: Users,     roles: ["ADMIN"] },
   { href: "/configuracoes",   label: "Configurações", icon: Settings2, roles: ["ADMIN"] },
 ];

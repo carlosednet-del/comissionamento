@@ -15,6 +15,9 @@ import {
   Ban,
   Paperclip,
   MoreHorizontal,
+  FileText,
+  Download,
+  KeyRound,
 } from "lucide-react";
 
 type AuditLogWithUser = {
@@ -47,6 +50,13 @@ const ACTION_CONFIG: Record<
   DIRECTOR_PRIORITY_SET:                      { label: "Prioridade da diretoria definida",       icon: MoreHorizontal, color: "text-indigo-600", bg: "bg-indigo-100" },
   DEMAND_PRIORITIZED_AND_APPROVED:            { label: "Priorizada e aprovada pela diretoria",   icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-100" },
   DEMAND_RETURNED_FROM_DIRECTOR_PRIORITIZATION: { label: "Devolvida para análise",               icon: RefreshCw,    color: "text-amber-600",   bg: "bg-amber-100"   },
+  STATEMENT_SIGNED:                             { label: "Extrato assinado",                      icon: FileText,     color: "text-emerald-600", bg: "bg-emerald-100" },
+  STATEMENT_EXPORTED:                           { label: "Extrato exportado",                     icon: Download,     color: "text-blue-600",    bg: "bg-blue-100"    },
+  DAP_CLOSING_PREVIEWED:                        { label: "Fechamento DAP consultado",             icon: FileText,     color: "text-slate-500",   bg: "bg-slate-100"   },
+  DAP_PERIOD_EXPORTED:                          { label: "Variáveis DAP exportadas",              icon: Download,     color: "text-indigo-600",  bg: "bg-indigo-100"  },
+  DAP_DEVELOPER_STATEMENT_EXPORTED:             { label: "Extrato do DEV exportado pelo DAP",    icon: Download,     color: "text-indigo-600",  bg: "bg-indigo-100"  },
+  PASSWORD_CHANGED:                             { label: "Senha alterada",                        icon: KeyRound,     color: "text-emerald-600", bg: "bg-emerald-100" },
+  PASSWORD_RESET_FORCED:                        { label: "Reset de senha solicitado",             icon: KeyRound,     color: "text-amber-600",   bg: "bg-amber-100"   },
 };
 
 const STATUS_LABELS: Record<string, string> = {

@@ -112,7 +112,7 @@ type SimpleAction = (id: string) => Promise<{ success: boolean; error?: string }
 function getSimpleAction(toStatus: DemandStatus, fromStatus: DemandStatus): SimpleAction {
   if (toStatus === "ABERTA")                return openDemandAction;
   if (toStatus === "EM_ANALISE")            return fromStatus === "PRIORIZACAO_DIRETORIA"
-    ? returnFromDirectorPrioritizationAction
+    ? (id: string) => returnFromDirectorPrioritizationAction(id, "Devolução via Kanban (arrastar e soltar)")
     : sendToAnalysisAction;
   if (toStatus === "PRIORIZACAO_DIRETORIA") return sendToDirectorPrioritizationAction;
   if (toStatus === "APROVADA")              return approveDemandAction;

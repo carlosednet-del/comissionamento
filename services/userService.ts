@@ -174,6 +174,36 @@ export const userService = {
     return updated;
   },
 
+  async forcePasswordReset(id: string, actor: UserForPermission) {
+    const { canForcePasswordReset } = await import("@/server/auth/permissions");
+    if (!canForcePasswordReset(actor)) {
+      throw new Error("Sem permissão para forçar reset de senha.");
+    }
+    if (actor.id === id) {
+      throw new Error("Você não pode forçar reset da própria senha por aqui. Use a tela de troca de senha.");
+    }
+
+    const existing = await userRepository.findById(id);
+    if (!existing) throw new UserNotFoundError(id);
+
+    const updated = await userRepository.setForcePasswordChange(id, true);
+
+    if (existing.authUserId) {
+      await authService.updateAuthUserMetadata(existing.authUserId, { forcePasswordChange: true });
+    }
+
+    await auditService.log({
+      entity:   "User",
+      entityId: id,
+      action:   "PASSWORD_RESET_FORCED",
+      oldValue: { forcePasswordChange: existing.forcePasswordChange },
+      newValue: { forcePasswordChange: true },
+      userId:   actor.id,
+    });
+
+    return updated;
+  },
+
   /**
    * Exclusão permanente de usuário.
    *

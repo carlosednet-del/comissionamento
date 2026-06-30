@@ -12,6 +12,7 @@ export type SessionUser = {
   role: UserRole;
   isActive: boolean;
   workerProfile: string | null;
+  forcePasswordChange: boolean;
 };
 
 /**
@@ -36,6 +37,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
       role: true,
       isActive: true,
       workerProfile: true,
+      forcePasswordChange: true,
     },
   });
 

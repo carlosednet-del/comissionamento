@@ -220,7 +220,13 @@ export const demandService = {
     if (!existing) throw new DemandNotFoundError(id);
 
     const demandPerm = { id: existing.id, creatorId: existing.creatorId, assigneeId: existing.assigneeId, status: existing.status };
-    if (!canEditDemand(actor, demandPerm)) throw new DemandPermissionError("editar esta demanda");
+    if (!canEditDemand(actor, demandPerm)) {
+      const isStatusBlocked = !["RASCUNHO", "ABERTA"].includes(existing.status);
+      if (isStatusBlocked) {
+        throw new Error("Esta demanda não pode mais ser editada livremente. Use as ações do fluxo.");
+      }
+      throw new DemandPermissionError("editar esta demanda");
+    }
 
     // Valida data de entrega (não pode ser no passado, exceto GESTOR/ADMIN)
     assertDeliveryDate(data.plannedDeliveryDate ?? null, actor);

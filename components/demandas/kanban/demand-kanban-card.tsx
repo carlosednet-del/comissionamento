@@ -6,12 +6,14 @@ import type { UserForPermission }   from "@/server/auth/permissions";
 import {
   canChangeDemandStatus,
   canHomologateDemand,
+  canPrioritizeDemand,
 } from "@/server/auth/permissions";
 import { PriorityBadge }   from "@/components/demandas/priority-badge";
 import { TypeBadge }       from "@/components/demandas/type-badge";
 import { DeadlineBadge }   from "./deadline-badge";
 import { EstimatedValueBadge } from "./estimated-value-badge";
 import { COMPLEXITY_LABELS }   from "@/lib/demand-pricing";
+import { calculateBenchmarkEconomy } from "@/lib/benchmark/calculateBenchmarkEconomy";
 import { cn }     from "@/lib/utils";
 import { User2, Clock, ExternalLink } from "lucide-react";
 import type { ComplexityLevel } from "@prisma/client";
@@ -24,12 +26,16 @@ import {
   HomologateDialog,
   RejectDemandDialog,
   CancelDemandDialog,
+  PrioritizeAndApproveDialog,
+  ReturnFromDirectorDialog,
 } from "@/components/demandas/workflow-dialogs";
 import { Button } from "@/components/ui/button";
 import {
-  FolderOpen, FlaskConical, CheckCircle2, Code2,
-  Send, ShieldCheck, XCircle, RotateCcw, Ban,
+  FolderOpen, FlaskConical, Code2,
+  Send, ShieldCheck, XCircle, RotateCcw, Ban, Star, Undo2, TrendingDown, CheckCircle2,
 } from "lucide-react";
+
+const BRL_COMPACT = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
 // ── Props ─────────────────────────────────────────────────────────
 
@@ -50,20 +56,37 @@ export function DemandKanbanCard({ demand, actor, evidenceCount = 0 }: Props) {
   };
 
   // Ações disponíveis para este actor neste card
-  const canOpen        = demand.status === "RASCUNHO"               && canChangeDemandStatus(actor, demandPerm, "ABERTA");
-  const canAnalysis    = demand.status === "ABERTA"                 && canChangeDemandStatus(actor, demandPerm, "EM_ANALISE");
-  const canApprove     = demand.status === "EM_ANALISE"             && canChangeDemandStatus(actor, demandPerm, "APROVADA");
-  const canStart       = demand.status === "APROVADA"               && canChangeDemandStatus(actor, demandPerm, "EM_DESENVOLVIMENTO");
-  const canHomologation= demand.status === "EM_DESENVOLVIMENTO"     && canChangeDemandStatus(actor, demandPerm, "AGUARDANDO_HOMOLOGACAO");
-  const canHomologate  = demand.status === "AGUARDANDO_HOMOLOGACAO" && canHomologateDemand(actor, demandPerm);
-  const canReject      = demand.status === "AGUARDANDO_HOMOLOGACAO" && canChangeDemandStatus(actor, demandPerm, "REPROVADA");
-  const canReturn      = (demand.status === "REPROVADA" || demand.status === "AGUARDANDO_HOMOLOGACAO")
-                         && canChangeDemandStatus(actor, demandPerm, "EM_DESENVOLVIMENTO");
-  const canCancel      = ["RASCUNHO","ABERTA","EM_ANALISE","APROVADA","EM_DESENVOLVIMENTO"].includes(demand.status)
-                         && canChangeDemandStatus(actor, demandPerm, "CANCELADA");
+  const canOpen               = demand.status === "RASCUNHO"               && canChangeDemandStatus(actor, demandPerm, "ABERTA");
+  const canAnalysis           = demand.status === "ABERTA"                 && canChangeDemandStatus(actor, demandPerm, "EM_ANALISE");
+  // EM_ANALISE → "Enviar para diretoria" (nunca "Aprovar" diretamente)
+  const canSendToDirector     = demand.status === "EM_ANALISE"             && canChangeDemandStatus(actor, demandPerm, "PRIORIZACAO_DIRETORIA");
+  // PRIORIZACAO_DIRETORIA → ADMIN/DIRETOR podem priorizar, aprovar ou devolver
+  const canPrioritizeApprove  = demand.status === "PRIORIZACAO_DIRETORIA"  && canPrioritizeDemand(actor);
+  const canStart              = demand.status === "APROVADA"               && canChangeDemandStatus(actor, demandPerm, "EM_DESENVOLVIMENTO");
+  const canHomologation       = demand.status === "EM_DESENVOLVIMENTO"     && canChangeDemandStatus(actor, demandPerm, "AGUARDANDO_HOMOLOGACAO");
+  const canHomologate         = demand.status === "AGUARDANDO_HOMOLOGACAO" && canHomologateDemand(actor, demandPerm);
+  const canReject             = demand.status === "AGUARDANDO_HOMOLOGACAO" && canChangeDemandStatus(actor, demandPerm, "REPROVADA");
+  const canReturn             = (demand.status === "REPROVADA" || demand.status === "AGUARDANDO_HOMOLOGACAO")
+                                && canChangeDemandStatus(actor, demandPerm, "EM_DESENVOLVIMENTO");
+  const canCancel             = ["RASCUNHO","ABERTA","EM_ANALISE","PRIORIZACAO_DIRETORIA","APROVADA","EM_DESENVOLVIMENTO"].includes(demand.status)
+                                && canChangeDemandStatus(actor, demandPerm, "CANCELADA");
 
-  const hasActions = canOpen || canAnalysis || canApprove || canStart ||
+  // canPrioritizeApprove e canReturnFromDirector são exibidos no painel dedicado da diretoria
+  const hasActions = canOpen || canAnalysis || canSendToDirector || canStart ||
                      canHomologation || canHomologate || canReject || canReturn || canCancel;
+
+  const benchEconomy = (
+    (actor.role === "ADMIN" || actor.role === "DIRETOR" || actor.role === "GESTOR") &&
+    demand.estimatedHours != null && demand.estimatedHours > 0 &&
+    demand.assigneeProfileSnapshot != null
+  )
+    ? calculateBenchmarkEconomy({
+        estimatedHours: demand.estimatedHours,
+        workerProfile:  demand.assigneeProfileSnapshot,
+        ourHourlyRate:  demand.hourlyRateSnapshot ?? undefined,
+        ourValue:       demand.estimatedDemandValue ?? undefined,
+      })
+    : null;
 
   return (
     <div
@@ -119,7 +142,54 @@ export function DemandKanbanCard({ demand, actor, evidenceCount = 0 }: Props) {
         {actor.role !== "SOLICITANTE" && (
           <EstimatedValueBadge value={demand.estimatedDemandValue} />
         )}
+        {/* Badge de economia (só ADMIN/DIRETOR/GESTOR) */}
+        {benchEconomy != null && benchEconomy.economy > 0 && (
+          <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+            <TrendingDown className="h-2.5 w-2.5" />
+            {BRL_COMPACT.format(benchEconomy.economy)}
+          </span>
+        )}
       </div>
+
+      {/* ── Painel de priorização da diretoria ─────────────────────── */}
+      {demand.status === "PRIORIZACAO_DIRETORIA" && (
+        <div className="rounded-md border border-indigo-200 bg-indigo-50/70 px-2.5 py-2 space-y-1.5">
+          {/* Status da prioridade */}
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[11px] font-semibold text-indigo-700">Priorização Diretoria</span>
+            {demand.directorPriorityOrder != null ? (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                <Star className="h-2.5 w-2.5" />
+                #{demand.directorPriorityOrder}
+              </span>
+            ) : (
+              <span className="text-[10px] text-indigo-400 italic">Aguardando priorização</span>
+            )}
+          </div>
+          {/* Botões de ação — apenas ADMIN/DIRETOR */}
+          {canPrioritizeApprove && (
+            <div className="flex flex-wrap gap-1">
+              <PrioritizeAndApproveDialog
+                demandId={demand.id}
+                trigger={
+                  <Button size="sm" className="h-7 px-2.5 text-[11px] gap-1 bg-indigo-600 hover:bg-indigo-700 text-white flex-1 min-w-0">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                    Aprovar
+                  </Button>
+                }
+              />
+              <ReturnFromDirectorDialog
+                demandId={demand.id}
+                trigger={
+                  <Button variant="outline" size="sm" className="h-7 px-2 text-[11px] gap-1 border-amber-300 text-amber-700 hover:bg-amber-50">
+                    <Undo2 className="h-3 w-3" /> Devolver
+                  </Button>
+                }
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Linha 6: Ações rápidas */}
       {hasActions && (
@@ -150,15 +220,15 @@ export function DemandKanbanCard({ demand, actor, evidenceCount = 0 }: Props) {
               }
             />
           )}
-          {canApprove && (
+          {canSendToDirector && (
             <ConfirmTransitionDialog
-              demandId={demand.id} action="approve"
-              title="Aprovar demanda"
-              description="A demanda será aprovada e liberada para desenvolvimento."
-              confirmLabel="Aprovar"
+              demandId={demand.id} action="sendToDirector"
+              title="Enviar para diretoria"
+              description="A demanda será encaminhada para priorização e aprovação pela diretoria."
+              confirmLabel="Enviar para diretoria"
               trigger={
-                <Button size="sm" className="h-6 px-2 text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white">
-                  <CheckCircle2 className="h-3 w-3" /> Aprovar
+                <Button size="sm" className="h-6 px-2 text-[10px] gap-1 bg-indigo-600 hover:bg-indigo-700 text-white">
+                  <Send className="h-3 w-3" /> Diretoria
                 </Button>
               }
             />

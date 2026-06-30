@@ -273,6 +273,7 @@ export function DemandForm(props: Props) {
         complexity: null, roi: null,
         businessProblem: "", expectedResult: "", impactDescription: "",
         dependencies: "", risks: "", observations: "",
+        systemAffected: "", acceptanceCriteria: "", expectedEvidence: "",
         plannedStartDate: null, plannedDeliveryDate: undefined,
         saveAsDraft: false,
       }
@@ -294,6 +295,9 @@ export function DemandForm(props: Props) {
         dependencies:        demand?.dependencies ?? "",
         risks:               demand?.risks ?? "",
         observations:        demand?.observations ?? "",
+        systemAffected:      (demand as { systemAffected?: string | null })?.systemAffected ?? "",
+        acceptanceCriteria:  (demand as { acceptanceCriteria?: string | null })?.acceptanceCriteria ?? "",
+        expectedEvidence:    (demand as { expectedEvidence?: string | null })?.expectedEvidence ?? "",
         plannedStartDate:    demand?.plannedStartDate ?? null,
         plannedDeliveryDate: demand?.plannedDeliveryDate ?? undefined,
         actualStartDate:     demand?.actualStartDate ?? null,
@@ -564,6 +568,21 @@ export function DemandForm(props: Props) {
           <CardContent className="space-y-4">
             <FormField
               control={form.control}
+              name="systemAffected"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sistema(s) afetado(s) {isCreate && <span className="text-destructive">*</span>}</FormLabel>
+                  <FormDescription>Informe o(s) sistema(s), módulo(s) ou plataforma(s) impactados por esta demanda.</FormDescription>
+                  <FormControl>
+                    <Textarea rows={2} placeholder="Ex.: ERP – módulo de compras, Portal do Cliente, API de integração Bling…" {...field} value={field.value ?? ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="businessProblem"
               render={({ field }) => (
                 <FormItem>
@@ -651,6 +670,44 @@ export function DemandForm(props: Props) {
                 )}
               />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* ── Bloco 3b — Critérios de aceite ──────────────────────────── */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Critérios de aceite</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="acceptanceCriteria"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Critérios de aceite {isCreate && <span className="text-destructive">*</span>}</FormLabel>
+                  <FormDescription>O que deve ser verdadeiro para que a demanda seja considerada concluída com sucesso?</FormDescription>
+                  <FormControl>
+                    <Textarea rows={3} placeholder="Ex.: O relatório de vendas deve exibir dados atualizados em até 5 minutos após o fechamento…" {...field} value={field.value ?? ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="expectedEvidence"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Evidências esperadas {isCreate && <span className="text-destructive">*</span>}</FormLabel>
+                  <FormDescription>Que prints, dados, logs ou demonstrações validarão que a demanda foi atendida?</FormDescription>
+                  <FormControl>
+                    <Textarea rows={2} placeholder="Ex.: Print da tela com os dados corretos, log de execução sem erros, aprovação do usuário-chave…" {...field} value={field.value ?? ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </CardContent>
         </Card>
 

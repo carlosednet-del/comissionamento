@@ -23,6 +23,7 @@ enum UserRole {
   APROVADOR
   FINANCEIRO
   SOLICITANTE
+  DAP
 }
 
 enum WorkerProfile {
@@ -93,6 +94,20 @@ enum AuditAction {
   DIRECTOR_PRIORITY_SET
   DEMAND_PRIORITIZED_AND_APPROVED
   DEMAND_RETURNED_FROM_DIRECTOR_PRIORITIZATION
+  STATEMENT_SIGNED
+  STATEMENT_EXPORTED
+  DAP_CLOSING_PREVIEWED
+  DAP_PERIOD_EXPORTED
+  DAP_DEVELOPER_STATEMENT_EXPORTED
+  PASSWORD_CHANGED
+  PASSWORD_RESET_FORCED
+}
+
+enum StatementStatus {
+  PENDING
+  SIGNED
+  EXPORTED
+  CANCELED
 }
 
 // -------------------------------------------------------
@@ -110,7 +125,9 @@ model User {
   /// Salário base mensal (R$). Só o excedente acima do salário é "a pagar".
   monthlyBaseSalary Float?
   /// Teto mensal individual (R$). Sobrepõe o teto de perfil quando preenchido.
-  monthlyCapValue   Float?
+  monthlyCapValue      Float?
+  /// Força troca de senha no próximo login (primeiro acesso ou reset admin).
+  forcePasswordChange  Boolean  @default(false)
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
@@ -122,6 +139,8 @@ model User {
   prioritizedDemands Demand[]         @relation("DemandPrioritizer")
   auditLogs          AuditLog[]
   createdEvidences   DemandEvidence[] @relation("EvidenceCreator")
+  statements         DeveloperMonthlyStatement[] @relation("StatementDeveloper")
+  signedStatements   DeveloperMonthlyStatement[] @relation("StatementSigner")
 
   @@map("users")
 }
@@ -143,6 +162,8 @@ model Demand {
   dependencies         String?
   risks                String?
   observations         String?
+  acceptanceCriteria   String?
+  expectedEvidence     String?
   estimatedHours          Float?
   complexity              ComplexityLevel?
   roi                     RoiLevel?
@@ -178,7 +199,8 @@ model Demand {
   homologatedBy User?            @relation("DemandHomologator", fields: [homologatedById], references: [id])
   canceledBy    User?            @relation("DemandCanceler",    fields: [canceledById],  references: [id])
   prioritizedBy User?            @relation("DemandPrioritizer", fields: [prioritizedById], references: [id])
-  evidences     DemandEvidence[]
+  evidences      DemandEvidence[]
+  statementItems DeveloperMonthlyStatementItem[]
 
   @@index([status])
   @@index([priority])
@@ -249,4 +271,63 @@ model DeflatorConfig {
   updatedAt DateTime @updatedAt
 
   @@map("deflator_configs")
+}
+
+// ── Extrato mensal do desenvolvedor ───────────────────────────────
+
+/// Extrato mensal consolidado de demandas homologadas por um DEV.
+model DeveloperMonthlyStatement {
+  id          String @id @default(uuid())
+  developerId String
+  periodMonth Int
+  periodYear  Int
+
+  status              StatementStatus @default(PENDING)
+  totalDemands        Int             @default(0)
+  totalEstimatedHours Float           @default(0)
+  totalEstimatedValue Float           @default(0)
+
+  signedAt           DateTime?
+  signedById         String?
+  signatureIp        String?
+  signatureUserAgent String?
+  signatureCode      String?  @unique
+  contentHash        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  developer User                            @relation("StatementDeveloper", fields: [developerId], references: [id])
+  signedBy  User?                           @relation("StatementSigner",    fields: [signedById],   references: [id])
+  items     DeveloperMonthlyStatementItem[]
+
+  @@unique([developerId, periodMonth, periodYear])
+  @@map("developer_monthly_statements")
+}
+
+/// Item materializado de um extrato assinado — snapshot imutável do momento da assinatura.
+model DeveloperMonthlyStatementItem {
+  id          String @id @default(uuid())
+  statementId String
+  demandId    String
+
+  demandCode    String?
+  demandTitle   String
+  requesterArea String?
+  demandType    String?
+  complexity    String?
+  roi           String?
+
+  estimatedHours   Float
+  hourlyRate       Float?
+  estimatedValue   Float
+  homologationDate DateTime?
+
+  createdAt DateTime @default(now())
+
+  statement DeveloperMonthlyStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  demand    Demand                    @relation(fields: [demandId],    references: [id])
+
+  @@unique([statementId, demandId])
+  @@map("developer_monthly_statement_items")
 }

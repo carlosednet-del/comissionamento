@@ -2,11 +2,13 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { UserRole } from "@prisma/client";
 
-const PUBLIC_ROUTES = ["/login", "/acesso-bloqueado", "/sem-perfil", "/api/auth/callback"];
-const ADMIN_ROUTES  = ["/usuarios", "/configuracoes", "/parametros"];
+const PUBLIC_ROUTES       = ["/login", "/acesso-bloqueado", "/sem-perfil", "/api/auth/callback"];
+const ADMIN_ROUTES        = ["/usuarios", "/configuracoes", "/parametros"];
+const STATEMENT_ROLES: UserRole[] = ["DEV", "ADMIN", "DIRETOR"];
+const DAP_ROLES: UserRole[]       = ["DAP", "ADMIN", "DIRETOR", "FINANCEIRO"];
 
 /** Papéis que têm acesso ao dashboard financeiro */
-const DASHBOARD_ROLES: UserRole[] = ["ADMIN", "GESTOR", "FINANCEIRO", "DEV"];
+const DASHBOARD_ROLES: UserRole[] = ["ADMIN", "DIRETOR", "GESTOR", "FINANCEIRO", "DEV"];
 
 /** Retorna a página inicial correta conforme o papel */
 function homeFor(role: UserRole | undefined): string {
@@ -68,8 +70,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Usuário autenticado tentando acessar /login → redireciona para a página inicial do papel
+  // Usuário autenticado tentando acessar /login
   if (user && pathname === "/login") {
+    // Troca de senha obrigatória → /change-password antes do dashboard
+    if (user.user_metadata?.forcePasswordChange === true) {
+      const cpUrl = request.nextUrl.clone();
+      cpUrl.pathname = "/change-password";
+      return NextResponse.redirect(cpUrl);
+    }
     const role = user.user_metadata?.role as UserRole | undefined;
     const home = homeFor(role);
     const homeUrl = request.nextUrl.clone();
@@ -86,11 +94,26 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(blockedUrl);
     }
 
+    // Troca obrigatória de senha
+    const forcePasswordChange = user.user_metadata?.forcePasswordChange === true;
+    if (forcePasswordChange && !pathname.startsWith("/change-password")) {
+      const cpUrl = request.nextUrl.clone();
+      cpUrl.pathname = "/change-password";
+      return NextResponse.redirect(cpUrl);
+    }
+    // Senha já atualizada tentando acessar /change-password → home
+    if (!forcePasswordChange && pathname.startsWith("/change-password")) {
+      const role = user.user_metadata?.role as UserRole | undefined;
+      const homeUrl = request.nextUrl.clone();
+      homeUrl.pathname = homeFor(role);
+      return NextResponse.redirect(homeUrl);
+    }
+
     const role = user.user_metadata?.role as UserRole | undefined;
 
-    // Verificar permissão ADMIN para rotas administrativas
+    // Verificar permissão ADMIN/DIRETOR para rotas administrativas
     if (isAdminRoute(pathname)) {
-      if (role !== "ADMIN") {
+      if (role !== "ADMIN" && role !== "DIRETOR") {
         const dest = request.nextUrl.clone();
         dest.pathname = homeFor(role);
         dest.searchParams.set("error", "sem-permissao");
@@ -102,6 +125,22 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith("/dashboard") && !DASHBOARD_ROLES.includes(role as UserRole)) {
       const dest = request.nextUrl.clone();
       dest.pathname = "/demandas";
+      return NextResponse.redirect(dest);
+    }
+
+    // Bloquear /meu-extrato para papéis sem acesso
+    if (pathname.startsWith("/meu-extrato") && !STATEMENT_ROLES.includes(role as UserRole)) {
+      const dest = request.nextUrl.clone();
+      dest.pathname = homeFor(role);
+      dest.searchParams.set("error", "sem-permissao");
+      return NextResponse.redirect(dest);
+    }
+
+    // Bloquear /fechamento-dap para papéis sem acesso
+    if (pathname.startsWith("/fechamento-dap") && !DAP_ROLES.includes(role as UserRole)) {
+      const dest = request.nextUrl.clone();
+      dest.pathname = homeFor(role);
+      dest.searchParams.set("error", "sem-permissao");
       return NextResponse.redirect(dest);
     }
   }

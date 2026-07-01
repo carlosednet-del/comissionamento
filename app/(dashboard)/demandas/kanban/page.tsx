@@ -22,6 +22,7 @@ type SearchParams = {
   onlyMine?:      string;
   assigneeId?:    string;
   requesterName?: string;
+  requesterArea?: string;
 };
 
 export type KanbanAssignee = { id: string; name: string; role: string };
@@ -56,6 +57,7 @@ async function KanbanContent({ searchParams }: { searchParams: SearchParams }) {
     onlyMine:       sp.onlyMine === "true",
     assigneeId:     sp.assigneeId    || undefined,
     requesterName:  sp.requesterName || undefined,
+    requesterArea:  sp.requesterArea || undefined,
   });
 
   return <DemandKanbanBoard board={board} actor={actor} />;
@@ -93,6 +95,17 @@ export default async function KanbanPage({
       })
     : [];
 
+  // Áreas solicitantes distintas para o dropdown de filtro
+  const requesterAreaRows = await prisma.demand.findMany({
+    select:  { requesterArea: true },
+    distinct: ["requesterArea"],
+    orderBy: { requesterArea: "asc" },
+  });
+  const requesterAreas = requesterAreaRows
+    .map((r) => r.requesterArea)
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+
   return (
     <div className="space-y-4">
       {/* Cabeçalho */}
@@ -124,6 +137,7 @@ export default async function KanbanPage({
         showMyDemandsToggle={showMyDemandsToggle}
         showAssigneeFilter={showAssigneeFilter}
         assignees={assignees}
+        requesterAreas={requesterAreas}
       />
 
       {/* Board */}

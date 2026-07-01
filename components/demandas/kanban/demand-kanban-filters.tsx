@@ -8,7 +8,7 @@ import { Label }    from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Search, X, SlidersHorizontal, User, UserCheck } from "lucide-react";
+import { Search, X, SlidersHorizontal, User, UserCheck, Building2 } from "lucide-react";
 import type { DemandPriority, DemandType, ComplexityLevel, RoiLevel } from "@prisma/client";
 import type { KanbanAssignee } from "@/app/(dashboard)/demandas/kanban/page";
 
@@ -72,6 +72,7 @@ type Props = {
   showMyDemandsToggle?: boolean;  // false para FINANCEIRO/APROVADOR
   showAssigneeFilter?:  boolean;  // false para técnicos (DEV/SUPORTE/ARQUITETO)
   assignees?:           KanbanAssignee[];
+  requesterAreas?:      string[];
 };
 
 // ── Componente ─────────────────────────────────────────────────────
@@ -80,6 +81,7 @@ export function DemandKanbanFilters({
   showMyDemandsToggle = true,
   showAssigneeFilter  = false,
   assignees           = [],
+  requesterAreas      = [],
 }: Props) {
   const router       = useRouter();
   const pathname     = usePathname();
@@ -112,7 +114,8 @@ export function DemandKanbanFilters({
   const hasFilters =
     !!current("search")         || !!current("priority")   || !!current("demandType")  ||
     !!current("complexity")     || !!current("roi")         || !!current("deadlineStatus") ||
-    !!current("onlyMine")       || !!current("assigneeId")  || !!current("requesterName");
+    !!current("onlyMine")       || !!current("assigneeId")  || !!current("requesterName") ||
+    !!current("requesterArea");
 
   return (
     <div
@@ -199,6 +202,30 @@ export function DemandKanbanFilters({
             />
           </div>
         </div>
+
+        {/* Área solicitante */}
+        {requesterAreas.length > 0 && (
+          <div className="w-52">
+            <Label className="sr-only">Área solicitante</Label>
+            <div className="relative">
+              <Building2 className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+              <Select
+                value={current("requesterArea") || "_all"}
+                onValueChange={(v) => update("requesterArea", v === "_all" ? null : v)}
+              >
+                <SelectTrigger className="h-9 pl-8">
+                  <SelectValue placeholder="Área solicitante" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">Todas as áreas</SelectItem>
+                  {requesterAreas.map((area) => (
+                    <SelectItem key={area} value={area}>{area}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
 
         {/* Ordenar */}
         <div className="w-36">

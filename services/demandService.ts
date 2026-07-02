@@ -11,7 +11,7 @@ import {
   type ChangeDemandStatusInput,
 } from "@/validations/demand";
 import { createEvidenceSchema, type CreateEvidenceInput } from "@/validations/evidence";
-import { calculateDemandEstimatedValue, isTechnicalRole, HOURLY_RATES, demandTypeGeneratesValue } from "@/lib/demand-pricing";
+import { calculateDemandEstimatedValue, HOURLY_RATES, demandTypeGeneratesValue } from "@/lib/demand-pricing";
 import { pricingConfigService } from "@/services/pricingConfigService";
 import type { DemandFilters }    from "@/types";
 import type { DemandStatus, WorkerProfile, DemandType } from "@prisma/client";
@@ -236,26 +236,20 @@ export const demandService = {
       assertDeliveryDate(data.plannedDeliveryDate ?? null, actor);
     }
 
-    // Papéis técnicos só podem editar campos operacionais
-    let payload = data;
-    if (isTechnicalRole(actor.role)) {
-      payload = {
-        actualStartDate:    data.actualStartDate,
-        actualDeliveryDate: data.actualDeliveryDate,
-        observations:       data.observations,
-      } as UpdateDemandInput;
-    } else if (
+    // Bloqueia apenas se o usuário está ALTERANDO a atribuição para outra pessoa.
+    // Manter o assigneeId atual (mesmo que não seja o próprio usuário) é permitido.
+    if (
       !canAssignToOthers(actor) &&
       data.assigneeId &&
       data.assigneeId !== actor.id &&
-      data.assigneeId !== existing.assigneeId  // só bloqueia se estiver mudando para outro
+      data.assigneeId !== existing.assigneeId
     ) {
       throw new DemandPermissionError("atribuir a demanda a outro usuário");
     }
 
-    // Backend recalcula pricing para papéis não-técnicos quando houver alteração de execução
+    // Backend recalcula pricing sempre que campos relevantes mudarem
     let pricingUpdate: PricingSnapshot = {};
-    if (!isTechnicalRole(actor.role) && (data.assigneeId || data.estimatedHours || data.complexity || data.roi || data.demandType)) {
+    if (data.assigneeId || data.estimatedHours || data.complexity || data.roi || data.demandType) {
       pricingUpdate = await buildPricingSnapshot(
         data.assigneeId ?? existing.assigneeId,
         data.estimatedHours ?? existing.estimatedHours,
@@ -265,7 +259,7 @@ export const demandService = {
       );
     }
 
-    const updated = await demandRepository.update(id, { ...payload, ...pricingUpdate });
+    const updated = await demandRepository.update(id, { ...data, ...pricingUpdate });
 
     await auditService.log({
       entity:   "Demand",

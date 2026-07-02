@@ -166,7 +166,7 @@ function DroppableColumn({
     <div
       className={cn(
         "flex flex-col rounded-lg border border-border bg-muted/30",
-        "border-t-2 flex-1 min-w-[220px]",
+        "border-t-2 flex-1 min-w-[270px]",
         "transition-all duration-150",
         COLUMN_ACCENT[column.status] ?? "border-t-slate-300",
         // Destaque quando o item pode ser solto aqui

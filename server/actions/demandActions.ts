@@ -15,6 +15,7 @@ import type {
   HomologateDemandInput,
   RejectDemandInput,
   CancelDemandInput,
+  StartDevelopmentInput,
 } from "@/validations/demand";
 import type { CreateEvidenceInput } from "@/validations/evidence";
 
@@ -216,10 +217,13 @@ export async function approveDemandAction(id: string): Promise<ActionResult<void
   } catch (e) { return handleError(e); }
 }
 
-export async function startDevelopmentAction(id: string): Promise<ActionResult<void>> {
+export async function startDevelopmentAction(
+  id: string,
+  input: StartDevelopmentInput,
+): Promise<ActionResult<void>> {
   try {
     const session = await requireAuth();
-    await demandWorkflowService.startDevelopment(id, toPermissionUser(session));
+    await demandWorkflowService.startDevelopment(id, input, toPermissionUser(session));
     revalidateDemand(id);
     return { success: true, data: undefined };
   } catch (e) { return handleError(e); }

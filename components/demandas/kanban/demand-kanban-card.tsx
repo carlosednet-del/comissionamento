@@ -22,6 +22,7 @@ import type { ComplexityLevel } from "@prisma/client";
 
 import {
   ConfirmTransitionDialog,
+  StartDevelopmentDialog,
   SendToHomologationDialog,
   HomologateDialog,
   RejectDemandDialog,
@@ -234,11 +235,8 @@ export function DemandKanbanCard({ demand, actor, evidenceCount = 0 }: Props) {
             />
           )}
           {canStart && (
-            <ConfirmTransitionDialog
-              demandId={demand.id} action="start"
-              title="Iniciar desenvolvimento"
-              description="O desenvolvimento será iniciado. A data de início real será registrada."
-              confirmLabel="Iniciar"
+            <StartDevelopmentDialog
+              demandId={demand.id}
               trigger={
                 <Button size="sm" className="h-6 px-2 text-[10px] gap-1 bg-purple-600 hover:bg-purple-700 text-white">
                   <Code2 className="h-3 w-3" /> Iniciar

@@ -186,6 +186,15 @@ export const cancelDemandSchema = z.object({
     .min(10, "Motivo do cancelamento deve ter ao menos 10 caracteres"),
 });
 
+// ── Schema de início de desenvolvimento ──────────────────────────
+export const startDevelopmentSchema = z.object({
+  plannedStartDate:    z.coerce.date({ required_error: "Data de início previsto é obrigatória" }),
+  plannedDeliveryDate: z.coerce.date({ required_error: "Data de entrega prevista é obrigatória" }),
+}).refine(
+  (d) => d.plannedDeliveryDate >= d.plannedStartDate,
+  { message: "Data de entrega não pode ser anterior à data de início", path: ["plannedDeliveryDate"] },
+);
+
 // ── Schema de filtros do kanban ──────────────────────────────────
 export const kanbanFiltersSchema = z.object({
   search:        z.string().optional(),
@@ -233,3 +242,4 @@ export type HomologateDemandInput      = z.infer<typeof homologateDemandSchema>;
 export type RejectDemandInput          = z.infer<typeof rejectDemandSchema>;
 export type CancelDemandInput          = z.infer<typeof cancelDemandSchema>;
 export type KanbanFiltersInput         = z.infer<typeof kanbanFiltersSchema>;
+export type StartDevelopmentInput      = z.infer<typeof startDevelopmentSchema>;

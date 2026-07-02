@@ -1,5 +1,33 @@
 # Gestor de Demandas — Guia de Deploy em Produção
 
+## ⚠️ Pegadinhas conhecidas (leia antes de buildar)
+
+1. **`NODE_ENV` NÃO pode estar no ambiente ao rodar `next build`.** Se `NODE_ENV`
+   estiver exportado no shell (mesmo `=production`, ou com um `\r` de CRLF vindo de
+   um `.env` sourçado), o build de standalone quebra ao exportar `/404`, `/500` e
+   `/_error` com a mensagem **enganosa**:
+   `Error: <Html> should not be imported outside of pages/_document`.
+   O `next build` já define `NODE_ENV=production` sozinho. **Faça `unset NODE_ENV`
+   antes do build e não coloque `NODE_ENV` no `.env`/`.env.local`.**
+
+2. **Páginas de erro obrigatórias.** O build standalone exige `app/not-found.tsx` e
+   `app/global-error.tsx` (já versionados). Sem elas o Next cai no fallback do Pages
+   Router e dá o mesmo erro do `<Html>` acima.
+
+3. **Nome da chave Supabase.** O código usa `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+   (nome novo do Supabase), **não** `NEXT_PUBLIC_SUPABASE_ANON_KEY`. É o mesmo valor.
+
+4. **Prisma sem `postinstall`.** Rode `npx prisma generate` após `npm ci` e **antes**
+   do build; `npx prisma migrate deploy` precisa de `DATABASE_URL` **e** `DIRECT_URL`.
+
+5. **Line endings.** Normalize o `.env`/`.env.local` com `sed -i 's/\r$//'` — CRLF
+   contamina os valores (inclusive `DATABASE_URL`) em runtime.
+
+6. **Standalone (build no servidor).** O `server.js` fica na **raiz** do `APP_DIR`
+   (não em `.next/standalone/`); copie `.next/static` para `APP_DIR/.next/static`.
+
+---
+
 ## Pré-requisitos no servidor
 
 | Requisito | Versão mínima | Como instalar |

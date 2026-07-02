@@ -6,6 +6,7 @@ import { DemandKanbanFilters }           from "@/components/demandas/kanban/dema
 import { Button }  from "@/components/ui/button";
 import { LayoutList, LayoutGrid } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { DEPARTMENTS } from "@/lib/constants/departments";
 import type { DemandPriority, DemandType, ComplexityLevel, RoiLevel } from "@prisma/client";
 import { Suspense } from "react";
 
@@ -23,6 +24,7 @@ type SearchParams = {
   assigneeId?:    string;
   requesterName?: string;
   requesterArea?: string;
+  director?:      string;
 };
 
 export type KanbanAssignee = { id: string; name: string; role: string };
@@ -58,6 +60,7 @@ async function KanbanContent({ searchParams }: { searchParams: SearchParams }) {
     assigneeId:     sp.assigneeId    || undefined,
     requesterName:  sp.requesterName || undefined,
     requesterArea:  sp.requesterArea || undefined,
+    director:       sp.director      || undefined,
   });
 
   return <DemandKanbanBoard board={board} actor={actor} />;
@@ -95,16 +98,7 @@ export default async function KanbanPage({
       })
     : [];
 
-  // Áreas solicitantes distintas para o dropdown de filtro
-  const requesterAreaRows = await prisma.demand.findMany({
-    select:  { requesterArea: true },
-    distinct: ["requesterArea"],
-    orderBy: { requesterArea: "asc" },
-  });
-  const requesterAreas = requesterAreaRows
-    .map((r) => r.requesterArea)
-    .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+  const requesterAreas = [...DEPARTMENTS];
 
   return (
     <div className="space-y-4">

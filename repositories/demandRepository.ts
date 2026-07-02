@@ -8,9 +8,10 @@ export type KanbanFilters = {
   statuses?:      DemandStatus[];
   priority?:      DemandPriority;
   demandType?:    DemandType;
-  assigneeId?:    string;
-  requesterArea?: string;
-  requesterName?: string;
+  assigneeId?:     string;
+  requesterArea?:  string;
+  requesterAreas?: string[];
+  requesterName?:  string;
   complexity?:    ComplexityLevel;
   roi?:           RoiLevel;
   deadlineStatus?: "overdue" | "today" | "soon" | "ok";
@@ -76,6 +77,7 @@ export const demandRepository = {
       assigneeId,
       creatorId,
       requesterArea,
+      requesterAreas,
       search,
       createdFrom,
       createdTo,
@@ -91,9 +93,11 @@ export const demandRepository = {
       ...(demandType    && { demandType }),
       ...(assigneeId    && { assigneeId }),
       ...(creatorId     && { creatorId }),
-      ...(requesterArea && {
-        requesterArea: { contains: requesterArea, mode: "insensitive" as const },
-      }),
+      ...(requesterArea
+        ? { requesterArea: { contains: requesterArea, mode: "insensitive" as const } }
+        : requesterAreas?.length
+        ? { requesterArea: { in: requesterAreas } }
+        : {}),
       ...(search && {
         OR: [
           { title:       { contains: search, mode: "insensitive" as const } },
@@ -147,6 +151,7 @@ export const demandRepository = {
       demandType,
       assigneeId,
       requesterArea,
+      requesterAreas,
       requesterName,
       complexity,
       roi,
@@ -198,9 +203,11 @@ export const demandRepository = {
       ...(onlyMine && currentUserId
         ? { OR: [{ assigneeId: currentUserId }, { creatorId: currentUserId }] }
         : {}),
-      ...(requesterArea  && {
-        requesterArea: { contains: requesterArea, mode: "insensitive" as const },
-      }),
+      ...(requesterArea
+        ? { requesterArea: { contains: requesterArea, mode: "insensitive" as const } }
+        : requesterAreas?.length
+        ? { requesterArea: { in: requesterAreas } }
+        : {}),
       ...(requesterName  && {
         requesterName: { contains: requesterName, mode: "insensitive" as const },
       }),

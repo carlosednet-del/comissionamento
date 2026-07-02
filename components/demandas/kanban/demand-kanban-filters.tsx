@@ -8,9 +8,10 @@ import { Label }    from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Search, X, SlidersHorizontal, User, UserCheck, Building2 } from "lucide-react";
+import { Search, X, SlidersHorizontal, User, UserCheck, Building2, Users } from "lucide-react";
 import type { DemandPriority, DemandType, ComplexityLevel, RoiLevel } from "@prisma/client";
 import type { KanbanAssignee } from "@/app/(dashboard)/demandas/kanban/page";
+import { DIRECTORS } from "@/lib/constants/departments";
 
 // ── Opções ─────────────────────────────────────────────────────────
 
@@ -115,7 +116,7 @@ export function DemandKanbanFilters({
     !!current("search")         || !!current("priority")   || !!current("demandType")  ||
     !!current("complexity")     || !!current("roi")         || !!current("deadlineStatus") ||
     !!current("onlyMine")       || !!current("assigneeId")  || !!current("requesterName") ||
-    !!current("requesterArea");
+    !!current("requesterArea")  || !!current("director");
 
   return (
     <div
@@ -226,6 +227,28 @@ export function DemandKanbanFilters({
             </div>
           </div>
         )}
+
+        {/* Diretor responsável */}
+        <div className="w-44">
+          <Label className="sr-only">Diretor</Label>
+          <div className="relative">
+            <Users className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+            <Select
+              value={current("director") || "_all"}
+              onValueChange={(v) => update("director", v === "_all" ? null : v)}
+            >
+              <SelectTrigger className="h-9 pl-8">
+                <SelectValue placeholder="Diretor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">Todos os diretores</SelectItem>
+                {DIRECTORS.map((d) => (
+                  <SelectItem key={d} value={d}>{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
         {/* Ordenar */}
         <div className="w-36">

@@ -7,6 +7,7 @@ import { DemandFilters } from "@/components/demandas/demand-filters";
 import { DemandTable } from "@/components/demandas/demand-table";
 import { Button } from "@/components/ui/button";
 import { Plus, LayoutGrid } from "lucide-react";
+import { getAreasByDirector } from "@/lib/constants/departments";
 import type { DemandStatus, DemandPriority, DemandType } from "@prisma/client";
 
 export const metadata = { title: "Demandas — Gestor de Demandas" };
@@ -17,6 +18,7 @@ type SearchParams = {
   priority?:      string;
   demandType?:    string;
   requesterArea?: string;
+  director?:      string;
   page?:          string;
 };
 
@@ -35,7 +37,8 @@ export default async function DemandasPage({
     status:        (sp.status       as DemandStatus)   || undefined,
     priority:      (sp.priority     as DemandPriority) || undefined,
     demandType:    (sp.demandType   as DemandType)     || undefined,
-    requesterArea: sp.requesterArea || undefined,
+    requesterArea:  sp.requesterArea || undefined,
+    requesterAreas: sp.director ? getAreasByDirector(sp.director) : undefined,
     // Solicitante só vê as demandas que criou
     ...(actor.role === "SOLICITANTE" ? { creatorId: actor.id } : {}),
     page,

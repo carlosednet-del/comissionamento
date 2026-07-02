@@ -228,8 +228,13 @@ export const demandService = {
       throw new DemandPermissionError("editar esta demanda");
     }
 
-    // Valida data de entrega (não pode ser no passado, exceto GESTOR/ADMIN)
-    assertDeliveryDate(data.plannedDeliveryDate ?? null, actor);
+    // Valida data de entrega somente se o usuário está alterando o valor
+    const isChangingDeliveryDate =
+      data.plannedDeliveryDate !== undefined &&
+      data.plannedDeliveryDate?.getTime() !== existing.plannedDeliveryDate?.getTime();
+    if (isChangingDeliveryDate) {
+      assertDeliveryDate(data.plannedDeliveryDate ?? null, actor);
+    }
 
     // Papéis técnicos só podem editar campos operacionais
     let payload = data;

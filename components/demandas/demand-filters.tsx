@@ -16,7 +16,7 @@ import { Search, X } from "lucide-react";
 import { STATUS_CONFIG } from "./status-badge";
 import { PRIORITY_CONFIG } from "./priority-badge";
 import { TYPE_CONFIG } from "./type-badge";
-import { DEPARTMENTS } from "@/lib/constants/departments";
+import { DEPARTMENTS, DIRECTORS } from "@/lib/constants/departments";
 
 const ALL_PLACEHOLDER = "__ALL__";
 
@@ -52,7 +52,7 @@ export function DemandFilters() {
     });
   }
 
-  const hasFilters = ["search", "status", "priority", "demandType", "requesterArea"].some((k) => sp.has(k));
+  const hasFilters = ["search", "status", "priority", "demandType", "requesterArea", "director"].some((k) => sp.has(k));
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -136,6 +136,22 @@ export function DemandFilters() {
         <SelectContent>
           <SelectItem value={ALL_PLACEHOLDER}>Todas as áreas</SelectItem>
           {DEPARTMENTS.map((d) => (
+            <SelectItem key={d} value={d}>{d}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {/* Diretor responsável */}
+      <Select
+        value={get("director") || ALL_PLACEHOLDER}
+        onValueChange={(v) => update("director", v === ALL_PLACEHOLDER ? "" : v)}
+      >
+        <SelectTrigger className="h-9 w-44">
+          <SelectValue placeholder="Diretor" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL_PLACEHOLDER}>Todos os diretores</SelectItem>
+          {DIRECTORS.map((d) => (
             <SelectItem key={d} value={d}>{d}</SelectItem>
           ))}
         </SelectContent>

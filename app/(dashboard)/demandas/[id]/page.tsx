@@ -34,7 +34,7 @@ export default async function DemandaDetailPage({
   const auditLogs = await demandService.getAuditLogs(id);
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2">
         <Button asChild variant="ghost" size="sm" className="-ml-2">

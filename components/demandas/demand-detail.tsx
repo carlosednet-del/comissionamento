@@ -143,10 +143,10 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
       <WorkflowSection demand={demand} actor={actor} />
 
       {/* ── Grade de informações ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_380px]">
 
         {/* Coluna principal */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6">
 
           {/* Identificação */}
           <Card>

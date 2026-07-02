@@ -666,9 +666,9 @@ const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" 
 
 type AnalysisAssignee = { id: string; name: string; role: string; workerProfile: WorkerProfile | null };
 
-const ASSIGNABLE_ROLE_ORDER_DROP = ["DEV", "GESTOR", "ARQUITETO", "SUPORTE"] as const;
+const ASSIGNABLE_ROLE_ORDER_DROP = ["DEV", "GESTOR", "ARQUITETO", "SUPORTE", "ADMIN"] as const;
 const ASSIGNABLE_ROLE_LABELS_DROP: Record<string, string> = {
-  DEV: "Desenvolvedor", GESTOR: "Gestor", ARQUITETO: "Arquiteto", SUPORTE: "Suporte",
+  DEV: "Desenvolvedor", GESTOR: "Gestor", ARQUITETO: "Arquiteto", SUPORTE: "Suporte", ADMIN: "Admin",
 };
 
 const COMPLEXITY_OPTIONS_DROP = (Object.keys(COMPLEXITY_LABELS) as ComplexityLevel[])
@@ -691,10 +691,10 @@ function SendToAnalysisDropDialog({
   useEffect(() => {
     if (open && assignees.length === 0) {
       setLoadingAssignees(true);
-      getAssigneesAction().then((data) => {
-        setAssignees(data as AnalysisAssignee[]);
-        setLoadingAssignees(false);
-      });
+      getAssigneesAction()
+        .then((data) => { setAssignees(data as AnalysisAssignee[]); })
+        .catch(() => {})
+        .finally(() => { setLoadingAssignees(false); });
     }
   }, [open, assignees.length]);
 
@@ -749,7 +749,7 @@ function SendToAnalysisDropDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Responsável técnico <span className="text-destructive">*</span></FormLabel>
-                  <Select disabled={loadingAssignees} onValueChange={field.onChange} value={field.value ?? ""}>
+                  <Select disabled={loadingAssignees} onValueChange={field.onChange} value={field.value || undefined}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder={loadingAssignees ? "Carregando…" : "Selecionar responsável"} />

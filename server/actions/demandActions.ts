@@ -243,7 +243,7 @@ export async function sendToAnalysisWithDataAction(
 export async function getAssigneesAction() {
   await requireAuth();
   return prisma.user.findMany({
-    where:   { isActive: true, role: { in: ["DEV", "GESTOR", "ARQUITETO", "SUPORTE"] } },
+    where:   { isActive: true, role: { in: ["DEV", "GESTOR", "ARQUITETO", "SUPORTE", "ADMIN"] } },
     select:  { id: true, name: true, workerProfile: true, role: true },
     orderBy: { name: "asc" },
   });

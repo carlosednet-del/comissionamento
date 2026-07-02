@@ -101,9 +101,9 @@ const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" 
 
 type Assignee = { id: string; name: string; role: string; workerProfile: WorkerProfile | null };
 
-const ASSIGNABLE_ROLE_ORDER = ["DEV", "GESTOR", "ARQUITETO", "SUPORTE"] as const;
+const ASSIGNABLE_ROLE_ORDER = ["DEV", "GESTOR", "ARQUITETO", "SUPORTE", "ADMIN"] as const;
 const ASSIGNABLE_ROLE_LABELS: Record<string, string> = {
-  DEV: "Desenvolvedor", GESTOR: "Gestor", ARQUITETO: "Arquiteto", SUPORTE: "Suporte",
+  DEV: "Desenvolvedor", GESTOR: "Gestor", ARQUITETO: "Arquiteto", SUPORTE: "Suporte", ADMIN: "Admin",
 };
 
 const COMPLEXITY_OPTIONS = (Object.keys(COMPLEXITY_LABELS) as ComplexityLevel[])
@@ -142,10 +142,10 @@ export function SendToAnalysisDialog({ demandId, trigger, initialData }: SendToA
   useEffect(() => {
     if (open && assignees.length === 0) {
       setLoadingAssignees(true);
-      getAssigneesAction().then((data) => {
-        setAssignees(data as Assignee[]);
-        setLoadingAssignees(false);
-      });
+      getAssigneesAction()
+        .then((data) => { setAssignees(data as Assignee[]); })
+        .catch(() => {})
+        .finally(() => { setLoadingAssignees(false); });
     }
   }, [open, assignees.length]);
 
@@ -211,7 +211,7 @@ export function SendToAnalysisDialog({ demandId, trigger, initialData }: SendToA
                   <Select
                     disabled={loadingAssignees}
                     onValueChange={field.onChange}
-                    value={field.value ?? ""}
+                    value={field.value || undefined}
                   >
                     <FormControl>
                       <SelectTrigger>

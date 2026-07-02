@@ -269,7 +269,7 @@ function SimpleConfirmDialog({
 type HomolFormValues = z.infer<typeof sendToHomologationSchema>;
 
 function SendToHomologationDropDialog({
-  open, onOpenChange: _onOpenChange, pending, onSuccess, onCancel,
+  open, pending, onSuccess, onCancel,
 }: { open: boolean; onOpenChange: (v: boolean) => void; pending: PendingDrop; onSuccess: () => void; onCancel: () => void }) {
   const [error, setError] = useState<string | null>(null);
 
@@ -353,7 +353,7 @@ function SendToHomologationDropDialog({
 type HomologateValues = z.infer<typeof homologateDemandSchema>;
 
 function HomologateDropDialog({
-  open, onOpenChange: _onOpenChange, pending, onSuccess, onCancel,
+  open, pending, onSuccess, onCancel,
 }: { open: boolean; onOpenChange: (v: boolean) => void; pending: PendingDrop; onSuccess: () => void; onCancel: () => void }) {
   const [error, setError] = useState<string | null>(null);
 
@@ -420,7 +420,7 @@ function HomologateDropDialog({
 type RejectValues = z.infer<typeof rejectDemandSchema>;
 
 function RejectDropDialog({
-  open, onOpenChange: _onOpenChange, pending, onSuccess, onCancel,
+  open, pending, onSuccess, onCancel,
 }: { open: boolean; onOpenChange: (v: boolean) => void; pending: PendingDrop; onSuccess: () => void; onCancel: () => void }) {
   const [error, setError] = useState<string | null>(null);
 
@@ -486,7 +486,7 @@ function RejectDropDialog({
 type CancelValues = z.infer<typeof cancelDemandSchema>;
 
 function CancelDropDialog({
-  open, onOpenChange: _onOpenChange, pending, onSuccess, onCancel,
+  open, pending, onSuccess, onCancel,
 }: { open: boolean; onOpenChange: (v: boolean) => void; pending: PendingDrop; onSuccess: () => void; onCancel: () => void }) {
   const [error, setError] = useState<string | null>(null);
 

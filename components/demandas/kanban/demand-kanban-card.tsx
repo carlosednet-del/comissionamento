@@ -237,6 +237,7 @@ export function DemandKanbanCard({ demand, actor, evidenceCount = 0 }: Props) {
           {canStart && (
             <StartDevelopmentDialog
               demandId={demand.id}
+              allowPastDates={actor.role === "GESTOR" || actor.role === "ADMIN"}
               trigger={
                 <Button size="sm" className="h-6 px-2 text-[10px] gap-1 bg-purple-600 hover:bg-purple-700 text-white">
                   <Code2 className="h-3 w-3" /> Iniciar

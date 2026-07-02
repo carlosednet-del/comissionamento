@@ -74,9 +74,10 @@ export type PendingDrop = {
 };
 
 type Props = {
-  pending:   PendingDrop | null;
-  onSuccess: () => void;
-  onCancel:  () => void;
+  pending:        PendingDrop | null;
+  onSuccess:      () => void;
+  onCancel:       () => void;
+  allowPastDates?: boolean;
 };
 
 // ── Configuração por transição ────────────────────────────────────
@@ -126,7 +127,7 @@ function getSimpleAction(toStatus: DemandStatus, fromStatus: DemandStatus): Simp
 
 // ── Componente principal ──────────────────────────────────────────
 
-export function DropTransitionDialog({ pending, onSuccess, onCancel }: Props) {
+export function DropTransitionDialog({ pending, onSuccess, onCancel, allowPastDates = false }: Props) {
   const router = useRouter();
   const open   = !!pending;
 
@@ -178,6 +179,7 @@ export function DropTransitionDialog({ pending, onSuccess, onCancel }: Props) {
         open={open}
         onOpenChange={handleOpenChange}
         pending={pending}
+        allowPastDates={allowPastDates}
         onSuccess={afterSuccess}
         onCancel={onCancel}
       />
@@ -292,8 +294,8 @@ function SimpleConfirmDialog({
 // ── Iniciar desenvolvimento (arrastar de APROVADA) ────────────────
 
 function StartDevelopmentDropDialog({
-  open, onOpenChange, pending, onSuccess, onCancel,
-}: { open: boolean; onOpenChange: (v: boolean) => void; pending: PendingDrop; onSuccess: () => void; onCancel: () => void }) {
+  open, onOpenChange, pending, allowPastDates = false, onSuccess, onCancel,
+}: { open: boolean; onOpenChange: (v: boolean) => void; pending: PendingDrop; allowPastDates?: boolean; onSuccess: () => void; onCancel: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const today = new Date().toISOString().slice(0, 10);
 
@@ -303,9 +305,9 @@ function StartDevelopmentDropDialog({
   });
 
   const watchedStart = form.watch("plannedStartDate");
-  const minDelivery  = watchedStart
-    ? new Date(watchedStart).toISOString().slice(0, 10)
-    : today;
+  const minDelivery  = allowPastDates
+    ? (watchedStart ? new Date(watchedStart).toISOString().slice(0, 10) : undefined)
+    : (watchedStart ? new Date(watchedStart).toISOString().slice(0, 10) : today);
 
   async function onSubmit(values: StartDevelopmentInput) {
     setError(null);
@@ -337,7 +339,7 @@ function StartDevelopmentDropDialog({
                     <FormControl>
                       <Input
                         type="date"
-                        min={today}
+                        min={allowPastDates ? undefined : today}
                         value={field.value ? new Date(field.value).toISOString().slice(0, 10) : ""}
                         onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
                       />
@@ -365,6 +367,9 @@ function StartDevelopmentDropDialog({
                 )}
               />
             </div>
+            {allowPastDates && (
+              <p className="text-xs text-muted-foreground">Gestor pode definir datas retroativas.</p>
+            )}
             {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onCancel} disabled={form.formState.isSubmitting}>Cancelar</Button>

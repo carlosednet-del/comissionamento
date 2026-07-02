@@ -1,5 +1,6 @@
 import { redirect }         from "next/navigation";
 import { requireAuth }       from "@/server/auth/helpers";
+import { authService }       from "@/services/authService";
 import { ChangePasswordForm } from "@/components/auth/ChangePasswordForm";
 import { ShieldAlert, Layers } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,8 +10,11 @@ export const metadata = { title: "Trocar senha — Gestor de Demandas" };
 export default async function ChangePasswordPage() {
   const user = await requireAuth();
 
-  // Se o usuário não precisa trocar a senha, vai para home
+  // Se o usuário não precisa trocar a senha, sincroniza metadata e vai para home.
+  // Sem a sincronização, o middleware (que lê user_metadata) causaria loop infinito
+  // caso o DB já tenha forcePasswordChange=false mas o metadata do Auth ainda seja true.
   if (!user.forcePasswordChange) {
+    await authService.updateAuthUserMetadata(user.authUserId, { forcePasswordChange: false });
     redirect("/dashboard");
   }
 

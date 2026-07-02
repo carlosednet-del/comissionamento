@@ -34,7 +34,7 @@ import {
   Pencil, ExternalLink, Clock, Calendar, User,
   Building2, Layers, Trash2, ImageIcon,
 } from "lucide-react";
-import { COMPLEXITY_LABELS, ROI_LABELS, WORKER_PROFILE_LABELS } from "@/lib/demand-pricing";
+import { COMPLEXITY_LABELS, ROI_LABELS, WORKER_PROFILE_LABELS, demandTypeGeneratesValue } from "@/lib/demand-pricing";
 import type { ComplexityLevel, RoiLevel, WorkerProfile } from "@prisma/client";
 
 type AuditLogEntry = AuditLog & { user: { id: string; name: string } };
@@ -206,11 +206,19 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
                     </InfoRow>
                   )}
                   {demand.estimatedDemandValue != null && (
-                    <InfoRow label="Valor estimado">
-                      <span className="font-mono font-semibold text-brand-text-dark">
-                        {BRL.format(demand.estimatedDemandValue)}
-                      </span>
-                    </InfoRow>
+                    demandTypeGeneratesValue(demand.demandType as never) ? (
+                      <InfoRow label="Valor estimado">
+                        <span className="font-mono font-semibold text-brand-text-dark">
+                          {BRL.format(demand.estimatedDemandValue)}
+                        </span>
+                      </InfoRow>
+                    ) : (
+                      <InfoRow label="Valor estimado">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 border border-rose-200 px-2 py-0.5 text-xs font-medium text-rose-600">
+                          Sem valor a pagar · apenas bench
+                        </span>
+                      </InfoRow>
+                    )
                   )}
                 </dl>
               </CardContent>
@@ -382,6 +390,7 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
               workerProfile={demand.assigneeProfileSnapshot as WorkerProfile}
               ourHourlyRate={demand.hourlyRateSnapshot ?? undefined}
               ourValue={demand.estimatedDemandValue ?? undefined}
+              isCorrectionOnly={!demandTypeGeneratesValue(demand.demandType as never)}
             />
           )}
         </div>

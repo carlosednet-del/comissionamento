@@ -388,6 +388,7 @@ export function DemandKanbanBoard({ board, actor }: Props) {
         pending={pendingDrop}
         onSuccess={handleDropSuccess}
         onCancel={handleDropCancel}
+        allowPastDates={actor.role === "GESTOR" || actor.role === "ADMIN"}
       />
     </>
   );

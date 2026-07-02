@@ -318,6 +318,7 @@ export function WorkflowSection({ demand, actor }: Props) {
               {canStart && (
                 <StartDevelopmentDialog
                   demandId={demand.id}
+                  allowPastDates={actor.role === "GESTOR" || actor.role === "ADMIN"}
                   trigger={<TriggerBtn type="start" />}
                 />
               )}

@@ -142,11 +142,12 @@ const startDevForm = startDevelopmentSchema;
 type StartDevFormValues = z.infer<typeof startDevForm>;
 
 type StartDevelopmentProps = {
-  demandId: string;
-  trigger:  React.ReactNode;
+  demandId:       string;
+  trigger:        React.ReactNode;
+  allowPastDates?: boolean;
 };
 
-export function StartDevelopmentDialog({ demandId, trigger }: StartDevelopmentProps) {
+export function StartDevelopmentDialog({ demandId, trigger, allowPastDates = false }: StartDevelopmentProps) {
   const { open, setOpen, error, setError, close, rerender } = useWorkflowDialog();
 
   const today = new Date().toISOString().slice(0, 10);
@@ -158,6 +159,11 @@ export function StartDevelopmentDialog({ demandId, trigger }: StartDevelopmentPr
       plannedDeliveryDate: undefined,
     },
   });
+
+  const watchedStart = form.watch("plannedStartDate");
+  const minDelivery  = allowPastDates
+    ? (watchedStart ? new Date(watchedStart).toISOString().slice(0, 10) : undefined)
+    : (watchedStart ? new Date(watchedStart).toISOString().slice(0, 10) : today);
 
   async function onSubmit(values: StartDevFormValues) {
     setError(null);
@@ -194,7 +200,7 @@ export function StartDevelopmentDialog({ demandId, trigger }: StartDevelopmentPr
                     <FormControl>
                       <Input
                         type="date"
-                        min={today}
+                        min={allowPastDates ? undefined : today}
                         value={field.value ? new Date(field.value).toISOString().slice(0, 10) : ""}
                         onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
                       />
@@ -213,9 +219,7 @@ export function StartDevelopmentDialog({ demandId, trigger }: StartDevelopmentPr
                     <FormControl>
                       <Input
                         type="date"
-                        min={form.watch("plannedStartDate")
-                          ? new Date(form.watch("plannedStartDate")).toISOString().slice(0, 10)
-                          : today}
+                        min={minDelivery}
                         value={field.value ? new Date(field.value).toISOString().slice(0, 10) : ""}
                         onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
                       />
@@ -225,6 +229,12 @@ export function StartDevelopmentDialog({ demandId, trigger }: StartDevelopmentPr
                 )}
               />
             </div>
+
+            {allowPastDates && (
+              <p className="text-xs text-muted-foreground">
+                Gestor pode definir datas retroativas.
+              </p>
+            )}
 
             {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
 

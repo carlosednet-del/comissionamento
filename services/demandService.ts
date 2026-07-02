@@ -239,9 +239,12 @@ export const demandService = {
         actualDeliveryDate: data.actualDeliveryDate,
         observations:       data.observations,
       } as UpdateDemandInput;
-    } else if (!canAssignToOthers(actor) && data.assigneeId && data.assigneeId !== actor.id) {
-      // Usuários comuns (não técnicos e não gestores) não podem reatribuir a
-      // demanda a outro usuário — só mantêm para si ou sem responsável.
+    } else if (
+      !canAssignToOthers(actor) &&
+      data.assigneeId &&
+      data.assigneeId !== actor.id &&
+      data.assigneeId !== existing.assigneeId  // só bloqueia se estiver mudando para outro
+    ) {
       throw new DemandPermissionError("atribuir a demanda a outro usuário");
     }
 

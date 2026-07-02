@@ -336,10 +336,12 @@ export function DemandForm(props: Props) {
     return acc;
   }, {});
 
-  // Rola até o primeiro campo com erro
+  // Rola até o primeiro campo com erro ou até o alert de erro do servidor
   function scrollToFirstError() {
     requestAnimationFrame(() => {
-      const el = document.querySelector("[aria-invalid='true'], [data-invalid='true']");
+      const el =
+        document.querySelector("[data-server-error='true']") ??
+        document.querySelector("[aria-invalid='true'], [data-invalid='true']");
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
   }
@@ -369,11 +371,11 @@ export function DemandForm(props: Props) {
     if (isCreate) {
       const payload = { ...(values as CreateDemandInput), saveAsDraft: draft };
       const result  = await createDemandAction(payload);
-      if (!result.success) { setServerError(result.error); return; }
+      if (!result.success) { setServerError(result.error); scrollToFirstError(); return; }
       router.push("/demandas");
     } else {
       const result = await updateDemandAction((props as EditMode).demand.id, values as UpdateDemandInput);
-      if (!result.success) { setServerError(result.error); return; }
+      if (!result.success) { setServerError(result.error); scrollToFirstError(); return; }
       router.push(`/demandas/${(props as EditMode).demand.id}`);
     }
 
@@ -387,12 +389,12 @@ export function DemandForm(props: Props) {
       <form
         onSubmit={form.handleSubmit(
           (v) => submit(v, false),
-          scrollToFirstError,
+          (errors) => { console.error("[DemandForm] validation errors:", errors); scrollToFirstError(); },
         )}
         className="space-y-6"
       >
         {serverError && (
-          <Alert variant="destructive">
+          <Alert variant="destructive" data-server-error="true">
             <AlertDescription>{serverError}</AlertDescription>
           </Alert>
         )}

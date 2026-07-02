@@ -2,16 +2,16 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useTransition }               from "react";
-import { Input }    from "@/components/ui/input";
-import { Button }   from "@/components/ui/button";
-import { Label }    from "@/components/ui/label";
+import { Input }  from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge }  from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Search, X, SlidersHorizontal, User, UserCheck, Building2, Users } from "lucide-react";
+import { Search, X, User, UserCheck } from "lucide-react";
 import type { DemandPriority, DemandType, ComplexityLevel, RoiLevel } from "@prisma/client";
 import type { KanbanAssignee } from "@/app/(dashboard)/demandas/kanban/page";
-import { DIRECTORS } from "@/lib/constants/departments";
+import { DEPARTMENTS, DIRECTORS } from "@/lib/constants/departments";
 
 // ── Opções ─────────────────────────────────────────────────────────
 
@@ -33,10 +33,10 @@ const TYPE_OPTIONS: { value: DemandType; label: string }[] = [
 ];
 
 const COMPLEXITY_OPTIONS: { value: ComplexityLevel; label: string }[] = [
-  { value: "BAIXA",   label: "Baixa"    },
-  { value: "MEDIA",   label: "Média"    },
-  { value: "ALTA",    label: "Alta"     },
-  { value: "CRITICA", label: "Crítica"  },
+  { value: "BAIXA",   label: "Baixa"   },
+  { value: "MEDIA",   label: "Média"   },
+  { value: "ALTA",    label: "Alta"    },
+  { value: "CRITICA", label: "Crítica" },
 ];
 
 const ROI_OPTIONS: { value: RoiLevel; label: string }[] = [
@@ -47,17 +47,17 @@ const ROI_OPTIONS: { value: RoiLevel; label: string }[] = [
 ];
 
 const DEADLINE_OPTIONS = [
-  { value: "overdue", label: "Atrasadas"    },
-  { value: "today",   label: "Vence hoje"   },
-  { value: "soon",    label: "Próximos 3d"  },
-  { value: "ok",      label: "No prazo"     },
+  { value: "overdue", label: "Atrasadas"   },
+  { value: "today",   label: "Vence hoje"  },
+  { value: "soon",    label: "Próximos 3d" },
+  { value: "ok",      label: "No prazo"    },
 ];
 
 const SORT_OPTIONS = [
-  { value: "priority", label: "Prioridade"  },
-  { value: "deadline", label: "Prazo"       },
-  { value: "created",  label: "Mais recente"},
-  { value: "title",    label: "Título"      },
+  { value: "priority", label: "Prioridade"   },
+  { value: "deadline", label: "Prazo"        },
+  { value: "created",  label: "Mais recente" },
+  { value: "title",    label: "Título"       },
 ];
 
 const ROLE_LABEL: Record<string, string> = {
@@ -67,11 +67,21 @@ const ROLE_LABEL: Record<string, string> = {
   SUPORTE:   "Suporte",
 };
 
+// ── Helpers ────────────────────────────────────────────────────────
+
+function FL({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1 pl-0.5 select-none">
+      {children}
+    </p>
+  );
+}
+
 // ── Props ──────────────────────────────────────────────────────────
 
 type Props = {
-  showMyDemandsToggle?: boolean;  // false para FINANCEIRO/APROVADOR
-  showAssigneeFilter?:  boolean;  // false para técnicos (DEV/SUPORTE/ARQUITETO)
+  showMyDemandsToggle?: boolean;
+  showAssigneeFilter?:  boolean;
   assignees?:           KanbanAssignee[];
   requesterAreas?:      string[];
 };
@@ -96,54 +106,45 @@ export function DemandKanbanFilters({
 
   function update(key: string, value: string | null) {
     const params = new URLSearchParams(searchParams.toString());
-    if (!value) {
-      params.delete(key);
-    } else {
-      params.set(key, value);
-    }
+    if (!value) params.delete(key);
+    else        params.set(key, value);
     startTransition(() => {
       router.push(`${pathname}?${params.toString()}`, { scroll: false });
     });
   }
 
   function clearAll() {
-    startTransition(() => {
-      router.push(pathname, { scroll: false });
-    });
+    startTransition(() => router.push(pathname, { scroll: false }));
   }
 
-  const hasFilters =
-    !!current("search")         || !!current("priority")   || !!current("demandType")  ||
-    !!current("complexity")     || !!current("roi")         || !!current("deadlineStatus") ||
-    !!current("onlyMine")       || !!current("assigneeId")  || !!current("requesterName") ||
-    !!current("requesterArea")  || !!current("director");
+  const activeKeys = [
+    "search", "priority", "demandType", "complexity", "roi",
+    "deadlineStatus", "onlyMine", "assigneeId", "requesterName",
+    "requesterArea", "director",
+  ];
+  const activeCount = activeKeys.filter((k) => !!current(k)).length;
+  const hasFilters  = activeCount > 0;
+
+  const areas = requesterAreas.length > 0 ? requesterAreas : [...DEPARTMENTS];
 
   return (
-    <div
-      className={`rounded-lg border bg-card p-3 space-y-3 transition-opacity ${isPending ? "opacity-60" : ""}`}
-    >
-      {/* ── Linha 1: busca + responsável + solicitante + ordenar + limpar ── */}
-      <div className="flex flex-wrap items-end gap-3">
+    <div className={`rounded-lg border bg-card px-4 py-3 space-y-3 transition-opacity ${isPending ? "opacity-60 pointer-events-none" : ""}`}>
 
-        {/* Ícone */}
-        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground self-center">
-          <SlidersHorizontal className="h-4 w-4" />
-          Filtros
-        </div>
+      {/* ── Linha 1: busca + filtros estratégicos + ações ── */}
+      <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
 
-        {/* Search */}
+        {/* Busca */}
         <div className="flex-1 min-w-[200px]">
-          <Label className="sr-only">Buscar</Label>
+          <FL>Buscar</FL>
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder="Buscar demandas…"
+              placeholder="Título, descrição, solicitante…"
               className="pl-9 h-9"
               defaultValue={current("search")}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
+                if (e.key === "Enter")
                   update("search", (e.target as HTMLInputElement).value || null);
-                }
               }}
               onBlur={(e) => {
                 const val = e.target.value;
@@ -153,10 +154,48 @@ export function DemandKanbanFilters({
           </div>
         </div>
 
-        {/* Responsável (só para admin/gestor/aprovador/financeiro) */}
+        {/* Diretor */}
+        <div className="w-36">
+          <FL>Diretor</FL>
+          <Select
+            value={current("director") || "_all"}
+            onValueChange={(v) => update("director", v === "_all" ? null : v)}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">Todos</SelectItem>
+              {DIRECTORS.map((d) => (
+                <SelectItem key={d} value={d}>{d}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Área solicitante */}
+        <div className="w-52">
+          <FL>Área solicitante</FL>
+          <Select
+            value={current("requesterArea") || "_all"}
+            onValueChange={(v) => update("requesterArea", v === "_all" ? null : v)}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">Todas</SelectItem>
+              {areas.map((area) => (
+                <SelectItem key={area} value={area}>{area}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Responsável (condicional) */}
         {showAssigneeFilter && (
-          <div className="w-48">
-            <Label className="sr-only">Responsável</Label>
+          <div className="w-44">
+            <FL>Responsável</FL>
             <div className="relative">
               <UserCheck className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
               <Select
@@ -164,13 +203,13 @@ export function DemandKanbanFilters({
                 onValueChange={(v) => update("assigneeId", v === "_all" ? null : v)}
               >
                 <SelectTrigger className="h-9 pl-8">
-                  <SelectValue placeholder="Responsável" />
+                  <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="_all">Todos os responsáveis</SelectItem>
+                  <SelectItem value="_all">Todos</SelectItem>
                   {assignees.map((a) => (
                     <SelectItem key={a.id} value={a.id}>
-                      <span>{a.name}</span>
+                      {a.name}
                       <span className="ml-1.5 text-xs text-muted-foreground">
                         ({ROLE_LABEL[a.role] ?? a.role})
                       </span>
@@ -182,83 +221,15 @@ export function DemandKanbanFilters({
           </div>
         )}
 
-        {/* Solicitante (requesterName) */}
-        <div className="w-44">
-          <Label className="sr-only">Solicitante</Label>
-          <div className="relative">
-            <User className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
-            <Input
-              placeholder="Solicitante…"
-              className="pl-9 h-9"
-              defaultValue={current("requesterName")}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  update("requesterName", (e.target as HTMLInputElement).value || null);
-                }
-              }}
-              onBlur={(e) => {
-                const val = e.target.value;
-                if (val !== current("requesterName")) update("requesterName", val || null);
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Área solicitante */}
-        {requesterAreas.length > 0 && (
-          <div className="w-52">
-            <Label className="sr-only">Área solicitante</Label>
-            <div className="relative">
-              <Building2 className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
-              <Select
-                value={current("requesterArea") || "_all"}
-                onValueChange={(v) => update("requesterArea", v === "_all" ? null : v)}
-              >
-                <SelectTrigger className="h-9 pl-8">
-                  <SelectValue placeholder="Área solicitante" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_all">Todas as áreas</SelectItem>
-                  {requesterAreas.map((area) => (
-                    <SelectItem key={area} value={area}>{area}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
-
-        {/* Diretor responsável */}
-        <div className="w-44">
-          <Label className="sr-only">Diretor</Label>
-          <div className="relative">
-            <Users className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
-            <Select
-              value={current("director") || "_all"}
-              onValueChange={(v) => update("director", v === "_all" ? null : v)}
-            >
-              <SelectTrigger className="h-9 pl-8">
-                <SelectValue placeholder="Diretor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_all">Todos os diretores</SelectItem>
-                {DIRECTORS.map((d) => (
-                  <SelectItem key={d} value={d}>{d}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
         {/* Ordenar */}
         <div className="w-36">
-          <Label className="sr-only">Ordenar por</Label>
+          <FL>Ordenar por</FL>
           <Select
             value={current("sortBy") || "priority"}
             onValueChange={(v) => update("sortBy", v === "priority" ? null : v)}
           >
             <SelectTrigger className="h-9">
-              <SelectValue placeholder="Ordenar" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {SORT_OPTIONS.map((o) => (
@@ -268,50 +239,55 @@ export function DemandKanbanFilters({
           </Select>
         </div>
 
-        {/* Somente minhas */}
-        {showMyDemandsToggle && (
-          <Button
-            variant={current("onlyMine") === "true" ? "default" : "outline"}
-            size="sm"
-            className="h-9 gap-1.5"
-            onClick={() =>
-              update("onlyMine", current("onlyMine") === "true" ? null : "true")
-            }
-          >
-            Minhas demandas
-          </Button>
-        )}
+        {/* Ações */}
+        <div className="flex items-end gap-2 pb-0">
+          {showMyDemandsToggle && (
+            <Button
+              variant={current("onlyMine") === "true" ? "default" : "outline"}
+              size="sm"
+              className="h-9 whitespace-nowrap"
+              onClick={() => update("onlyMine", current("onlyMine") === "true" ? null : "true")}
+            >
+              Minhas demandas
+            </Button>
+          )}
 
-        {/* Limpar filtros */}
-        {hasFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-9 gap-1.5 text-muted-foreground"
-            onClick={clearAll}
-            disabled={isPending}
-          >
-            <X className="h-3.5 w-3.5" />
-            Limpar
-          </Button>
-        )}
+          {hasFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 gap-1.5 text-muted-foreground hover:text-foreground"
+              onClick={clearAll}
+              disabled={isPending}
+            >
+              <X className="h-3.5 w-3.5" />
+              Limpar
+              <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
+                {activeCount}
+              </Badge>
+            </Button>
+          )}
+        </div>
       </div>
 
+      {/* Divisor */}
+      <div className="h-px bg-border" />
+
       {/* ── Linha 2: filtros de classificação ── */}
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
 
         {/* Prioridade */}
-        <div className="w-32">
-          <Label className="sr-only">Prioridade</Label>
+        <div className="w-[126px]">
+          <FL>Prioridade</FL>
           <Select
             value={current("priority") || "_all"}
             onValueChange={(v) => update("priority", v === "_all" ? null : v)}
           >
             <SelectTrigger className="h-9">
-              <SelectValue placeholder="Prioridade" />
+              <SelectValue placeholder="Todas" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="_all">Todas prioridades</SelectItem>
+              <SelectItem value="_all">Todas</SelectItem>
               {PRIORITY_OPTIONS.map((o) => (
                 <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
               ))}
@@ -320,17 +296,17 @@ export function DemandKanbanFilters({
         </div>
 
         {/* Tipo */}
-        <div className="w-36">
-          <Label className="sr-only">Tipo</Label>
+        <div className="w-[148px]">
+          <FL>Tipo</FL>
           <Select
             value={current("demandType") || "_all"}
             onValueChange={(v) => update("demandType", v === "_all" ? null : v)}
           >
             <SelectTrigger className="h-9">
-              <SelectValue placeholder="Tipo" />
+              <SelectValue placeholder="Todos" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="_all">Todos os tipos</SelectItem>
+              <SelectItem value="_all">Todos</SelectItem>
               {TYPE_OPTIONS.map((o) => (
                 <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
               ))}
@@ -339,17 +315,17 @@ export function DemandKanbanFilters({
         </div>
 
         {/* Complexidade */}
-        <div className="w-32">
-          <Label className="sr-only">Complexidade</Label>
+        <div className="w-[126px]">
+          <FL>Complexidade</FL>
           <Select
             value={current("complexity") || "_all"}
             onValueChange={(v) => update("complexity", v === "_all" ? null : v)}
           >
             <SelectTrigger className="h-9">
-              <SelectValue placeholder="Complexidade" />
+              <SelectValue placeholder="Todas" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="_all">Complexidade</SelectItem>
+              <SelectItem value="_all">Todas</SelectItem>
               {COMPLEXITY_OPTIONS.map((o) => (
                 <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
               ))}
@@ -358,17 +334,17 @@ export function DemandKanbanFilters({
         </div>
 
         {/* ROI */}
-        <div className="w-32">
-          <Label className="sr-only">ROI</Label>
+        <div className="w-[116px]">
+          <FL>ROI</FL>
           <Select
             value={current("roi") || "_all"}
             onValueChange={(v) => update("roi", v === "_all" ? null : v)}
           >
             <SelectTrigger className="h-9">
-              <SelectValue placeholder="ROI" />
+              <SelectValue placeholder="Todos" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="_all">ROI</SelectItem>
+              <SelectItem value="_all">Todos</SelectItem>
               {ROI_OPTIONS.map((o) => (
                 <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
               ))}
@@ -377,22 +353,43 @@ export function DemandKanbanFilters({
         </div>
 
         {/* Prazo */}
-        <div className="w-36">
-          <Label className="sr-only">Prazo</Label>
+        <div className="w-[136px]">
+          <FL>Prazo</FL>
           <Select
             value={current("deadlineStatus") || "_all"}
             onValueChange={(v) => update("deadlineStatus", v === "_all" ? null : v)}
           >
             <SelectTrigger className="h-9">
-              <SelectValue placeholder="Prazo" />
+              <SelectValue placeholder="Todos" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="_all">Todos os prazos</SelectItem>
+              <SelectItem value="_all">Todos</SelectItem>
               {DEADLINE_OPTIONS.map((o) => (
                 <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Solicitante */}
+        <div className="w-44">
+          <FL>Solicitante</FL>
+          <div className="relative">
+            <User className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Nome do solicitante…"
+              className="pl-9 h-9"
+              defaultValue={current("requesterName")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter")
+                  update("requesterName", (e.target as HTMLInputElement).value || null);
+              }}
+              onBlur={(e) => {
+                const val = e.target.value;
+                if (val !== current("requesterName")) update("requesterName", val || null);
+              }}
+            />
+          </div>
         </div>
       </div>
     </div>

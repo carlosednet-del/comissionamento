@@ -17,6 +17,7 @@ import { cn }       from "@/lib/utils";
 import { STATUS_CONFIG } from "./status-badge";
 import {
   ConfirmTransitionDialog,
+  SendToAnalysisDialog,
   StartDevelopmentDialog,
   SendToHomologationDialog,
   HomologateDialog,
@@ -286,11 +287,14 @@ export function WorkflowSection({ demand, actor }: Props) {
                 />
               )}
               {canAnalysis && (
-                <ConfirmTransitionDialog
-                  demandId={demand.id} action="analysis"
-                  title="Enviar para análise"
-                  description="A demanda será movida para análise técnica."
-                  confirmLabel="Enviar para análise"
+                <SendToAnalysisDialog
+                  demandId={demand.id}
+                  initialData={{
+                    assigneeId:     demand.assigneeId,
+                    estimatedHours: demand.estimatedHours,
+                    complexity:     demand.complexity,
+                    roi:            demand.roi,
+                  }}
                   trigger={<TriggerBtn type="analysis" />}
                 />
               )}

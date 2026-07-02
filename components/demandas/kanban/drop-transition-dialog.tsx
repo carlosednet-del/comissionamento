@@ -18,11 +18,15 @@ import {
   rejectDemandSchema,
   cancelDemandSchema,
   startDevelopmentSchema,
+  sendToAnalysisSchema,
+  type SendToAnalysisInput,
 } from "@/validations/demand";
 import type { StartDevelopmentInput } from "@/validations/demand";
+import type { ComplexityLevel, RoiLevel, WorkerProfile } from "@prisma/client";
 import {
   openDemandAction,
-  sendToAnalysisAction,
+  sendToAnalysisWithDataAction,
+  getAssigneesAction,
   approveDemandAction,
   startDevelopmentAction,
   sendToHomologationAction,
@@ -37,15 +41,26 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectGroup, SelectItem,
+  SelectLabel, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Button }   from "@/components/ui/button";
 import { Input }    from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
-import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { FlaskConical, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
 import type { DemandStatus } from "@/types";
+import {
+  HOURLY_RATES,
+  WORKER_PROFILE_LABELS,
+  COMPLEXITY_LABELS,
+  ROI_LABELS,
+  calculateDemandEstimatedValue,
+} from "@/lib/demand-pricing";
 
 // ── Textarea inline ──────────────────────────────────────────────
 function Textarea(
@@ -106,7 +121,7 @@ const TRANSITION_META: Partial<Record<DemandStatus, TransitionMeta>> = {
 
 /** Transições simples — apenas confirmação, sem dados extras */
 const SIMPLE_TRANSITIONS = new Set<DemandStatus>([
-  "ABERTA", "EM_ANALISE", "PRIORIZACAO_DIRETORIA", "APROVADA",
+  "ABERTA", "PRIORIZACAO_DIRETORIA", "APROVADA",
 ]);
 
 /** Transições para EM_DESENVOLVIMENTO que são simples (retorno) */
@@ -117,11 +132,12 @@ type SimpleAction = (id: string) => Promise<{ success: boolean; error?: string }
 
 function getSimpleAction(toStatus: DemandStatus, fromStatus: DemandStatus): SimpleAction {
   if (toStatus === "ABERTA")                return openDemandAction;
-  if (toStatus === "EM_ANALISE")            return fromStatus === "PRIORIZACAO_DIRETORIA"
-    ? (id: string) => returnFromDirectorPrioritizationAction(id, "Devolução via Kanban (arrastar e soltar)")
-    : sendToAnalysisAction;
   if (toStatus === "PRIORIZACAO_DIRETORIA") return sendToDirectorPrioritizationAction;
   if (toStatus === "APROVADA")              return approveDemandAction;
+  // EM_ANALISE via retorno da diretoria (simples)
+  if (toStatus === "EM_ANALISE" && fromStatus === "PRIORIZACAO_DIRETORIA") {
+    return (id: string) => returnFromDirectorPrioritizationAction(id, "Devolução via Kanban (arrastar e soltar)");
+  }
   return openDemandAction; // fallback
 }
 
@@ -153,6 +169,32 @@ export function DropTransitionDialog({ pending, onSuccess, onCancel, allowPastDa
         pending={pending}
         meta={meta!}
         action={getSimpleAction(pending.toStatus, pending.fromStatus)}
+        onSuccess={afterSuccess}
+        onCancel={onCancel}
+      />
+    );
+  }
+
+  // ── EM_ANALISE — retorno simples da diretoria ou coleta de dados ──
+  if (pending.toStatus === "EM_ANALISE") {
+    if (pending.fromStatus === "PRIORIZACAO_DIRETORIA") {
+      return (
+        <SimpleConfirmDialog
+          open={open}
+          onOpenChange={handleOpenChange}
+          pending={pending}
+          meta={TRANSITION_META["EM_ANALISE"]!}
+          action={getSimpleAction(pending.toStatus, pending.fromStatus)}
+          onSuccess={afterSuccess}
+          onCancel={onCancel}
+        />
+      );
+    }
+    return (
+      <SendToAnalysisDropDialog
+        open={open}
+        onOpenChange={handleOpenChange}
+        pending={pending}
         onSuccess={afterSuccess}
         onCancel={onCancel}
       />
@@ -593,6 +635,226 @@ function RejectDropDialog({
               <Button type="submit" variant="destructive" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Reprovar demanda
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Enviar para análise (coleta de dados técnicos) ───────────────
+
+const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+type AnalysisAssignee = { id: string; name: string; role: string; workerProfile: WorkerProfile | null };
+
+const ASSIGNABLE_ROLE_ORDER_DROP = ["DEV", "GESTOR", "ARQUITETO", "SUPORTE"] as const;
+const ASSIGNABLE_ROLE_LABELS_DROP: Record<string, string> = {
+  DEV: "Desenvolvedor", GESTOR: "Gestor", ARQUITETO: "Arquiteto", SUPORTE: "Suporte",
+};
+
+const COMPLEXITY_OPTIONS_DROP = (Object.keys(COMPLEXITY_LABELS) as ComplexityLevel[])
+  .map((v) => ({ value: v, label: COMPLEXITY_LABELS[v] }));
+const ROI_OPTIONS_DROP = (Object.keys(ROI_LABELS) as RoiLevel[])
+  .map((v) => ({ value: v, label: ROI_LABELS[v] }));
+
+function SendToAnalysisDropDialog({
+  open, pending, onSuccess, onCancel,
+}: { open: boolean; onOpenChange: (v: boolean) => void; pending: PendingDrop; onSuccess: () => void; onCancel: () => void }) {
+  const [error, setError]                   = useState<string | null>(null);
+  const [assignees, setAssignees]           = useState<AnalysisAssignee[]>([]);
+  const [loadingAssignees, setLoadingAssignees] = useState(false);
+
+  const form = useForm<SendToAnalysisInput>({
+    resolver: zodResolver(sendToAnalysisSchema),
+    defaultValues: { assigneeId: "", estimatedHours: undefined, complexity: undefined, roi: undefined },
+  });
+
+  useEffect(() => {
+    if (open && assignees.length === 0) {
+      setLoadingAssignees(true);
+      getAssigneesAction().then((data) => {
+        setAssignees(data as AnalysisAssignee[]);
+        setLoadingAssignees(false);
+      });
+    }
+  }, [open, assignees.length]);
+
+  const watchedAssigneeId = form.watch("assigneeId");
+  const watchedHours      = form.watch("estimatedHours");
+  const watchedComplexity = form.watch("complexity");
+  const watchedRoi        = form.watch("roi");
+
+  const selectedAssignee = assignees.find((a) => a.id === watchedAssigneeId) ?? null;
+  const assigneeRole     = selectedAssignee?.role ?? null;
+  const workerProfile    = selectedAssignee?.workerProfile ?? null;
+
+  const pricingPreview = (() => {
+    if (assigneeRole !== "DEV" || !workerProfile || !watchedHours || !watchedComplexity || !watchedRoi) return null;
+    return calculateDemandEstimatedValue({ workerProfile, estimatedHours: watchedHours, complexity: watchedComplexity, roi: watchedRoi });
+  })();
+
+  const assigneesByRole = ASSIGNABLE_ROLE_ORDER_DROP.reduce<Record<string, AnalysisAssignee[]>>((acc, role) => {
+    const users = assignees.filter((a) => a.role === role);
+    if (users.length) acc[role] = users;
+    return acc;
+  }, {});
+
+  async function onSubmit(values: SendToAnalysisInput) {
+    setError(null);
+    const result = await sendToAnalysisWithDataAction(pending.demandId, values);
+    if (!result.success) { setError(result.error ?? "Erro"); return; }
+    form.reset();
+    onSuccess();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { form.reset(); setError(null); onCancel(); } }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FlaskConical className="h-5 w-5 text-amber-600" />
+            Análise técnica
+          </DialogTitle>
+          <DialogDescription>
+            <strong className="font-medium text-foreground">&ldquo;{pending.demandTitle}&rdquo;</strong>
+            <br />Preencha os dados técnicos antes de enviar para análise.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+
+            <FormField
+              control={form.control}
+              name="assigneeId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Responsável técnico <span className="text-destructive">*</span></FormLabel>
+                  <Select disabled={loadingAssignees} onValueChange={field.onChange} value={field.value ?? ""}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={loadingAssignees ? "Carregando…" : "Selecionar responsável"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {ASSIGNABLE_ROLE_ORDER_DROP.flatMap((role) => {
+                        const users = assigneesByRole[role];
+                        if (!users?.length) return [];
+                        return [
+                          <SelectGroup key={role}>
+                            <SelectLabel>{ASSIGNABLE_ROLE_LABELS_DROP[role]}</SelectLabel>
+                            {users.map((a) => (
+                              <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                            ))}
+                          </SelectGroup>,
+                        ];
+                      })}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="estimatedHours"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Horas estimadas <span className="text-destructive">*</span></FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number" min={0.5} step={0.5} placeholder="Ex.: 8"
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value === "" ? undefined : e.target.valueAsNumber)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="complexity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Complexidade <span className="text-destructive">*</span></FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {COMPLEXITY_OPTIONS_DROP.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="roi"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>ROI / Impacto estratégico <span className="text-destructive">*</span></FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                    <FormControl>
+                      <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {ROI_OPTIONS_DROP.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {selectedAssignee && (
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-1 text-sm">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Perfil técnico</span>
+                  <span>{workerProfile ? WORKER_PROFILE_LABELS[workerProfile] : "—"}</span>
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Valor / hora</span>
+                  <span className="font-mono">
+                    {assigneeRole === "DEV" && workerProfile ? BRL.format(HOURLY_RATES[workerProfile]) : "R$ 0,00"}
+                  </span>
+                </div>
+                {pricingPreview && (
+                  <div className="flex justify-between border-t pt-1.5 mt-1">
+                    <span className="font-medium">Valor estimado (prévia)</span>
+                    <span className="font-bold font-mono">{BRL.format(pricingPreview.estimatedValue)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onCancel} disabled={form.formState.isSubmitting}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={form.formState.isSubmitting || loadingAssignees}
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <FlaskConical className="mr-2 h-4 w-4" />
+                Enviar para análise
               </Button>
             </DialogFooter>
           </form>

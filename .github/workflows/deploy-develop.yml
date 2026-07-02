@@ -1,0 +1,37 @@
+name: Deploy develop (servidor de teste)
+
+# Dispara em qualquer push/merge na develop. Tambem da pra rodar manual.
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+# Nunca rodar dois deploys ao mesmo tempo; nao cancela o que ja esta no ar.
+concurrency:
+  group: deploy-develop
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
+          command_timeout: 20m
+          script_stop: true
+          script: |
+            set -e
+            export SRC_DIR=/var/www/_src/comissionamento
+            export APP_DIR=/var/www/comissionamento
+            export APP_NAME=comissionamento
+            export PORT=3001
+            cd "$SRC_DIR"
+            git fetch --prune origin
+            git checkout -f develop
+            git reset --hard origin/develop
+            bash deploy/deploy-develop.sh

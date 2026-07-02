@@ -9,6 +9,7 @@ export type KanbanFilters = {
   priority?:      DemandPriority;
   demandType?:    DemandType;
   assigneeId?:     string;
+  creatorId?:      string;
   requesterArea?:  string;
   requesterAreas?: string[];
   requesterName?:  string;
@@ -150,6 +151,7 @@ export const demandRepository = {
       priority,
       demandType,
       assigneeId,
+      creatorId,
       requesterArea,
       requesterAreas,
       requesterName,
@@ -200,6 +202,7 @@ export const demandRepository = {
       ...(complexity     && { complexity }),
       ...(roi            && { roi }),
       ...(assigneeId     && { assigneeId }),
+      ...(creatorId      && { creatorId  }),
       ...(onlyMine && currentUserId
         ? { OR: [{ assigneeId: currentUserId }, { creatorId: currentUserId }] }
         : {}),

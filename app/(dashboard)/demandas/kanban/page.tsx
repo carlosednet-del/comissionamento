@@ -22,12 +22,14 @@ type SearchParams = {
   sortBy?:        string;
   onlyMine?:      string;
   assigneeId?:    string;
+  creatorId?:     string;
   requesterName?: string;
   requesterArea?: string;
   director?:      string;
 };
 
 export type KanbanAssignee = { id: string; name: string; role: string };
+export type KanbanCreator  = { id: string; name: string };
 
 function KanbanSkeleton() {
   return (
@@ -58,6 +60,7 @@ async function KanbanContent({ searchParams }: { searchParams: SearchParams }) {
     sortBy:         (sp.sortBy as "priority" | "deadline" | "created" | "title") || undefined,
     onlyMine:       sp.onlyMine === "true",
     assigneeId:     sp.assigneeId    || undefined,
+    creatorId:      sp.creatorId     || undefined,
     requesterName:  sp.requesterName || undefined,
     requesterArea:  sp.requesterArea || undefined,
     director:       sp.director      || undefined,
@@ -100,6 +103,14 @@ export default async function KanbanPage({
 
   const requesterAreas = [...DEPARTMENTS];
 
+  // Criadores: usuários que têm pelo menos uma demanda registrada
+  const creatorRows = await prisma.demand.findMany({
+    distinct:  ["creatorId"],
+    select:    { creator: { select: { id: true, name: true } } },
+    orderBy:   { creator: { name: "asc" } },
+  });
+  const creators: KanbanCreator[] = creatorRows.map((r) => r.creator);
+
   return (
     <div className="space-y-4">
       {/* Cabeçalho */}
@@ -131,6 +142,7 @@ export default async function KanbanPage({
         showMyDemandsToggle={showMyDemandsToggle}
         showAssigneeFilter={showAssigneeFilter}
         assignees={assignees}
+        creators={creators}
         requesterAreas={requesterAreas}
       />
 

@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Search, X, User, UserCheck } from "lucide-react";
 import type { DemandPriority, DemandType, ComplexityLevel, RoiLevel } from "@prisma/client";
-import type { KanbanAssignee } from "@/app/(dashboard)/demandas/kanban/page";
+import type { KanbanAssignee, KanbanCreator } from "@/app/(dashboard)/demandas/kanban/page";
 import { DEPARTMENTS, DIRECTORS } from "@/lib/constants/departments";
 
 // ── Opções ─────────────────────────────────────────────────────────
@@ -83,6 +83,7 @@ type Props = {
   showMyDemandsToggle?: boolean;
   showAssigneeFilter?:  boolean;
   assignees?:           KanbanAssignee[];
+  creators?:            KanbanCreator[];
   requesterAreas?:      string[];
 };
 
@@ -92,6 +93,7 @@ export function DemandKanbanFilters({
   showMyDemandsToggle = true,
   showAssigneeFilter  = false,
   assignees           = [],
+  creators            = [],
   requesterAreas      = [],
 }: Props) {
   const router       = useRouter();
@@ -119,7 +121,7 @@ export function DemandKanbanFilters({
 
   const activeKeys = [
     "search", "priority", "demandType", "complexity", "roi",
-    "deadlineStatus", "onlyMine", "assigneeId", "requesterName",
+    "deadlineStatus", "onlyMine", "assigneeId", "creatorId", "requesterName",
     "requesterArea", "director",
   ];
   const activeCount = activeKeys.filter((k) => !!current(k)).length;
@@ -218,6 +220,27 @@ export function DemandKanbanFilters({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+        )}
+
+        {/* Criado por */}
+        {creators.length > 0 && (
+          <div className="w-44">
+            <FL>Criado por</FL>
+            <Select
+              value={current("creatorId") || "_all"}
+              onValueChange={(v) => update("creatorId", v === "_all" ? null : v)}
+            >
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">Todos</SelectItem>
+                {creators.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
 

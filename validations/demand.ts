@@ -210,6 +210,7 @@ export const kanbanFiltersSchema = z.object({
   priority:      z.nativeEnum(DemandPriority).optional(),
   demandType:    z.nativeEnum(DemandType).optional(),
   assigneeId:    z.string().optional(),
+  creatorId:     z.string().optional(),
   requesterArea: z.string().optional(),
   requesterName: z.string().optional(),
   director:      z.string().optional(),

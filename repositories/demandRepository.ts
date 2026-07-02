@@ -70,6 +70,25 @@ export const demandRepository = {
     });
   },
 
+  async findNextInStatus(
+    id: string,
+    status: DemandStatus,
+    createdAt: Date,
+  ): Promise<{ id: string; title: string } | null> {
+    const next = await prisma.demand.findFirst({
+      where: { status, id: { not: id }, createdAt: { gt: createdAt } },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, title: true },
+    });
+    if (next) return next;
+    // wrap-around: volta para a primeira do mesmo status
+    return prisma.demand.findFirst({
+      where: { status, id: { not: id } },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, title: true },
+    });
+  },
+
   async findMany(filters: DemandFilters = {}): Promise<PaginatedResponse<DemandSummary>> {
     const {
       status,

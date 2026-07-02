@@ -17,6 +17,7 @@ import { cn }       from "@/lib/utils";
 import { STATUS_CONFIG } from "./status-badge";
 import {
   ConfirmTransitionDialog,
+  StartDevelopmentDialog,
   SendToHomologationDialog,
   HomologateDialog,
   RejectDemandDialog,
@@ -315,11 +316,8 @@ export function WorkflowSection({ demand, actor }: Props) {
                 />
               )}
               {canStart && (
-                <ConfirmTransitionDialog
-                  demandId={demand.id} action="start"
-                  title="Iniciar desenvolvimento"
-                  description="O desenvolvimento será iniciado. A data de início real será registrada automaticamente."
-                  confirmLabel="Iniciar desenvolvimento"
+                <StartDevelopmentDialog
+                  demandId={demand.id}
                   trigger={<TriggerBtn type="start" />}
                 />
               )}

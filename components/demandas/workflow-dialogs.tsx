@@ -21,6 +21,7 @@ import {
   homologateDemandSchema,
   rejectDemandSchema,
   cancelDemandSchema,
+  startDevelopmentSchema,
 } from "@/validations/demand";
 import {
   openDemandAction,
@@ -47,7 +48,7 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
 import { AttachEvidenceDialog } from "@/components/demandas/attach-evidence-dialog";
-import { Loader2, Paperclip } from "lucide-react";
+import { Loader2, Paperclip, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 
 // ── Textarea ─────────────────────────────────────────────────────
@@ -79,7 +80,7 @@ function useWorkflowDialog() {
 }
 
 // ── 1. Confirmação simples ────────────────────────────────────────
-type ConfirmAction = "open" | "analysis" | "approve" | "start" | "return" | "sendToDirector" | "returnFromDirector";
+type ConfirmAction = "open" | "analysis" | "approve" | "return" | "sendToDirector" | "returnFromDirector";
 
 type ConfirmProps = {
   demandId:    string;
@@ -94,7 +95,6 @@ const CONFIRM_ACTIONS: Record<ConfirmAction, (id: string) => Promise<{ success: 
   open:               openDemandAction,
   analysis:           sendToAnalysisAction,
   approve:            approveDemandAction,
-  start:              startDevelopmentAction,
   return:             returnToDevelopmentAction,
   sendToDirector:     sendToDirectorPrioritizationAction,
   // returnFromDirector é tratado por ReturnFromDirectorDialog (requer motivo)
@@ -132,6 +132,117 @@ export function ConfirmTransitionDialog({
             {confirmLabel}
           </Button>
         </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── 1b. Iniciar desenvolvimento (coleta datas previstas) ─────────
+const startDevForm = startDevelopmentSchema;
+type StartDevFormValues = z.infer<typeof startDevForm>;
+
+type StartDevelopmentProps = {
+  demandId: string;
+  trigger:  React.ReactNode;
+};
+
+export function StartDevelopmentDialog({ demandId, trigger }: StartDevelopmentProps) {
+  const { open, setOpen, error, setError, close, rerender } = useWorkflowDialog();
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const form = useForm<StartDevFormValues>({
+    resolver: zodResolver(startDevForm),
+    defaultValues: {
+      plannedStartDate:    new Date(),
+      plannedDeliveryDate: undefined,
+    },
+  });
+
+  async function onSubmit(values: StartDevFormValues) {
+    setError(null);
+    const result = await startDevelopmentAction(demandId, values);
+    if (!result.success) { setError(result.error ?? "Erro"); return; }
+    close();
+    form.reset();
+    rerender();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setError(null); form.reset(); } }}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <PlayCircle className="h-5 w-5 text-purple-600" />
+            Iniciar desenvolvimento
+          </DialogTitle>
+          <DialogDescription>
+            Informe as datas previstas para esta atividade. A data de início real será registrada automaticamente.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="plannedStartDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Início previsto <span className="text-destructive">*</span></FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        min={today}
+                        value={field.value ? new Date(field.value).toISOString().slice(0, 10) : ""}
+                        onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="plannedDeliveryDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Entrega prevista <span className="text-destructive">*</span></FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        min={form.watch("plannedStartDate")
+                          ? new Date(form.watch("plannedStartDate")).toISOString().slice(0, 10)
+                          : today}
+                        value={field.value ? new Date(field.value).toISOString().slice(0, 10) : ""}
+                        onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={close} disabled={form.formState.isSubmitting}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={form.formState.isSubmitting}
+                className="bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Iniciar desenvolvimento
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

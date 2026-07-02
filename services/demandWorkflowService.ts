@@ -18,10 +18,12 @@ import {
   homologateDemandSchema,
   rejectDemandSchema,
   cancelDemandSchema,
+  startDevelopmentSchema,
   type SendToHomologationInput,
   type HomologateDemandInput,
   type RejectDemandInput,
   type CancelDemandInput,
+  type StartDevelopmentInput,
 } from "@/validations/demand";
 import {
   canChangeDemandStatus,
@@ -84,7 +86,6 @@ export const demandWorkflowService = {
     if (!demand.estimatedHours)            missing.push("horas estimadas");
     if (!demand.complexity)                missing.push("complexidade");
     if (!demand.roi)                       missing.push("ROI");
-    if (!demand.plannedDeliveryDate)       missing.push("data de entrega prevista");
     if (!demand.businessProblem?.trim())   missing.push("critérios de aceite (problema de negócio)");
 
     if (missing.length > 0) {
@@ -165,7 +166,6 @@ export const demandWorkflowService = {
     const missing: string[] = [];
     if (!demand.assigneeId)          missing.push("responsável técnico");
     if (demandTypeGeneratesValue(demand.demandType) && !demand.estimatedDemandValue) missing.push("valor estimado calculado");
-    if (!demand.plannedDeliveryDate) missing.push("prazo combinado");
     if (!demand.businessProblem?.trim()) missing.push("critérios de aceite");
     if (missing.length > 0) {
       throw new WorkflowError(`Campos obrigatórios para aprovação: ${missing.join(", ")}`);
@@ -237,7 +237,6 @@ export const demandWorkflowService = {
     if (!demand.assigneeId)          missing.push("responsável técnico");
     // Tipos não precificáveis (ex.: correção) não exigem valor estimado
     if (demandTypeGeneratesValue(demand.demandType) && !demand.estimatedDemandValue) missing.push("valor estimado calculado");
-    if (!demand.plannedDeliveryDate) missing.push("prazo combinado");
     if (!demand.businessProblem?.trim()) missing.push("critérios de aceite");
 
     if (missing.length > 0) {
@@ -260,7 +259,7 @@ export const demandWorkflowService = {
   },
 
   // 4. APROVADA → EM_DESENVOLVIMENTO
-  async startDevelopment(id: string, actor: UserForPermission) {
+  async startDevelopment(id: string, input: StartDevelopmentInput, actor: UserForPermission) {
     const demand = await getDemand(id);
     const demandPerm = { id: demand.id, creatorId: demand.creatorId, assigneeId: demand.assigneeId, status: demand.status };
 
@@ -269,8 +268,12 @@ export const demandWorkflowService = {
     }
     assertTransition(actor, demandPerm, "EM_DESENVOLVIMENTO");
 
-    // Preenche actualStartDate se ainda não estiver definida
-    const extra: Record<string, unknown> = {};
+    const { plannedStartDate, plannedDeliveryDate } = startDevelopmentSchema.parse(input);
+
+    const extra: Record<string, unknown> = {
+      plannedStartDate,
+      plannedDeliveryDate,
+    };
     if (!demand.actualStartDate) {
       extra.actualStartDate = new Date();
     }
@@ -282,7 +285,12 @@ export const demandWorkflowService = {
       entityId: id,
       action:   "DEVELOPMENT_STARTED",
       oldValue: { status: demand.status },
-      newValue: { status: "EM_DESENVOLVIMENTO", startedById: actor.id },
+      newValue: {
+        status:              "EM_DESENVOLVIMENTO",
+        startedById:         actor.id,
+        plannedStartDate,
+        plannedDeliveryDate,
+      },
       userId:   actor.id,
     });
   },

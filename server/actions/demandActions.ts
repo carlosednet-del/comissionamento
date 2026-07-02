@@ -201,6 +201,15 @@ export async function openDemandAction(id: string): Promise<ActionResult<void>> 
   } catch (e) { return handleError(e); }
 }
 
+export async function returnToOpenAction(id: string): Promise<ActionResult<void>> {
+  try {
+    const session = await requireAuth();
+    await demandWorkflowService.returnToOpen(id, toPermissionUser(session));
+    revalidateDemand(id);
+    return { success: true, data: undefined };
+  } catch (e) { return handleError(e); }
+}
+
 export async function sendToAnalysisAction(id: string): Promise<ActionResult<void>> {
   try {
     const session = await requireAuth();

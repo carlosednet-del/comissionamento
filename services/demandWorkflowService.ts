@@ -126,6 +126,28 @@ export const demandWorkflowService = {
     });
   },
 
+  // 2b. EM_ANALISE → ABERTA (devolução para aberta)
+  async returnToOpen(id: string, actor: UserForPermission) {
+    const demand = await getDemand(id);
+    const demandPerm = { id: demand.id, creatorId: demand.creatorId, assigneeId: demand.assigneeId, status: demand.status };
+
+    if (demand.status !== "EM_ANALISE") {
+      throw new WorkflowError("Apenas demandas em análise podem ser devolvidas para aberta");
+    }
+    assertTransition(actor, demandPerm, "ABERTA");
+
+    await demandRepository.updateStatus(id, "ABERTA");
+
+    await auditService.log({
+      entity:   "Demand",
+      entityId: id,
+      action:   "STATUS_CHANGE",
+      oldValue: { status: demand.status },
+      newValue: { status: "ABERTA" },
+      userId:   actor.id,
+    });
+  },
+
   // 3a. EM_ANALISE → PRIORIZACAO_DIRETORIA
   async sendToDirectorPrioritization(id: string, actor: UserForPermission) {
     const demand = await getDemand(id);
@@ -461,7 +483,7 @@ export const demandWorkflowService = {
     const ALL_FROM_STATUS: Record<DemandStatus, DemandStatus[]> = {
       RASCUNHO:               ["ABERTA", "CANCELADA"],
       ABERTA:                 ["EM_ANALISE", "CANCELADA"],
-      EM_ANALISE:             ["PRIORIZACAO_DIRETORIA", "REPROVADA", "CANCELADA"],
+      EM_ANALISE:             ["ABERTA", "PRIORIZACAO_DIRETORIA", "REPROVADA", "CANCELADA"],
       PRIORIZACAO_DIRETORIA:  ["APROVADA", "EM_ANALISE", "CANCELADA"],
       APROVADA:               ["EM_DESENVOLVIMENTO", "CANCELADA"],
       EM_DESENVOLVIMENTO:     ["AGUARDANDO_HOMOLOGACAO", "CANCELADA"],

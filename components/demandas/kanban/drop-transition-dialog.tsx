@@ -25,6 +25,7 @@ import type { StartDevelopmentInput } from "@/validations/demand";
 import type { ComplexityLevel, RoiLevel, WorkerProfile } from "@prisma/client";
 import {
   openDemandAction,
+  returnToOpenAction,
   sendToAnalysisWithDataAction,
   getAssigneesAction,
   approveDemandAction,
@@ -159,6 +160,21 @@ export function DropTransitionDialog({ pending, onSuccess, onCancel, allowPastDa
   if (!pending) return null;
 
   const meta = TRANSITION_META[pending.toStatus];
+
+  // ── EM_ANALISE → ABERTA (devolução para aberta) ───────────────
+  if (pending.toStatus === "ABERTA" && pending.fromStatus === "EM_ANALISE") {
+    return (
+      <SimpleConfirmDialog
+        open={open}
+        onOpenChange={handleOpenChange}
+        pending={pending}
+        meta={{ title: "Devolver para aberta", description: "A demanda voltará para o status Aberta.", confirmLabel: "Devolver" }}
+        action={returnToOpenAction}
+        onSuccess={afterSuccess}
+        onCancel={onCancel}
+      />
+    );
+  }
 
   // ── Simples ──────────────────────────────────────────────────
   if (SIMPLE_TRANSITIONS.has(pending.toStatus)) {

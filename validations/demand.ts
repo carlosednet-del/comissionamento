@@ -5,7 +5,7 @@ import { DemandType, DemandPriority, DemandStatus, ComplexityLevel, RoiLevel } f
 export const ALLOWED_TRANSITIONS: Record<DemandStatus, DemandStatus[]> = {
   RASCUNHO:               ["ABERTA", "CANCELADA"],
   ABERTA:                 ["EM_ANALISE", "CANCELADA"],
-  EM_ANALISE:             ["PRIORIZACAO_DIRETORIA", "REPROVADA", "CANCELADA"],
+  EM_ANALISE:             ["ABERTA", "PRIORIZACAO_DIRETORIA", "REPROVADA", "CANCELADA"],
   PRIORIZACAO_DIRETORIA:  ["APROVADA", "EM_ANALISE", "CANCELADA"],
   APROVADA:               ["EM_DESENVOLVIMENTO", "CANCELADA"],
   EM_DESENVOLVIMENTO:     ["AGUARDANDO_HOMOLOGACAO", "CANCELADA"],

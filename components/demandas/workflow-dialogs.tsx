@@ -41,6 +41,7 @@ import {
   sendToDirectorPrioritizationAction,
   prioritizeAndApproveAction,
   returnFromDirectorPrioritizationAction,
+  returnToOpenAction,
 } from "@/server/actions/demandActions";
 import { Button }            from "@/components/ui/button";
 import { Input }             from "@/components/ui/input";
@@ -356,7 +357,7 @@ export function SendToAnalysisDialog({ demandId, trigger, initialData }: SendToA
 }
 
 // ── 1. Confirmação simples ────────────────────────────────────────
-type ConfirmAction = "open" | "analysis" | "approve" | "return" | "sendToDirector" | "returnFromDirector";
+type ConfirmAction = "open" | "analysis" | "approve" | "return" | "sendToDirector" | "returnFromDirector" | "returnToOpen";
 
 type ConfirmProps = {
   demandId:    string;
@@ -375,6 +376,7 @@ const CONFIRM_ACTIONS: Record<ConfirmAction, (id: string) => Promise<{ success: 
   sendToDirector:     sendToDirectorPrioritizationAction,
   // returnFromDirector é tratado por ReturnFromDirectorDialog (requer motivo)
   returnFromDirector: (_id) => Promise.resolve({ success: false, error: "Use ReturnFromDirectorDialog" }),
+  returnToOpen:       returnToOpenAction,
 };
 
 export function ConfirmTransitionDialog({

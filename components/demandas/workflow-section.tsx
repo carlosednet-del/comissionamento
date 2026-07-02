@@ -45,7 +45,7 @@ import {
 type ActionType =
   | "open" | "analysis" | "approve" | "start"
   | "homologation" | "homologate" | "reject" | "return" | "cancel"
-  | "sendToDirector" | "prioritizeApprove" | "returnFromDirector";
+  | "sendToDirector" | "prioritizeApprove" | "returnFromDirector" | "returnToOpen";
 
 type ActionConfig = {
   label:   string;
@@ -67,6 +67,7 @@ const ACTION_CONFIG: Record<ActionType, ActionConfig> = {
   sendToDirector:     { label: "Enviar para priori. diretoria",      icon: Star,      variant: "default", cls: "bg-indigo-600 hover:bg-indigo-700 text-white" },
   prioritizeApprove:  { label: "Priorizar e aprovar",                icon: CheckCircle2, variant: "default", cls: "bg-indigo-600 hover:bg-indigo-700 text-white" },
   returnFromDirector: { label: "Devolver para análise",              icon: Undo2,     variant: "outline" },
+  returnToOpen:       { label: "Devolver para aberta",               icon: Undo2,     variant: "outline" },
 };
 
 // ── Progressão visual de status ───────────────────────────────────
@@ -180,6 +181,7 @@ export function WorkflowSection({ demand, actor }: Props) {
   // Resolve quais ações estão disponíveis para o actor
   const canOpen               = demand.status === "RASCUNHO"               && canChangeDemandStatus(actor, demandPerm, "ABERTA");
   const canAnalysis           = demand.status === "ABERTA"                 && canChangeDemandStatus(actor, demandPerm, "EM_ANALISE");
+  const canReturnToOpen       = demand.status === "EM_ANALISE"             && canChangeDemandStatus(actor, demandPerm, "ABERTA");
   const canSendToDirector     = demand.status === "EM_ANALISE"             && canChangeDemandStatus(actor, demandPerm, "PRIORIZACAO_DIRETORIA");
   const canPrioritizeApprove  = demand.status === "PRIORIZACAO_DIRETORIA"  && canPrioritizeDemand(actor);
   const canReturnFromDirector = demand.status === "PRIORIZACAO_DIRETORIA"  && canPrioritizeDemand(actor);
@@ -192,7 +194,7 @@ export function WorkflowSection({ demand, actor }: Props) {
   const canCancel             = ["RASCUNHO","ABERTA","EM_ANALISE","PRIORIZACAO_DIRETORIA","APROVADA","EM_DESENVOLVIMENTO"].includes(demand.status)
                                 && canChangeDemandStatus(actor, demandPerm, "CANCELADA");
 
-  const hasAnyAction = canOpen || canAnalysis || canSendToDirector || canPrioritizeApprove ||
+  const hasAnyAction = canOpen || canAnalysis || canReturnToOpen || canSendToDirector || canPrioritizeApprove ||
                        canReturnFromDirector || canStart ||
                        canHomologation || canHomologate || canReject || canReturn || canCancel;
 
@@ -296,6 +298,15 @@ export function WorkflowSection({ demand, actor }: Props) {
                     roi:            demand.roi,
                   }}
                   trigger={<TriggerBtn type="analysis" />}
+                />
+              )}
+              {canReturnToOpen && (
+                <ConfirmTransitionDialog
+                  demandId={demand.id} action="returnToOpen"
+                  title="Devolver para aberta"
+                  description="A demanda voltará para o status Aberta, permitindo edição e reenvio para análise."
+                  confirmLabel="Devolver"
+                  trigger={<TriggerBtn type="returnToOpen" />}
                 />
               )}
               {canSendToDirector && (

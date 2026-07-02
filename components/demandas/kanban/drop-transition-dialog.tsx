@@ -294,7 +294,7 @@ function SimpleConfirmDialog({
 // ── Iniciar desenvolvimento (arrastar de APROVADA) ────────────────
 
 function StartDevelopmentDropDialog({
-  open, onOpenChange, pending, allowPastDates = false, onSuccess, onCancel,
+  open, pending, allowPastDates = false, onSuccess, onCancel,
 }: { open: boolean; onOpenChange: (v: boolean) => void; pending: PendingDrop; allowPastDates?: boolean; onSuccess: () => void; onCancel: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const today = new Date().toISOString().slice(0, 10);

@@ -17,7 +17,9 @@ import {
   homologateDemandSchema,
   rejectDemandSchema,
   cancelDemandSchema,
+  startDevelopmentSchema,
 } from "@/validations/demand";
+import type { StartDevelopmentInput } from "@/validations/demand";
 import {
   openDemandAction,
   sendToAnalysisAction,
@@ -72,9 +74,10 @@ export type PendingDrop = {
 };
 
 type Props = {
-  pending:   PendingDrop | null;
-  onSuccess: () => void;
-  onCancel:  () => void;
+  pending:        PendingDrop | null;
+  onSuccess:      () => void;
+  onCancel:       () => void;
+  allowPastDates?: boolean;
 };
 
 // ── Configuração por transição ────────────────────────────────────
@@ -103,8 +106,11 @@ const TRANSITION_META: Partial<Record<DemandStatus, TransitionMeta>> = {
 
 /** Transições simples — apenas confirmação, sem dados extras */
 const SIMPLE_TRANSITIONS = new Set<DemandStatus>([
-  "ABERTA", "EM_ANALISE", "PRIORIZACAO_DIRETORIA", "APROVADA", "EM_DESENVOLVIMENTO",
+  "ABERTA", "EM_ANALISE", "PRIORIZACAO_DIRETORIA", "APROVADA",
 ]);
+
+/** Transições para EM_DESENVOLVIMENTO que são simples (retorno) */
+const RETURN_TO_DEV_FROM = new Set<DemandStatus>(["REPROVADA", "AGUARDANDO_HOMOLOGACAO"]);
 
 /** Ação para transições simples */
 type SimpleAction = (id: string) => Promise<{ success: boolean; error?: string }>;
@@ -116,18 +122,12 @@ function getSimpleAction(toStatus: DemandStatus, fromStatus: DemandStatus): Simp
     : sendToAnalysisAction;
   if (toStatus === "PRIORIZACAO_DIRETORIA") return sendToDirectorPrioritizationAction;
   if (toStatus === "APROVADA")              return approveDemandAction;
-  if (toStatus === "EM_DESENVOLVIMENTO") {
-    if (fromStatus === "REPROVADA" || fromStatus === "AGUARDANDO_HOMOLOGACAO") {
-      return returnToDevelopmentAction;
-    }
-    return startDevelopmentAction;
-  }
   return openDemandAction; // fallback
 }
 
 // ── Componente principal ──────────────────────────────────────────
 
-export function DropTransitionDialog({ pending, onSuccess, onCancel }: Props) {
+export function DropTransitionDialog({ pending, onSuccess, onCancel, allowPastDates = false }: Props) {
   const router = useRouter();
   const open   = !!pending;
 
@@ -153,6 +153,33 @@ export function DropTransitionDialog({ pending, onSuccess, onCancel }: Props) {
         pending={pending}
         meta={meta!}
         action={getSimpleAction(pending.toStatus, pending.fromStatus)}
+        onSuccess={afterSuccess}
+        onCancel={onCancel}
+      />
+    );
+  }
+
+  // ── EM_DESENVOLVIMENTO — retorno simples ou início com datas ──
+  if (pending.toStatus === "EM_DESENVOLVIMENTO") {
+    if (RETURN_TO_DEV_FROM.has(pending.fromStatus)) {
+      return (
+        <SimpleConfirmDialog
+          open={open}
+          onOpenChange={handleOpenChange}
+          pending={pending}
+          meta={meta!}
+          action={returnToDevelopmentAction}
+          onSuccess={afterSuccess}
+          onCancel={onCancel}
+        />
+      );
+    }
+    return (
+      <StartDevelopmentDropDialog
+        open={open}
+        onOpenChange={handleOpenChange}
+        pending={pending}
+        allowPastDates={allowPastDates}
         onSuccess={afterSuccess}
         onCancel={onCancel}
       />
@@ -259,6 +286,100 @@ function SimpleConfirmDialog({
             {meta.confirmLabel}
           </Button>
         </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Iniciar desenvolvimento (arrastar de APROVADA) ────────────────
+
+function StartDevelopmentDropDialog({
+  open, onOpenChange, pending, allowPastDates = false, onSuccess, onCancel,
+}: { open: boolean; onOpenChange: (v: boolean) => void; pending: PendingDrop; allowPastDates?: boolean; onSuccess: () => void; onCancel: () => void }) {
+  const [error, setError] = useState<string | null>(null);
+  const today = new Date().toISOString().slice(0, 10);
+
+  const form = useForm<StartDevelopmentInput>({
+    resolver: zodResolver(startDevelopmentSchema),
+    defaultValues: { plannedStartDate: undefined, plannedDeliveryDate: undefined },
+  });
+
+  const watchedStart = form.watch("plannedStartDate");
+  const minDelivery  = allowPastDates
+    ? (watchedStart ? new Date(watchedStart).toISOString().slice(0, 10) : undefined)
+    : (watchedStart ? new Date(watchedStart).toISOString().slice(0, 10) : today);
+
+  async function onSubmit(values: StartDevelopmentInput) {
+    setError(null);
+    const result = await startDevelopmentAction(pending.demandId, values);
+    if (!result.success) { setError(result.error ?? "Erro"); return; }
+    form.reset();
+    onSuccess();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { form.reset(); onCancel(); } }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Iniciar desenvolvimento</DialogTitle>
+          <DialogDescription>
+            <strong className="font-medium text-foreground">&ldquo;{pending.demandTitle}&rdquo;</strong>
+            <br />Informe as datas previstas para registrar o início da atividade.
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="plannedStartDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Início previsto <span className="text-destructive">*</span></FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        min={allowPastDates ? undefined : today}
+                        value={field.value ? new Date(field.value).toISOString().slice(0, 10) : ""}
+                        onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="plannedDeliveryDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Entrega prevista <span className="text-destructive">*</span></FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        min={minDelivery}
+                        value={field.value ? new Date(field.value).toISOString().slice(0, 10) : ""}
+                        onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            {allowPastDates && (
+              <p className="text-xs text-muted-foreground">Gestor pode definir datas retroativas.</p>
+            )}
+            {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onCancel} disabled={form.formState.isSubmitting}>Cancelar</Button>
+              <Button type="submit" disabled={form.formState.isSubmitting} className="bg-purple-600 hover:bg-purple-700 text-white">
+                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Iniciar desenvolvimento
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

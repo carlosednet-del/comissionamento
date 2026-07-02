@@ -742,58 +742,8 @@ export function DemandForm(props: Props) {
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
 
-            {/* ── Prazo ──────────────────────────────────────────────── */}
+            {/* ── Realização — apenas em edição ──────────────────────── */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="plannedStartDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Início previsto {canEditAnalysis && isCreate && <span className="text-destructive">*</span>}</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        disabled={!canEditAnalysis}
-                        value={toDateInput(field.value)}
-                        onChange={(e) =>
-                          field.onChange(e.target.value ? new Date(e.target.value) : null)
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="plannedDeliveryDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Entrega prevista
-                      {canEditAnalysis && <span className="text-destructive ml-1">*</span>}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        disabled={!canEditAnalysis}
-                        value={toDateInput(field.value)}
-                        onChange={(e) =>
-                          field.onChange(e.target.value ? new Date(e.target.value) : null)
-                        }
-                      />
-                    </FormControl>
-                    {canEditAnalysis && (
-                      <p className="text-[11px] text-muted-foreground">
-                        Gestor pode definir datas retroativas.
-                      </p>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               {/* Campos de realização — apenas em edição */}
               {!isCreate && (
                 <>

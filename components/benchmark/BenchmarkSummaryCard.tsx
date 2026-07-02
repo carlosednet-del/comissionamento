@@ -16,6 +16,7 @@ type Props = {
   complexityMultiplier?: number;
   roiMultiplier?:        number;
   teamAccelerator?:      number;
+  isCorrectionOnly?:     boolean;
 };
 
 const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -62,6 +63,7 @@ export function BenchmarkSummaryCard({
   complexityMultiplier,
   roiMultiplier,
   teamAccelerator,
+  isCorrectionOnly = false,
 }: Props) {
   const result = calculateBenchmarkEconomy({
     estimatedHours,
@@ -114,6 +116,11 @@ export function BenchmarkSummaryCard({
         <Row label="Economia estimada"  value={BRL.format(result.economy)} highlight />
         <Row label="% de economia"      value={PCT.format(result.economyPercent)} highlight />
 
+        {isCorrectionOnly && (
+          <p className="text-[10px] text-rose-500 pt-2 leading-snug font-medium">
+            Correção — sem valor a pagar. Bench exibe apenas referência de mercado.
+          </p>
+        )}
         <p className="text-[10px] text-blue-400 pt-2 leading-snug">
           Bench calculado com base no valor hora de mercado por senioridade e ajuste de 10% do acelerador do time.
         </p>

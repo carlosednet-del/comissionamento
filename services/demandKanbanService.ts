@@ -12,6 +12,7 @@
 
 import { demandRepository }    from "@/repositories/demandRepository";
 import { isTechnicalRole }     from "@/lib/demand-pricing";
+import { getAreasByDirector }  from "@/lib/constants/departments";
 import type { UserForPermission } from "@/server/auth/permissions";
 import type { DemandSummary, DemandStatus } from "@/types";
 import type { KanbanFiltersInput } from "@/validations/demand";
@@ -121,6 +122,7 @@ export const demandKanbanService = {
       demandType:     filters.demandType,
       assigneeId:     filters.assigneeId ?? devFilter.assigneeId,
       requesterArea:  filters.requesterArea,
+      requesterAreas: filters.director ? getAreasByDirector(filters.director) : undefined,
       requesterName:  filters.requesterName,
       complexity:     filters.complexity,
       roi:            filters.roi,

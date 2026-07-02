@@ -6,6 +6,7 @@ import { DemandKanbanFilters }           from "@/components/demandas/kanban/dema
 import { Button }  from "@/components/ui/button";
 import { LayoutList, LayoutGrid } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { DEPARTMENTS } from "@/lib/constants/departments";
 import type { DemandPriority, DemandType, ComplexityLevel, RoiLevel } from "@prisma/client";
 import { Suspense } from "react";
 
@@ -22,6 +23,8 @@ type SearchParams = {
   onlyMine?:      string;
   assigneeId?:    string;
   requesterName?: string;
+  requesterArea?: string;
+  director?:      string;
 };
 
 export type KanbanAssignee = { id: string; name: string; role: string };
@@ -56,6 +59,8 @@ async function KanbanContent({ searchParams }: { searchParams: SearchParams }) {
     onlyMine:       sp.onlyMine === "true",
     assigneeId:     sp.assigneeId    || undefined,
     requesterName:  sp.requesterName || undefined,
+    requesterArea:  sp.requesterArea || undefined,
+    director:       sp.director      || undefined,
   });
 
   return <DemandKanbanBoard board={board} actor={actor} />;
@@ -93,6 +98,8 @@ export default async function KanbanPage({
       })
     : [];
 
+  const requesterAreas = [...DEPARTMENTS];
+
   return (
     <div className="space-y-4">
       {/* Cabeçalho */}
@@ -124,6 +131,7 @@ export default async function KanbanPage({
         showMyDemandsToggle={showMyDemandsToggle}
         showAssigneeFilter={showAssigneeFilter}
         assignees={assignees}
+        requesterAreas={requesterAreas}
       />
 
       {/* Board */}

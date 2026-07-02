@@ -144,7 +144,7 @@ export type StatementPreviewItem = {
   estimatedHours:  number;
   hourlyRate:      number | null;
   estimatedValue:  number;
-  homologationDate: string | null;
+  deliveryDate:    string | null;
 };
 
 export type StatementTotals = {

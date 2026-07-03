@@ -143,6 +143,15 @@ export async function middleware(request: NextRequest) {
       dest.searchParams.set("error", "sem-permissao");
       return NextResponse.redirect(dest);
     }
+
+    // Bloquear /dashboard-executivo para DEV, SOLICITANTE, APROVADOR
+    const EXEC_BLOCKED: UserRole[] = ["DEV", "SOLICITANTE", "APROVADOR", "SUPORTE", "ARQUITETO"];
+    if (pathname.startsWith("/dashboard-executivo") && EXEC_BLOCKED.includes(role as UserRole)) {
+      const dest = request.nextUrl.clone();
+      dest.pathname = homeFor(role);
+      dest.searchParams.set("error", "sem-permissao");
+      return NextResponse.redirect(dest);
+    }
   }
 
   return supabaseResponse;

@@ -99,6 +99,7 @@ enum AuditAction {
   DAP_CLOSING_PREVIEWED
   DAP_PERIOD_EXPORTED
   DAP_DEVELOPER_STATEMENT_EXPORTED
+  EXECUTIVE_DASHBOARD_EXPORTED
   PASSWORD_CHANGED
   PASSWORD_RESET_FORCED
 }
@@ -139,6 +140,7 @@ model User {
   prioritizedDemands Demand[]         @relation("DemandPrioritizer")
   auditLogs          AuditLog[]
   createdEvidences   DemandEvidence[] @relation("EvidenceCreator")
+  directedDemands    Demand[]         @relation("DemandDirector")
   statements         DeveloperMonthlyStatement[] @relation("StatementDeveloper")
   signedStatements   DeveloperMonthlyStatement[] @relation("StatementSigner")
 
@@ -182,6 +184,7 @@ model Demand {
   canceledById         String?
   prioritizedById      String?
   directorPriorityOrder Int?
+  directorId           String?
   prioritizedAt        DateTime?
   prioritizationNotes  String?
   approvedAt           DateTime?
@@ -199,6 +202,7 @@ model Demand {
   homologatedBy User?            @relation("DemandHomologator", fields: [homologatedById], references: [id])
   canceledBy    User?            @relation("DemandCanceler",    fields: [canceledById],  references: [id])
   prioritizedBy User?            @relation("DemandPrioritizer", fields: [prioritizedById], references: [id])
+  director      User?            @relation("DemandDirector",    fields: [directorId],    references: [id])
   evidences      DemandEvidence[]
   statementItems DeveloperMonthlyStatementItem[]
 
@@ -206,6 +210,8 @@ model Demand {
   @@index([priority])
   @@index([creatorId])
   @@index([assigneeId])
+  @@index([directorId])
+  @@index([homologationDate])
   @@map("demands")
 }
 

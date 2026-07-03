@@ -224,6 +224,14 @@ function isDapRole(role: string): boolean {
   return role === "DAP" || isMaster(role) || role === "FINANCEIRO";
 }
 
+export function canViewExecutiveDashboard(actor: UserForPermission): boolean {
+  return ["ADMIN", "DIRETOR", "GESTOR", "FINANCEIRO", "DAP"].includes(actor.role);
+}
+
+export function canExportExecutiveDashboard(actor: UserForPermission): boolean {
+  return canViewExecutiveDashboard(actor);
+}
+
 export function canAccessDapClosing(actor: UserForPermission): boolean {
   return isDapRole(actor.role);
 }

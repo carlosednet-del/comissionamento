@@ -6,6 +6,7 @@ import { DemandStats } from "@/components/demandas/demand-stats";
 import { DemandFilters } from "@/components/demandas/demand-filters";
 import { DemandTable } from "@/components/demandas/demand-table";
 import { Button } from "@/components/ui/button";
+import { ErrorFlash } from "@/components/ui/error-flash";
 import { Plus, LayoutGrid } from "lucide-react";
 import { getAreasByDirector } from "@/lib/constants/departments";
 import type { DemandStatus, DemandPriority, DemandType } from "@prisma/client";
@@ -20,6 +21,7 @@ type SearchParams = {
   requesterArea?: string;
   director?:      string;
   page?:          string;
+  error?:         string;
 };
 
 export default async function DemandasPage({
@@ -56,6 +58,7 @@ export default async function DemandasPage({
 
   return (
     <div className="space-y-6">
+      <ErrorFlash error={sp.error} />
       {/* Cabeçalho */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>

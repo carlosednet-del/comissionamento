@@ -21,7 +21,7 @@ export const authService = {
       if (error.message.includes("Invalid login credentials")) {
         throw new AuthError("E-mail ou senha incorretos");
       }
-      throw new AuthError(error.message);
+      throw new AuthError("Erro ao autenticar. Tente novamente mais tarde.");
     }
 
     return data;

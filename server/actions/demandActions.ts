@@ -20,8 +20,22 @@ import type {
   SendToAnalysisInput,
 } from "@/validations/demand";
 import type { CreateEvidenceInput } from "@/validations/evidence";
+import {
+  InvalidStatusTransitionError,
+  DemandPermissionError,
+  DemandNotFoundError,
+} from "@/services/demandService";
 
 function handleError(e: unknown): ActionResult<never> {
+  if (e instanceof InvalidStatusTransitionError) {
+    return { success: false, error: "Transição de status não permitida. Atualize a página e tente novamente." };
+  }
+  if (e instanceof DemandPermissionError) {
+    return { success: false, error: "Você não tem permissão para realizar esta operação." };
+  }
+  if (e instanceof DemandNotFoundError) {
+    return { success: false, error: "Demanda não encontrada." };
+  }
   if (e instanceof Error) return { success: false, error: e.message };
   return { success: false, error: "Erro desconhecido" };
 }

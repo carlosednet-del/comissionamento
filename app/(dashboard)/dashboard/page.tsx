@@ -9,6 +9,7 @@ import { MonthlySummaryTable }   from "@/components/dashboard/monthly-summary-ta
 import { Separator }             from "@/components/ui/separator";
 import { Users, ClipboardList, CheckCircle, Clock, BarChart3, TrendingDown } from "lucide-react";
 import { Suspense } from "react";
+import { ErrorFlash } from "@/components/ui/error-flash";
 
 export const metadata = { title: "Dashboard — Gestor de Demandas" };
 
@@ -22,6 +23,7 @@ type SearchParams = {
   profile?:    string;
   sortBy?:     string;
   sortDir?:    string;
+  error?:      string;
 };
 
 // ── Skeleton do resumo (SSR suspense) ────────────────────────────
@@ -145,6 +147,7 @@ export default async function DashboardPage({
 
   return (
     <div className="space-y-6">
+      <ErrorFlash error={sp.error} />
       {/* Cabeçalho — idêntico para todos os papéis */}
       <div>
         <h1 className="text-2xl font-bold text-brand-text-dark">Dashboard</h1>

@@ -37,7 +37,7 @@ import { cn } from "@/lib/utils";
 
 // ── Tipos ─────────────────────────────────────────────────────────
 
-type SortField = "name" | "email" | "role" | "workerProfile" | "isActive" | "createdAt";
+type SortField = "name" | "email" | "role" | "workerProfile" | "technicalSpecialty" | "isActive" | "createdAt";
 type SortDir   = "asc" | "desc";
 
 type Props = {
@@ -99,7 +99,8 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
         case "name":          av = a.name.toLowerCase();           bv = b.name.toLowerCase();           break;
         case "email":         av = a.email.toLowerCase();          bv = b.email.toLowerCase();          break;
         case "role":          av = a.role;                         bv = b.role;                         break;
-        case "workerProfile": av = a.workerProfile ?? "";          bv = b.workerProfile ?? "";          break;
+        case "workerProfile":      av = a.workerProfile ?? "";           bv = b.workerProfile ?? "";           break;
+        case "technicalSpecialty": av = a.technicalSpecialty ?? "";      bv = b.technicalSpecialty ?? "";      break;
         case "isActive":      av = a.isActive ? 1 : 0;            bv = b.isActive ? 1 : 0;             break;
         case "createdAt":     av = new Date(a.createdAt).getTime(); bv = new Date(b.createdAt).getTime(); break;
         default:              av = ""; bv = "";
@@ -276,6 +277,7 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
               <SortHead field="email">E-mail</SortHead>
               <SortHead field="role">Papel</SortHead>
               <SortHead field="workerProfile">Perfil técnico</SortHead>
+              <SortHead field="technicalSpecialty">Especialidade</SortHead>
               <SortHead field="isActive">Status</SortHead>
               <SortHead field="createdAt">Criado em</SortHead>
               <TableHead className="w-12" />
@@ -284,7 +286,7 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
           <TableBody>
             {sorted.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                   Nenhum usuário encontrado.
                 </TableCell>
               </TableRow>
@@ -295,6 +297,9 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
                 <TableCell className="text-muted-foreground text-sm">{user.email}</TableCell>
                 <TableCell><RoleBadge role={user.role} /></TableCell>
                 <TableCell><WorkerProfileBadge profile={user.workerProfile} /></TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {user.technicalSpecialty ?? <span className="text-muted-foreground/50">Sem especialidade</span>}
+                </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap items-center gap-1">
                     <ActiveStatusBadge isActive={user.isActive} />

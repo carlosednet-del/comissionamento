@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { ExecutiveDashboardFilters } from "@/validations/executive-dashboard";
 import type { DemandStatus, WorkerProfile, DemandType, ComplexityLevel, RoiLevel } from "@prisma/client";
+import { SEM_ESPECIALIDADE_FILTER } from "@/lib/constants/specialties";
 
 const DEMAND_SELECT = {
   id:                      true,
@@ -19,8 +20,17 @@ const DEMAND_SELECT = {
   prioritizedById:         true,
   creatorId:               true,
   status:                  true,
-  assignee: { select: { id: true, name: true, email: true, workerProfile: true, role: true } },
-  director: { select: { id: true, name: true } },
+  assignee: {
+    select: {
+      id:                 true,
+      name:               true,
+      email:              true,
+      workerProfile:      true,
+      role:               true,
+      technicalSpecialty: true,
+    },
+  },
+  director:      { select: { id: true, name: true } },
   prioritizedBy: { select: { id: true, name: true } },
 } as const;
 
@@ -41,9 +51,16 @@ export type ExecRawDemand = {
   prioritizedById:         string | null;
   creatorId:               string;
   status:                  DemandStatus;
-  assignee:                { id: string; name: string; email: string; workerProfile: WorkerProfile | null; role: string } | null;
-  director:                { id: string; name: string } | null;
-  prioritizedBy:           { id: string; name: string } | null;
+  assignee: {
+    id:                 string;
+    name:               string;
+    email:              string;
+    workerProfile:      WorkerProfile | null;
+    role:               string;
+    technicalSpecialty: string | null;
+  } | null;
+  director:      { id: string; name: string } | null;
+  prioritizedBy: { id: string; name: string } | null;
 };
 
 export async function getExecDashboardDemands(
@@ -66,17 +83,24 @@ export async function getExecDashboardDemands(
     where.homologationDate = dateFilter;
   }
 
-  if (filters.collaboratorId) where.assigneeId  = filters.collaboratorId;
-  if (filters.requesterArea)  where.requesterArea = filters.requesterArea;
+  if (filters.collaboratorId) where.assigneeId           = filters.collaboratorId;
+  if (filters.requesterArea)  where.requesterArea         = filters.requesterArea;
   if (filters.workerProfile)  where.assigneeProfileSnapshot = filters.workerProfile;
-  if (filters.demandType)     where.demandType   = filters.demandType;
-  if (filters.complexity)     where.complexity   = filters.complexity;
-  if (filters.roi)            where.roi          = filters.roi;
+  if (filters.demandType)     where.demandType            = filters.demandType;
+  if (filters.complexity)     where.complexity            = filters.complexity;
+  if (filters.roi)            where.roi                   = filters.roi;
 
   if (filters.directorId === "SEM_DIRETOR") {
     where.directorId = null;
   } else if (filters.directorId) {
     where.directorId = filters.directorId;
+  }
+
+  // Filtro de especialidade (relação com assignee)
+  if (filters.specialty === SEM_ESPECIALIDADE_FILTER) {
+    where.assignee = { is: { technicalSpecialty: null } };
+  } else if (filters.specialty) {
+    where.assignee = { technicalSpecialty: filters.specialty };
   }
 
   return prisma.demand.findMany({
@@ -99,7 +123,16 @@ export async function getExecDashboardCollaborators() {
   const rows = await prisma.demand.findMany({
     where: { status: "HOMOLOGADA_PRODUCAO", assigneeId: { not: null } },
     distinct: ["assigneeId"],
-    select: { assignee: { select: { id: true, name: true, workerProfile: true } } },
+    select: {
+      assignee: {
+        select: {
+          id:                 true,
+          name:               true,
+          workerProfile:      true,
+          technicalSpecialty: true,
+        },
+      },
+    },
     orderBy: { assignee: { name: "asc" } },
   });
   return rows

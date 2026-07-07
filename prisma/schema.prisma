@@ -129,6 +129,8 @@ model User {
   monthlyCapValue      Float?
   /// Força troca de senha no próximo login (primeiro acesso ou reset admin).
   forcePasswordChange  Boolean  @default(false)
+  /// Especialidade técnica principal (ex.: Power BI, Backend, Dados). Opcional.
+  technicalSpecialty   String?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 

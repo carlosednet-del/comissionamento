@@ -7,6 +7,7 @@ export const executiveDashboardFiltersSchema = z.object({
   requesterArea:   z.string().optional(),
   directorId:      z.string().optional(),
   workerProfile:   z.enum(["JUNIOR", "PLENO", "SENIOR", "ESPECIALISTA"]).optional(),
+  specialty:       z.string().optional(), // livre ou "SEM_ESPECIALIDADE"
   demandType:      z.enum(["NOVA_SOLUCAO", "EVOLUCAO_PRODUCAO", "CORRECAO", "AUTOMACAO", "DASHBOARD", "INTEGRACAO", "OUTRO"]).optional(),
   complexity:      z.enum(["BAIXA", "MEDIA", "ALTA", "CRITICA"]).optional(),
   roi:             z.enum(["BAIXO", "MEDIO", "ALTO", "ESTRATEGICO"]).optional(),

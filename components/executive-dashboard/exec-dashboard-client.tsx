@@ -10,6 +10,7 @@ import { ExecKpiCards }         from "./exec-kpi-cards";
 import { ExecExportButton }     from "./exec-export-button";
 import { ExecTabOverview }      from "./exec-tab-overview";
 import { ExecTabCollaborators } from "./exec-tab-collaborators";
+import { ExecTabProfile }       from "./exec-tab-profile";
 import { ExecTabAreas }         from "./exec-tab-areas";
 import { ExecTabDirectors }     from "./exec-tab-directors";
 import { ExecTabDemands }       from "./exec-tab-demands";
@@ -18,7 +19,7 @@ import { getExecDashboardDataAction } from "@/server/actions/executiveDashboardA
 import type { ExecDashboardData }     from "@/services/executiveDashboardService";
 import type { ExecutiveDashboardFilters } from "@/validations/executive-dashboard";
 
-type Director    = { id: string; name: string; role: string };
+type Director     = { id: string; name: string; role: string };
 type Collaborator = { id: string; name: string; workerProfile: string | null };
 
 type Props = {
@@ -34,8 +35,8 @@ export function ExecDashboardClient({
   directors,
   collaborators,
 }: Props) {
-  const [filters, setFilters] = useState<ExecutiveDashboardFilters>(initialFilters);
-  const [data,    setData]    = useState<ExecDashboardData>(initialData);
+  const [filters,  setFilters]  = useState<ExecutiveDashboardFilters>(initialFilters);
+  const [data,     setData]     = useState<ExecDashboardData>(initialData);
   const [isPending, startTransition] = useTransition();
 
   const handleFiltersChange = useCallback((newFilters: ExecutiveDashboardFilters) => {
@@ -86,6 +87,7 @@ export function ExecDashboardClient({
           <TabsList className="flex flex-wrap h-auto gap-1 mb-4">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="collaborators">Colaboradores</TabsTrigger>
+            <TabsTrigger value="profile">Perfil Técnico</TabsTrigger>
             <TabsTrigger value="areas">Áreas</TabsTrigger>
             <TabsTrigger value="directors">Diretores</TabsTrigger>
             <TabsTrigger value="demands">Demandas</TabsTrigger>
@@ -99,6 +101,19 @@ export function ExecDashboardClient({
             <ExecTabCollaborators
               byCollaborator={data.byCollaborator}
               rankingCollaborators={data.rankingCollaborators}
+              collaboratorMonthMatrix={data.collaboratorMonthMatrix}
+              allMonths={data.allMonths}
+            />
+          </TabsContent>
+
+          <TabsContent value="profile">
+            <ExecTabProfile
+              bySeniority={data.bySeniority}
+              bySpecialty={data.bySpecialty}
+              byMonthAndSeniority={data.byMonthAndSeniority}
+              byMonthAndSpecialty={data.byMonthAndSpecialty}
+              collaboratorMonthMatrix={data.collaboratorMonthMatrix}
+              allMonths={data.allMonths}
             />
           </TabsContent>
 

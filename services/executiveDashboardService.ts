@@ -1,6 +1,7 @@
 import type { WorkerProfile } from "@prisma/client";
 import {
   getExecDashboardDemands,
+  getExecIncomingDemands,
   type ExecRawDemand,
 } from "@/repositories/executiveDashboardRepository";
 import { calculateBenchmarkEconomy } from "@/lib/benchmark/calculateBenchmarkEconomy";
@@ -164,6 +165,22 @@ export type CollaboratorMonthCell = {
   estimatedValue: number;
 };
 
+export type ExecIncomingVsHomologated = {
+  yearMonth:   string;
+  monthLabel:  string;
+  incoming:    number;
+  homologated: number;
+};
+
+export type ExecDeadlineStats = {
+  onTime:     number;
+  late:       number;
+  noDeadline: number;
+  total:      number;
+  onTimePct:  number;
+  latePct:    number;
+};
+
 export type CollaboratorMonthRow = {
   collaboratorId:   string;
   collaboratorName: string;
@@ -190,8 +207,10 @@ export type ExecDashboardData = {
   bySpecialty:             ExecSpecialtyPoint[];
   byMonthAndSeniority:     ExecMonthSeniorityPoint[];
   byMonthAndSpecialty:     ExecMonthSpecialtyPoint[];
-  collaboratorMonthMatrix: CollaboratorMonthRow[];
-  allMonths:               { yearMonth: string; monthLabel: string }[];
+  collaboratorMonthMatrix:  CollaboratorMonthRow[];
+  allMonths:                { yearMonth: string; monthLabel: string }[];
+  incomingVsHomologated:    ExecIncomingVsHomologated[];
+  deadlineStats:            ExecDeadlineStats;
 };
 
 // ── Helpers internos ──────────────────────────────────────────────
@@ -275,7 +294,10 @@ function topByKey<T extends Record<string, unknown>>(
 
 // ── Computação ────────────────────────────────────────────────────
 
-function compute(demands: EnrichedDemand[]): ExecDashboardData {
+function compute(
+  demands:     EnrichedDemand[],
+  incomingRaw: { yearMonth: string; count: number }[],
+): ExecDashboardData {
   const collabMap          = new Map<string, ExecCollabPoint>();
   const collabAreaMap      = new Map<string, Map<string, number>>();
   const collabMonthSetMap  = new Map<string, Set<string>>();
@@ -553,6 +575,39 @@ function compute(demands: EnrichedDemand[]): ExecDashboardData {
     };
   });
 
+  // ── Prazo (dentro / fora) ─────────────────────────────────────────
+  let onTime = 0; let late = 0; let noDeadline = 0;
+  for (const d of demands) {
+    if (!d.plannedDeliveryDate || !d.homologationDate) { noDeadline++; continue; }
+    if (d.homologationDate <= d.plannedDeliveryDate) onTime++; else late++;
+  }
+  const deadlineTotal = onTime + late;
+  const deadlineStats: ExecDeadlineStats = {
+    onTime, late, noDeadline,
+    total:     deadlineTotal,
+    onTimePct: deadlineTotal > 0 ? onTime / deadlineTotal : 0,
+    latePct:   deadlineTotal > 0 ? late  / deadlineTotal : 0,
+  };
+
+  // ── Entrantes × Homologadas por mês ──────────────────────────────
+  const incomingMap = new Map<string, number>(incomingRaw.map((r) => [r.yearMonth, r.count]));
+  const allYearMonths = new Set([
+    ...allMonthsMap.keys(),
+    ...incomingRaw.map((r) => r.yearMonth),
+  ]);
+  const incomingVsHomologated: ExecIncomingVsHomologated[] = [...allYearMonths]
+    .sort()
+    .map((ym) => {
+      const ms      = monthlySeriesMap.get(ym);
+      const label   = ms?.label ?? allMonthsMap.get(ym) ?? ym;
+      return {
+        yearMonth:   ym,
+        monthLabel:  label,
+        incoming:    incomingMap.get(ym) ?? 0,
+        homologated: ms?.demands ?? 0,
+      };
+    });
+
   return {
     summary,
     monthlySeries:        [...monthlySeriesMap.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, v]) => v),
@@ -570,6 +625,8 @@ function compute(demands: EnrichedDemand[]): ExecDashboardData {
     byMonthAndSpecialty:  [...monthSpecialtyMap.values()].sort((a, b) => a.yearMonth.localeCompare(b.yearMonth) || a.specialty.localeCompare(b.specialty)),
     collaboratorMonthMatrix,
     allMonths,
+    incomingVsHomologated,
+    deadlineStats,
   };
 }
 
@@ -577,8 +634,11 @@ function compute(demands: EnrichedDemand[]): ExecDashboardData {
 
 export const executiveDashboardService = {
   async getData(filters: ExecutiveDashboardFilters): Promise<ExecDashboardData> {
-    const raw      = await getExecDashboardDemands(filters);
+    const [raw, incomingRaw] = await Promise.all([
+      getExecDashboardDemands(filters),
+      getExecIncomingDemands(filters.startDate, filters.endDate),
+    ]);
     const enriched = raw.map(enrich);
-    return compute(enriched);
+    return compute(enriched, incomingRaw);
   },
 };

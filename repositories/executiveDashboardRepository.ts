@@ -15,6 +15,7 @@ const DEMAND_SELECT = {
   assigneeId:              true,
   assigneeProfileSnapshot: true,
   hourlyRateSnapshot:      true,
+  plannedDeliveryDate:     true,
   homologationDate:        true,
   directorId:              true,
   prioritizedById:         true,
@@ -46,6 +47,7 @@ export type ExecRawDemand = {
   assigneeId:              string | null;
   assigneeProfileSnapshot: WorkerProfile | null;
   hourlyRateSnapshot:      number | null;
+  plannedDeliveryDate:     Date | null;
   homologationDate:        Date | null;
   directorId:              string | null;
   prioritizedById:         string | null;
@@ -109,6 +111,43 @@ export async function getExecDashboardDemands(
     orderBy: { homologationDate: "desc" },
     take: 2000,
   }) as Promise<ExecRawDemand[]>;
+}
+
+export async function getExecIncomingDemands(
+  startDate?: string,
+  endDate?:   string,
+): Promise<{ yearMonth: string; count: number }[]> {
+  const where: Record<string, unknown> = {
+    status: { not: "RASCUNHO" as DemandStatus },
+  };
+
+  if (startDate || endDate) {
+    const df: Record<string, Date> = {};
+    if (startDate) df.gte = new Date(startDate);
+    if (endDate) {
+      const e = new Date(endDate);
+      e.setHours(23, 59, 59, 999);
+      df.lte = e;
+    }
+    where.createdAt = df;
+  }
+
+  const rows = await prisma.demand.findMany({
+    where,
+    select: { createdAt: true },
+    take: 5000,
+  });
+
+  const map = new Map<string, number>();
+  for (const r of rows) {
+    const d = r.createdAt;
+    const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    map.set(ym, (map.get(ym) ?? 0) + 1);
+  }
+
+  return [...map.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([yearMonth, count]) => ({ yearMonth, count }));
 }
 
 export async function getExecDashboardDirectors() {

@@ -3,10 +3,11 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input }  from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DEPARTMENTS } from "@/lib/constants/departments";
 import { TECHNICAL_SPECIALTIES, SEM_ESPECIALIDADE_FILTER } from "@/lib/constants/specialties";
 import type { ExecutiveDashboardFilters } from "@/validations/executive-dashboard";
-import { X } from "lucide-react";
+import { Filter, RotateCcw } from "lucide-react";
 
 type Director     = { id: string; name: string; role: string };
 type Collaborator = { id: string; name: string; workerProfile: string | null };
@@ -51,9 +52,12 @@ const DEMAND_TYPE_OPTIONS = [
 ];
 
 const NONE = "__ALL__";
-
 function val(v: string | undefined): string { return v ?? NONE; }
 function opt(v: string): string | undefined { return v === NONE ? undefined : v; }
+
+function FilterLabel({ children }: { children: React.ReactNode }) {
+  return <label className="text-xs font-medium text-muted-foreground block mb-1">{children}</label>;
+}
 
 export function ExecFilters({ filters, directors, collaborators, onChange, loading }: Props) {
   function set(patch: Partial<ExecutiveDashboardFilters>) {
@@ -68,151 +72,166 @@ export function ExecFilters({ filters, directors, collaborators, onChange, loadi
   }
 
   return (
-    <div className="rounded-xl border bg-card p-4 space-y-3">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+    <Card className="shadow-sm border-0 ring-1 ring-border/60">
+      <CardHeader className="pb-3 pt-4 px-5">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          Filtros executivos
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-5 pb-5">
+        <div className="flex gap-4 items-end">
+          {/* Grid de filtros */}
+          <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3">
+            <div>
+              <FilterLabel>Data inicial</FilterLabel>
+              <Input
+                type="date"
+                value={filters.startDate ?? ""}
+                onChange={(e) => set({ startDate: e.target.value || undefined })}
+                disabled={loading}
+                className="h-9 text-sm"
+              />
+            </div>
 
-        {/* Período */}
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">De</label>
-          <Input
-            type="date"
-            value={filters.startDate ?? ""}
-            onChange={(e) => set({ startDate: e.target.value || undefined })}
-            disabled={loading}
-            className="h-9 text-sm"
-          />
-        </div>
+            <div>
+              <FilterLabel>Data final</FilterLabel>
+              <Input
+                type="date"
+                value={filters.endDate ?? ""}
+                onChange={(e) => set({ endDate: e.target.value || undefined })}
+                disabled={loading}
+                className="h-9 text-sm"
+              />
+            </div>
 
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Até</label>
-          <Input
-            type="date"
-            value={filters.endDate ?? ""}
-            onChange={(e) => set({ endDate: e.target.value || undefined })}
-            disabled={loading}
-            className="h-9 text-sm"
-          />
-        </div>
+            <div>
+              <FilterLabel>Colaborador</FilterLabel>
+              <Select value={val(filters.collaboratorId)} onValueChange={(v) => set({ collaboratorId: opt(v) })} disabled={loading}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Todos</SelectItem>
+                  {collaborators.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        {/* Colaborador */}
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Colaborador</label>
-          <Select value={val(filters.collaboratorId)} onValueChange={(v) => set({ collaboratorId: opt(v) })} disabled={loading}>
-            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todos" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>Todos</SelectItem>
-              {collaborators.map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+            <div>
+              <FilterLabel>Senioridade</FilterLabel>
+              <Select
+                value={val(filters.workerProfile)}
+                onValueChange={(v) => set({ workerProfile: opt(v) as ExecutiveDashboardFilters["workerProfile"] })}
+                disabled={loading}
+              >
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todas" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Todas</SelectItem>
+                  {SENIORITY_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
 
-        {/* Área */}
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Área</label>
-          <Select value={val(filters.requesterArea)} onValueChange={(v) => set({ requesterArea: opt(v) })} disabled={loading}>
-            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todas" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>Todas</SelectItem>
-              {DEPARTMENTS.map((d) => (
-                <SelectItem key={d} value={d}>{d}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+            <div>
+              <FilterLabel>Especialidade</FilterLabel>
+              <Select value={val(filters.specialty)} onValueChange={(v) => set({ specialty: opt(v) })} disabled={loading}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todas" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Todas</SelectItem>
+                  <SelectItem value={SEM_ESPECIALIDADE_FILTER}>Sem especialidade</SelectItem>
+                  {TECHNICAL_SPECIALTIES.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        {/* Diretor */}
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Diretor</label>
-          <Select value={val(filters.directorId)} onValueChange={(v) => set({ directorId: opt(v) })} disabled={loading}>
-            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todos" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>Todos</SelectItem>
-              <SelectItem value="SEM_DIRETOR">Sem Diretor</SelectItem>
-              {directors.map((d) => (
-                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+            <div>
+              <FilterLabel>Área</FilterLabel>
+              <Select value={val(filters.requesterArea)} onValueChange={(v) => set({ requesterArea: opt(v) })} disabled={loading}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todas" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Todas</SelectItem>
+                  {DEPARTMENTS.map((d) => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        {/* Senioridade */}
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Senioridade</label>
-          <Select
-            value={val(filters.workerProfile)}
-            onValueChange={(v) => set({ workerProfile: opt(v) as ExecutiveDashboardFilters["workerProfile"] })}
-            disabled={loading}
-          >
-            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todas" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>Todas</SelectItem>
-              {SENIORITY_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
+            <div>
+              <FilterLabel>Diretor</FilterLabel>
+              <Select value={val(filters.directorId)} onValueChange={(v) => set({ directorId: opt(v) })} disabled={loading}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Todos</SelectItem>
+                  <SelectItem value="SEM_DIRETOR">Sem Diretor</SelectItem>
+                  {directors.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        {/* Especialidade */}
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Especialidade</label>
-          <Select value={val(filters.specialty)} onValueChange={(v) => set({ specialty: opt(v) })} disabled={loading}>
-            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todas" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>Todas</SelectItem>
-              <SelectItem value={SEM_ESPECIALIDADE_FILTER}>Sem especialidade</SelectItem>
-              {TECHNICAL_SPECIALTIES.map((s) => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+            <div>
+              <FilterLabel>Tipo</FilterLabel>
+              <Select value={val(filters.demandType)} onValueChange={(v) => set({ demandType: opt(v) as ExecutiveDashboardFilters["demandType"] })} disabled={loading}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Todos</SelectItem>
+                  {DEMAND_TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
 
-        {/* Tipo */}
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Tipo</label>
-          <Select value={val(filters.demandType)} onValueChange={(v) => set({ demandType: opt(v) as ExecutiveDashboardFilters["demandType"] })} disabled={loading}>
-            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todos" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>Todos</SelectItem>
-              {DEMAND_TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
+            <div>
+              <FilterLabel>Complexidade</FilterLabel>
+              <Select value={val(filters.complexity)} onValueChange={(v) => set({ complexity: opt(v) as ExecutiveDashboardFilters["complexity"] })} disabled={loading}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todas" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Todas</SelectItem>
+                  {COMPLEXITY_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
 
-        {/* Complexidade */}
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Complexidade</label>
-          <Select value={val(filters.complexity)} onValueChange={(v) => set({ complexity: opt(v) as ExecutiveDashboardFilters["complexity"] })} disabled={loading}>
-            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todas" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>Todas</SelectItem>
-              {COMPLEXITY_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
+            <div>
+              <FilterLabel>ROI</FilterLabel>
+              <Select value={val(filters.roi)} onValueChange={(v) => set({ roi: opt(v) as ExecutiveDashboardFilters["roi"] })} disabled={loading}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Todos</SelectItem>
+                  {ROI_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-        {/* ROI */}
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">ROI</label>
-          <Select value={val(filters.roi)} onValueChange={(v) => set({ roi: opt(v) as ExecutiveDashboardFilters["roi"] })} disabled={loading}>
-            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todos" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>Todos</SelectItem>
-              {ROI_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          {/* Botões */}
+          <div className="flex flex-col gap-2 shrink-0">
+            <Button
+              size="sm"
+              className="h-9 px-4 text-sm gap-1.5 bg-[#007EB5] hover:bg-[#006499] text-white"
+              disabled={loading}
+              onClick={() => onChange({ ...filters })}
+            >
+              <Filter className="h-3.5 w-3.5" />
+              Aplicar filtros
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 px-4 text-sm gap-1.5"
+              onClick={reset}
+              disabled={loading}
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Limpar filtros
+            </Button>
+          </div>
         </div>
-
-        {/* Reset */}
-        <div className="space-y-1 flex flex-col justify-end">
-          <label className="text-xs font-medium text-muted-foreground opacity-0 select-none">.</label>
-          <Button variant="outline" size="sm" onClick={reset} disabled={loading} className="h-9 gap-1.5 text-sm">
-            <X className="h-3.5 w-3.5" />
-            Limpar
-          </Button>
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

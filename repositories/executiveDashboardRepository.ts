@@ -150,6 +150,32 @@ export async function getExecIncomingDemands(
     .map(([yearMonth, count]) => ({ yearMonth, count }));
 }
 
+export async function getExecStatusCounts(
+  startDate?: string,
+  endDate?:   string,
+): Promise<{ status: string; count: number }[]> {
+  const where: Record<string, unknown> = {};
+
+  if (startDate || endDate) {
+    const df: Record<string, Date> = {};
+    if (startDate) df.gte = new Date(startDate);
+    if (endDate) {
+      const e = new Date(endDate);
+      e.setHours(23, 59, 59, 999);
+      df.lte = e;
+    }
+    where.createdAt = df;
+  }
+
+  const rows = await prisma.demand.groupBy({
+    by:    ["status"],
+    where,
+    _count: { status: true },
+  });
+
+  return rows.map((r) => ({ status: r.status, count: r._count.status }));
+}
+
 export async function getExecDashboardDirectors() {
   return prisma.user.findMany({
     where: { role: { in: ["DIRETOR", "ADMIN"] }, isActive: true },

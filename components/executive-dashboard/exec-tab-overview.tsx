@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 import type {
   ExecMonthlyPoint, ExecCollabPoint, ExecAreaPoint, ExecDemandRow,
-  ExecIncomingVsHomologated, ExecDeadlineStats,
+  ExecIncomingVsHomologated, ExecDeadlineStats, ExecStatusCount,
 } from "@/services/executiveDashboardService";
 
 const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -31,9 +31,10 @@ type Props = {
   demands:                ExecDemandRow[];
   incomingVsHomologated:  ExecIncomingVsHomologated[];
   deadlineStats:          ExecDeadlineStats;
+  byStatus:               ExecStatusCount[];
 };
 
-export function ExecTabOverview({ monthlySeries, rankingCollaborators, rankingAreas, demands, incomingVsHomologated, deadlineStats }: Props) {
+export function ExecTabOverview({ monthlySeries, rankingCollaborators, rankingAreas, demands, incomingVsHomologated, deadlineStats, byStatus }: Props) {
   if (monthlySeries.length === 0 && rankingCollaborators.length === 0) {
     return (
       <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
@@ -315,6 +316,42 @@ export function ExecTabOverview({ monthlySeries, rankingCollaborators, rankingAr
           </CardContent>
         </Card>
       </div>
+
+      {/* Gráfico: Demandas por status do Kanban */}
+      {byStatus.length > 0 && (
+        <Card className="shadow-sm border-0 ring-1 ring-border/60">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold">Demandas por status do Kanban</CardTitle>
+            <CardDescription className="text-xs">
+              Volume de demandas criadas no período, agrupadas por estágio atual no pipeline
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={byStatus} margin={{ top: 4, right: 16, left: 0, bottom: 40 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 11 }}
+                  angle={-30}
+                  textAnchor="end"
+                  interval={0}
+                />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip
+                  formatter={(v) => [NUM.format(Number(v)), "Demandas"]}
+                  contentStyle={{ borderRadius: 8, fontSize: 12 }}
+                />
+                <Bar dataKey="count" name="Demandas" radius={[4, 4, 0, 0]} maxBarSize={56}>
+                  {byStatus.map((entry) => (
+                    <Cell key={entry.status} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabela Top 5 entregas */}
       {top5Demands.length > 0 && (

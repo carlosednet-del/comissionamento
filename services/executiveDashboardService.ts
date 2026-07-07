@@ -2,6 +2,7 @@ import type { WorkerProfile } from "@prisma/client";
 import {
   getExecDashboardDemands,
   getExecIncomingDemands,
+  getExecStatusCounts,
   type ExecRawDemand,
 } from "@/repositories/executiveDashboardRepository";
 import { calculateBenchmarkEconomy } from "@/lib/benchmark/calculateBenchmarkEconomy";
@@ -165,6 +166,13 @@ export type CollaboratorMonthCell = {
   estimatedValue: number;
 };
 
+export type ExecStatusCount = {
+  status: string;
+  label:  string;
+  count:  number;
+  color:  string;
+};
+
 export type ExecIncomingVsHomologated = {
   yearMonth:   string;
   monthLabel:  string;
@@ -211,6 +219,7 @@ export type ExecDashboardData = {
   allMonths:                { yearMonth: string; monthLabel: string }[];
   incomingVsHomologated:    ExecIncomingVsHomologated[];
   deadlineStats:            ExecDeadlineStats;
+  byStatus:                 ExecStatusCount[];
 };
 
 // ── Helpers internos ──────────────────────────────────────────────
@@ -294,9 +303,30 @@ function topByKey<T extends Record<string, unknown>>(
 
 // ── Computação ────────────────────────────────────────────────────
 
+const STATUS_META: Record<string, { label: string; color: string }> = {
+  RASCUNHO:               { label: "Rascunho",               color: "#94A3B8" },
+  ABERTA:                 { label: "Aberta",                 color: "#64748B" },
+  EM_ANALISE:             { label: "Em Análise",             color: "#007EB5" },
+  PRIORIZACAO_DIRETORIA:  { label: "Prio. Diretoria",        color: "#7C3AED" },
+  APROVADA:               { label: "Aprovada",               color: "#3F8298" },
+  EM_DESENVOLVIMENTO:     { label: "Em Desenvolvimento",     color: "#F59E0B" },
+  AGUARDANDO_HOMOLOGACAO: { label: "Ag. Homologação",        color: "#0F766E" },
+  HOMOLOGADA_PRODUCAO:    { label: "Homologada",             color: "#16A34A" },
+  REPROVADA:              { label: "Reprovada",              color: "#E11D48" },
+  CANCELADA:              { label: "Cancelada",              color: "#DC2626" },
+  CONCLUIDA:              { label: "Concluída",              color: "#15803D" },
+};
+
+const STATUS_ORDER = [
+  "RASCUNHO", "ABERTA", "EM_ANALISE", "PRIORIZACAO_DIRETORIA",
+  "APROVADA", "EM_DESENVOLVIMENTO", "AGUARDANDO_HOMOLOGACAO",
+  "HOMOLOGADA_PRODUCAO", "CONCLUIDA", "REPROVADA", "CANCELADA",
+];
+
 function compute(
   demands:     EnrichedDemand[],
   incomingRaw: { yearMonth: string; count: number }[],
+  statusRaw:   { status: string; count: number }[],
 ): ExecDashboardData {
   const collabMap          = new Map<string, ExecCollabPoint>();
   const collabAreaMap      = new Map<string, Map<string, number>>();
@@ -575,6 +605,17 @@ function compute(
     };
   });
 
+  // ── Status do Kanban ─────────────────────────────────────────────
+  const statusMap = new Map(statusRaw.map((r) => [r.status, r.count]));
+  const byStatus: ExecStatusCount[] = STATUS_ORDER
+    .filter((s) => statusMap.has(s))
+    .map((s) => ({
+      status: s,
+      label:  STATUS_META[s]?.label ?? s,
+      count:  statusMap.get(s) ?? 0,
+      color:  STATUS_META[s]?.color ?? "#94A3B8",
+    }));
+
   // ── Prazo (dentro / fora) ─────────────────────────────────────────
   let onTime = 0; let late = 0; let noDeadline = 0;
   for (const d of demands) {
@@ -627,6 +668,7 @@ function compute(
     allMonths,
     incomingVsHomologated,
     deadlineStats,
+    byStatus,
   };
 }
 
@@ -634,11 +676,12 @@ function compute(
 
 export const executiveDashboardService = {
   async getData(filters: ExecutiveDashboardFilters): Promise<ExecDashboardData> {
-    const [raw, incomingRaw] = await Promise.all([
+    const [raw, incomingRaw, statusRaw] = await Promise.all([
       getExecDashboardDemands(filters),
       getExecIncomingDemands(filters.startDate, filters.endDate),
+      getExecStatusCounts(filters.startDate, filters.endDate),
     ]);
     const enriched = raw.map(enrich);
-    return compute(enriched, incomingRaw);
+    return compute(enriched, incomingRaw, statusRaw);
   },
 };

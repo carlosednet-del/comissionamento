@@ -218,6 +218,7 @@ export function ExecDashboardClient({
                 demands={data.demands}
                 incomingVsHomologated={data.incomingVsHomologated}
                 deadlineStats={data.deadlineStats}
+                byStatus={data.byStatus}
               />
             </TabsContent>
 

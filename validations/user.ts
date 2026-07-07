@@ -29,6 +29,14 @@ const workerProfileRule = z
   .optional()
   .transform((v) => (v ?? null) as WorkerProfile | null);
 
+// especialidade técnica opcional (string livre)
+const technicalSpecialtyRule = z
+  .string()
+  .max(100)
+  .nullable()
+  .optional()
+  .transform((v) => (v == null || v === "" ? null : v));
+
 // mínimo garantido e teto são floats positivos opcionais
 const positiveFloatRule = z
   .number({ invalid_type_error: "Deve ser um número" })
@@ -42,14 +50,15 @@ const TECHNICAL_ROLES = ["DEV", "SUPORTE", "ARQUITETO"] as const;
 
 export const createUserSchema = z
   .object({
-    name:              z.string().min(2, "Nome deve ter ao menos 2 caracteres").max(100),
-    email:             z.string().email("E-mail inválido"),
-    password:          z.string().min(8, "Senha temporária deve ter ao menos 8 caracteres"),
-    role:              roleSchema,
-    workerProfile:     workerProfileRule,
-    monthlyBaseSalary: positiveFloatRule,
-    monthlyCapValue:   positiveFloatRule,
-    isActive:          z.boolean().optional().default(true),
+    name:               z.string().min(2, "Nome deve ter ao menos 2 caracteres").max(100),
+    email:              z.string().email("E-mail inválido"),
+    password:           z.string().min(8, "Senha temporária deve ter ao menos 8 caracteres"),
+    role:               roleSchema,
+    workerProfile:      workerProfileRule,
+    monthlyBaseSalary:  positiveFloatRule,
+    monthlyCapValue:    positiveFloatRule,
+    technicalSpecialty: technicalSpecialtyRule,
+    isActive:           z.boolean().optional().default(true),
   })
   .refine(
     (data) => {
@@ -61,12 +70,13 @@ export const createUserSchema = z
 
 export const updateUserSchema = z
   .object({
-    name:              z.string().min(2, "Nome deve ter ao menos 2 caracteres").max(100),
-    role:              roleSchema,
-    workerProfile:     workerProfileRule,
-    monthlyBaseSalary: positiveFloatRule,
-    monthlyCapValue:   positiveFloatRule,
-    isActive:          z.boolean().optional(),
+    name:               z.string().min(2, "Nome deve ter ao menos 2 caracteres").max(100),
+    role:               roleSchema,
+    workerProfile:      workerProfileRule,
+    monthlyBaseSalary:  positiveFloatRule,
+    monthlyCapValue:    positiveFloatRule,
+    technicalSpecialty: technicalSpecialtyRule,
+    isActive:           z.boolean().optional(),
   })
   .refine(
     (data) => {

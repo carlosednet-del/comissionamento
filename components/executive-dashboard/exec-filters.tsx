@@ -4,10 +4,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Input }  from "@/components/ui/input";
 import { DEPARTMENTS } from "@/lib/constants/departments";
+import { TECHNICAL_SPECIALTIES, SEM_ESPECIALIDADE_FILTER } from "@/lib/constants/specialties";
 import type { ExecutiveDashboardFilters } from "@/validations/executive-dashboard";
 import { X } from "lucide-react";
 
-type Director    = { id: string; name: string; role: string };
+type Director     = { id: string; name: string; role: string };
 type Collaborator = { id: string; name: string; workerProfile: string | null };
 
 type Props = {
@@ -26,13 +27,13 @@ const COMPLEXITY_OPTIONS = [
 ];
 
 const ROI_OPTIONS = [
-  { value: "BAIXO",      label: "Baixo"      },
-  { value: "MEDIO",      label: "Médio"      },
-  { value: "ALTO",       label: "Alto"       },
-  { value: "ESTRATEGICO",label: "Estratégico"},
+  { value: "BAIXO",       label: "Baixo"       },
+  { value: "MEDIO",       label: "Médio"       },
+  { value: "ALTO",        label: "Alto"        },
+  { value: "ESTRATEGICO", label: "Estratégico" },
 ];
 
-const PROFILE_OPTIONS = [
+const SENIORITY_OPTIONS = [
   { value: "JUNIOR",       label: "Júnior"       },
   { value: "PLENO",        label: "Pleno"        },
   { value: "SENIOR",       label: "Sênior"       },
@@ -40,13 +41,13 @@ const PROFILE_OPTIONS = [
 ];
 
 const DEMAND_TYPE_OPTIONS = [
-  { value: "NOVA_SOLUCAO",       label: "Nova Solução"  },
-  { value: "EVOLUCAO_PRODUCAO",  label: "Evolução"      },
-  { value: "CORRECAO",           label: "Correção"      },
-  { value: "AUTOMACAO",          label: "Automação"     },
-  { value: "DASHBOARD",          label: "Dashboard"     },
-  { value: "INTEGRACAO",         label: "Integração"    },
-  { value: "OUTRO",              label: "Outro"         },
+  { value: "NOVA_SOLUCAO",      label: "Nova Solução" },
+  { value: "EVOLUCAO_PRODUCAO", label: "Evolução"     },
+  { value: "CORRECAO",          label: "Correção"     },
+  { value: "AUTOMACAO",         label: "Automação"    },
+  { value: "DASHBOARD",         label: "Dashboard"    },
+  { value: "INTEGRACAO",        label: "Integração"   },
+  { value: "OUTRO",             label: "Outro"        },
 ];
 
 const NONE = "__ALL__";
@@ -136,14 +137,33 @@ export function ExecFilters({ filters, directors, collaborators, onChange, loadi
           </Select>
         </div>
 
-        {/* Perfil */}
+        {/* Senioridade */}
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Perfil</label>
-          <Select value={val(filters.workerProfile)} onValueChange={(v) => set({ workerProfile: opt(v) as ExecutiveDashboardFilters["workerProfile"] })} disabled={loading}>
-            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todos" /></SelectTrigger>
+          <label className="text-xs font-medium text-muted-foreground">Senioridade</label>
+          <Select
+            value={val(filters.workerProfile)}
+            onValueChange={(v) => set({ workerProfile: opt(v) as ExecutiveDashboardFilters["workerProfile"] })}
+            disabled={loading}
+          >
+            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todas" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value={NONE}>Todos</SelectItem>
-              {PROFILE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              <SelectItem value={NONE}>Todas</SelectItem>
+              {SENIORITY_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Especialidade */}
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">Especialidade</label>
+          <Select value={val(filters.specialty)} onValueChange={(v) => set({ specialty: opt(v) })} disabled={loading}>
+            <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Todas" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE}>Todas</SelectItem>
+              <SelectItem value={SEM_ESPECIALIDADE_FILTER}>Sem especialidade</SelectItem>
+              {TECHNICAL_SPECIALTIES.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

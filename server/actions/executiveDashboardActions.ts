@@ -55,7 +55,8 @@ export async function exportExecDashboardAction(
     const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
 
     const headers = [
-      "ID", "Título", "Data Homologação", "Área", "Colaborador", "Perfil",
+      "ID", "Título", "Data Homologação", "Mês", "Área", "Colaborador",
+      "E-mail Colaborador", "Senioridade", "Especialidade",
       "Diretor", "Tipo", "Complexidade", "ROI",
       "Horas Est.", "Valor Interno", "Benchmark Mercado", "Economia", "Economia %",
     ];
@@ -64,13 +65,16 @@ export async function exportExecDashboardAction(
       d.id,
       `"${d.title.replace(/"/g, '""')}"`,
       d.homologationDate ? new Date(d.homologationDate).toLocaleDateString("pt-BR") : "",
+      d.monthLabel ?? "",
       d.requesterArea,
-      d.assigneeName ?? "",
-      d.assigneeProfile ?? "",
-      d.directorName ?? "",
+      d.assigneeName        ?? "",
+      d.assigneeEmail       ?? "",
+      d.assigneeProfile     ?? "",
+      d.assigneeSpecialty   ?? "",
+      d.directorName        ?? "",
       d.demandType,
-      d.complexity ?? "",
-      d.roi ?? "",
+      d.complexity          ?? "",
+      d.roi                 ?? "",
       d.estimatedHours.toFixed(1),
       BRL.format(d.estimatedDemandValue),
       BRL.format(d.benchmarkValue),

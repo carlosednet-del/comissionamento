@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { UserRole, WorkerProfile } from "@prisma/client";
 import { WORKER_PROFILE_LABELS } from "@/lib/demand-pricing";
+import { TECHNICAL_SPECIALTIES } from "@/lib/constants/specialties";
 import { createUserSchema, updateUserSchema } from "@/validations/user";
 import type { CreateUserInput, UpdateUserInput } from "@/validations/user";
 import { createUserAction, updateUserAction } from "@/server/actions/userActions";
@@ -45,18 +46,18 @@ const ROLE_OPTIONS = [
 
 const TECHNICAL_ROLES: UserRole[] = [UserRole.DEV, UserRole.SUPORTE, UserRole.ARQUITETO];
 
-
 type CreateMode = { mode: "create" };
 type EditMode = {
   mode: "edit";
   userId: string;
   defaultValues: {
-    name:              string;
-    role:              UserRole;
-    workerProfile:     WorkerProfile | null;
-    monthlyBaseSalary: number | null;
-    monthlyCapValue:   number | null;
-    isActive:          boolean;
+    name:               string;
+    role:               UserRole;
+    workerProfile:      WorkerProfile | null;
+    monthlyBaseSalary:  number | null;
+    monthlyCapValue:    number | null;
+    technicalSpecialty: string | null;
+    isActive:           boolean;
   };
 };
 
@@ -70,7 +71,7 @@ export function UserForm(props: Props) {
   const form = useForm<CreateUserInput | UpdateUserInput>({
     resolver: zodResolver(isCreate ? createUserSchema : updateUserSchema),
     defaultValues: isCreate
-      ? { name: "", email: "", password: "", role: UserRole.DEV, workerProfile: null, monthlyBaseSalary: null, monthlyCapValue: null, isActive: true }
+      ? { name: "", email: "", password: "", role: UserRole.DEV, workerProfile: null, monthlyBaseSalary: null, monthlyCapValue: null, technicalSpecialty: null, isActive: true }
       : (props as EditMode).defaultValues,
   });
 
@@ -78,7 +79,6 @@ export function UserForm(props: Props) {
   const requiresProfile = TECHNICAL_ROLES.includes(selectedRole as UserRole);
   const isNonWorker = selectedRole === UserRole.SOLICITANTE;
 
-  // Quando o papel muda para SOLICITANTE, zera perfil técnico e remuneração
   useEffect(() => {
     if (isNonWorker) {
       form.setValue("workerProfile", null);
@@ -217,6 +217,34 @@ export function UserForm(props: Props) {
             )}
           />
         </div>
+
+        {/* Especialidade técnica */}
+        <FormField
+          control={form.control}
+          name={"technicalSpecialty" as never}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Especialidade técnica</FormLabel>
+              <Select
+                onValueChange={(v) => field.onChange(v === "none" ? null : v)}
+                defaultValue={(field as { value: string | null }).value ?? "none"}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione ou deixe em branco" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">Sem especialidade</SelectItem>
+                  {TECHNICAL_SPECIALTIES.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {/* ── Remuneração (não se aplica a Solicitante) ───────────── */}
         <div className={`grid grid-cols-2 gap-4 ${isNonWorker ? "opacity-40 pointer-events-none" : ""}`}>

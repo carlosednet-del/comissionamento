@@ -45,12 +45,13 @@ export default async function EditarUsuarioPage({
             mode="edit"
             userId={user.id}
             defaultValues={{
-              name:              user.name,
-              role:              user.role,
-              workerProfile:     user.workerProfile,
-              monthlyBaseSalary: user.monthlyBaseSalary,
-              monthlyCapValue:   user.monthlyCapValue,
-              isActive:          user.isActive,
+              name:               user.name,
+              role:               user.role,
+              workerProfile:      user.workerProfile,
+              monthlyBaseSalary:  user.monthlyBaseSalary,
+              monthlyCapValue:    user.monthlyCapValue,
+              technicalSpecialty: user.technicalSpecialty,
+              isActive:           user.isActive,
             }}
           />
         </CardContent>

@@ -6,22 +6,25 @@ import {
 import { calculateBenchmarkEconomy } from "@/lib/benchmark/calculateBenchmarkEconomy";
 import type { ExecutiveDashboardFilters } from "@/validations/executive-dashboard";
 
+const SEM_SENIORIDADE       = "Sem senioridade";
+const SEM_ESPECIALIDADE_LBL = "Sem especialidade";
+
 // ── Tipos exportados ──────────────────────────────────────────────
 
 export type ExecSummary = {
-  totalDemands:                  number;
-  totalHours:                    number;
-  totalEstimatedValue:           number;
-  totalBenchmarkValue:           number;
-  totalEconomy:                  number;
-  economyPercent:                number;
-  averageTicket:                 number;
-  averageHourlyCost:             number;
-  averageHoursPerDemand:         number;
-  activeCollaborators:           number;
-  avgDemandsPerCollaborator:     number;
-  topArea:                       string | null;
-  topCollaboratorName:           string | null;
+  totalDemands:              number;
+  totalHours:                number;
+  totalEstimatedValue:       number;
+  totalBenchmarkValue:       number;
+  totalEconomy:              number;
+  economyPercent:            number;
+  averageTicket:             number;
+  averageHourlyCost:         number;
+  averageHoursPerDemand:     number;
+  activeCollaborators:       number;
+  avgDemandsPerCollaborator: number;
+  topArea:                   string | null;
+  topCollaboratorName:       string | null;
 };
 
 export type ExecMonthlyPoint = {
@@ -35,16 +38,21 @@ export type ExecMonthlyPoint = {
 };
 
 export type ExecCollabPoint = {
-  collaboratorId:   string;
-  collaboratorName: string;
-  profile:          string | null;
-  demands:          number;
-  hours:            number;
-  value:            number;
-  benchmarkValue:   number;
-  economy:          number;
-  topArea:          string | null;
-  averageTicket:    number;
+  collaboratorId:    string;
+  collaboratorName:  string;
+  email:             string | null;
+  profile:           string | null;
+  seniority:         string | null;
+  specialty:         string | null;
+  demands:           number;
+  hours:             number;
+  value:             number;
+  benchmarkValue:    number;
+  economy:           number;
+  topArea:           string | null;
+  averageTicket:     number;
+  averageHourlyCost: number;
+  activeMonths:      number;
 };
 
 export type ExecAreaPoint = {
@@ -59,15 +67,15 @@ export type ExecAreaPoint = {
 };
 
 export type ExecDirectorPoint = {
-  directorId:    string | null;
-  directorName:  string;
-  demands:       number;
-  hours:         number;
-  value:         number;
-  benchmarkValue:number;
-  economy:       number;
-  areas:         number;
-  collaborators: number;
+  directorId:     string | null;
+  directorName:   string;
+  demands:        number;
+  hours:          number;
+  value:          number;
+  benchmarkValue: number;
+  economy:        number;
+  areas:          number;
+  collaborators:  number;
 };
 
 export type ExecMatrixCell = {
@@ -91,33 +99,111 @@ export type ExecDemandRow = {
   economyPercent:       number;
   assigneeId:           string | null;
   assigneeName:         string | null;
+  assigneeEmail:        string | null;
   assigneeProfile:      string | null;
+  assigneeSpecialty:    string | null;
   directorId:           string | null;
   directorName:         string | null;
   homologationDate:     string | null;
+  monthLabel:           string | null;
+};
+
+export type ExecSeniorityPoint = {
+  seniority:                   string;
+  collaborators:               number;
+  demands:                     number;
+  hours:                       number;
+  estimatedValue:              number;
+  benchmarkValue:              number;
+  economy:                     number;
+  averageTicket:               number;
+  averageHourlyCost:           number;
+  productivityPerCollaborator: number;
+};
+
+export type ExecSpecialtyPoint = {
+  specialty:                   string;
+  collaborators:               number;
+  demands:                     number;
+  hours:                       number;
+  estimatedValue:              number;
+  benchmarkValue:              number;
+  economy:                     number;
+  averageTicket:               number;
+  averageHourlyCost:           number;
+  productivityPerCollaborator: number;
+};
+
+export type ExecMonthSeniorityPoint = {
+  yearMonth:      string;
+  monthLabel:     string;
+  seniority:      string;
+  demands:        number;
+  hours:          number;
+  estimatedValue: number;
+  benchmarkValue: number;
+  economy:        number;
+};
+
+export type ExecMonthSpecialtyPoint = {
+  yearMonth:      string;
+  monthLabel:     string;
+  specialty:      string;
+  demands:        number;
+  hours:          number;
+  estimatedValue: number;
+  benchmarkValue: number;
+  economy:        number;
+};
+
+export type CollaboratorMonthCell = {
+  yearMonth:      string;
+  monthLabel:     string;
+  demands:        number;
+  hours:          number;
+  estimatedValue: number;
+};
+
+export type CollaboratorMonthRow = {
+  collaboratorId:   string;
+  collaboratorName: string;
+  seniority:        string | null;
+  specialty:        string | null;
+  months:           CollaboratorMonthCell[];
+  totalDemands:     number;
+  totalHours:       number;
+  totalValue:       number;
 };
 
 export type ExecDashboardData = {
-  summary:             ExecSummary;
-  monthlySeries:       ExecMonthlyPoint[];
-  byCollaborator:      ExecCollabPoint[];
-  byArea:              ExecAreaPoint[];
-  byDirector:          ExecDirectorPoint[];
-  complexityRoiMatrix: ExecMatrixCell[];
-  rankingCollaborators:ExecCollabPoint[];
-  rankingAreas:        ExecAreaPoint[];
-  rankingDirectors:    ExecDirectorPoint[];
-  demands:             ExecDemandRow[];
+  summary:                 ExecSummary;
+  monthlySeries:           ExecMonthlyPoint[];
+  byCollaborator:          ExecCollabPoint[];
+  byArea:                  ExecAreaPoint[];
+  byDirector:              ExecDirectorPoint[];
+  complexityRoiMatrix:     ExecMatrixCell[];
+  rankingCollaborators:    ExecCollabPoint[];
+  rankingAreas:            ExecAreaPoint[];
+  rankingDirectors:        ExecDirectorPoint[];
+  demands:                 ExecDemandRow[];
+  bySeniority:             ExecSeniorityPoint[];
+  bySpecialty:             ExecSpecialtyPoint[];
+  byMonthAndSeniority:     ExecMonthSeniorityPoint[];
+  byMonthAndSpecialty:     ExecMonthSpecialtyPoint[];
+  collaboratorMonthMatrix: CollaboratorMonthRow[];
+  allMonths:               { yearMonth: string; monthLabel: string }[];
 };
 
 // ── Helpers internos ──────────────────────────────────────────────
 
 type EnrichedDemand = ExecRawDemand & {
-  benchmarkValue: number;
-  economy:        number;
-  economyPercent: number;
+  benchmarkValue:       number;
+  economy:              number;
+  economyPercent:       number;
   resolvedDirectorId:   string | null;
   resolvedDirectorName: string;
+  resolvedSeniority:    string;
+  resolvedSpecialty:    string;
 };
 
 function enrich(d: ExecRawDemand): EnrichedDemand {
@@ -151,18 +237,32 @@ function enrich(d: ExecRawDemand): EnrichedDemand {
     resolvedDirectorName = d.prioritizedBy.name;
   }
 
-  return { ...d, benchmarkValue, economy, economyPercent, resolvedDirectorId, resolvedDirectorName };
+  const rawSen = d.assigneeProfileSnapshot ?? d.assignee?.workerProfile ?? null;
+  const resolvedSeniority = rawSen ? String(rawSen) : SEM_SENIORIDADE;
+  const resolvedSpecialty = d.assignee?.technicalSpecialty ?? SEM_ESPECIALIDADE_LBL;
+
+  return {
+    ...d,
+    benchmarkValue,
+    economy,
+    economyPercent,
+    resolvedDirectorId,
+    resolvedDirectorName,
+    resolvedSeniority,
+    resolvedSpecialty,
+  };
 }
 
-function monthLabel(date: Date): { yearMonth: string; label: string } {
+function getMonthInfo(date: Date): { yearMonth: string; label: string } {
   const y = date.getFullYear();
   const m = date.getMonth() + 1;
-  const yearMonth = `${y}-${String(m).padStart(2, "0")}`;
-  const label     = date.toLocaleString("pt-BR", { month: "short", year: "2-digit" });
-  return { yearMonth, label };
+  return {
+    yearMonth: `${y}-${String(m).padStart(2, "0")}`,
+    label: date.toLocaleString("pt-BR", { month: "short", year: "2-digit" }),
+  };
 }
 
-function topEntry<T extends Record<string, unknown>>(
+function topByKey<T extends Record<string, unknown>>(
   map: Map<string, T>,
   key: keyof T,
 ): string | null {
@@ -173,195 +273,303 @@ function topEntry<T extends Record<string, unknown>>(
   return top ? top[0] : null;
 }
 
-// ── Computação do dashboard ───────────────────────────────────────
+// ── Computação ────────────────────────────────────────────────────
 
 function compute(demands: EnrichedDemand[]): ExecDashboardData {
-  // Summary
-  const totalDemands        = demands.length;
-  const totalHours          = demands.reduce((s, d) => s + (d.estimatedHours ?? 0), 0);
-  const totalEstimatedValue = demands.reduce((s, d) => s + (d.estimatedDemandValue ?? 0), 0);
-  const totalBenchmarkValue = demands.reduce((s, d) => s + d.benchmarkValue, 0);
-  const totalEconomy        = demands.reduce((s, d) => s + d.economy, 0);
-  const economyPercent      = totalBenchmarkValue > 0 ? totalEconomy / totalBenchmarkValue : 0;
-  const averageTicket       = totalDemands > 0 ? totalEstimatedValue / totalDemands : 0;
-  const averageHourlyCost   = totalHours > 0 ? totalEstimatedValue / totalHours : 0;
-  const averageHoursPerDemand = totalDemands > 0 ? totalHours / totalDemands : 0;
+  const collabMap          = new Map<string, ExecCollabPoint>();
+  const collabAreaMap      = new Map<string, Map<string, number>>();
+  const collabMonthSetMap  = new Map<string, Set<string>>();
+  const collabMonthDataMap = new Map<string, Map<string, CollaboratorMonthCell>>();
 
-  // By collaborator
-  const collabMap = new Map<string, ExecCollabPoint>();
-  const areaCountMap = new Map<string, Map<string, number>>(); // collabId → area → count
+  const areaMap        = new Map<string, ExecAreaPoint>();
+  const areaCollabSet  = new Map<string, Set<string>>();
+
+  const dirMap         = new Map<string, ExecDirectorPoint>();
+  const dirAreaSet     = new Map<string, Set<string>>();
+  const dirCollabSet   = new Map<string, Set<string>>();
+
+  const monthlySeriesMap   = new Map<string, ExecMonthlyPoint>();
+  const complexityRoiMap   = new Map<string, ExecMatrixCell>();
+  const allMonthsMap       = new Map<string, string>();
+
+  const seniorityMap       = new Map<string, ExecSeniorityPoint>();
+  const seniorityCollabSet = new Map<string, Set<string>>();
+  const specialtyMap       = new Map<string, ExecSpecialtyPoint>();
+  const specialtyCollabSet = new Map<string, Set<string>>();
+  const monthSeniorityMap  = new Map<string, ExecMonthSeniorityPoint>();
+  const monthSpecialtyMap  = new Map<string, ExecMonthSpecialtyPoint>();
+
+  let totalDemands        = 0;
+  let totalHours          = 0;
+  let totalEstimatedValue = 0;
+  let totalBenchmarkValue = 0;
+  let totalEconomy        = 0;
 
   for (const d of demands) {
-    if (!d.assigneeId || !d.assignee) continue;
-    const id   = d.assigneeId;
-    const name = d.assignee.name;
+    totalDemands++;
+    const hrs = d.estimatedHours       ?? 0;
+    const val = d.estimatedDemandValue ?? 0;
+    totalHours          += hrs;
+    totalEstimatedValue += val;
+    totalBenchmarkValue += d.benchmarkValue;
+    totalEconomy        += d.economy;
 
-    if (!collabMap.has(id)) {
-      collabMap.set(id, { collaboratorId: id, collaboratorName: name, profile: d.assigneeProfileSnapshot ?? null, demands: 0, hours: 0, value: 0, benchmarkValue: 0, economy: 0, topArea: null, averageTicket: 0 });
-      areaCountMap.set(id, new Map());
+    const seniority = d.resolvedSeniority;
+    const specialty = d.resolvedSpecialty;
+
+    // ── Meses globais + série mensal + mês×senioridade + mês×especialidade ──
+    if (d.homologationDate) {
+      const { yearMonth, label } = getMonthInfo(d.homologationDate);
+      allMonthsMap.set(yearMonth, label);
+
+      if (!monthlySeriesMap.has(yearMonth)) {
+        monthlySeriesMap.set(yearMonth, { yearMonth, label, demands: 0, hours: 0, value: 0, benchmarkValue: 0, economy: 0 });
+      }
+      const ms = monthlySeriesMap.get(yearMonth)!;
+      ms.demands++;  ms.hours += hrs;  ms.value += val;
+      ms.benchmarkValue += d.benchmarkValue;  ms.economy += d.economy;
+
+      const msk = `${yearMonth}__${seniority}`;
+      if (!monthSeniorityMap.has(msk)) {
+        monthSeniorityMap.set(msk, { yearMonth, monthLabel: label, seniority, demands: 0, hours: 0, estimatedValue: 0, benchmarkValue: 0, economy: 0 });
+      }
+      const msen = monthSeniorityMap.get(msk)!;
+      msen.demands++;  msen.hours += hrs;  msen.estimatedValue += val;
+      msen.benchmarkValue += d.benchmarkValue;  msen.economy += d.economy;
+
+      const mspk = `${yearMonth}__${specialty}`;
+      if (!monthSpecialtyMap.has(mspk)) {
+        monthSpecialtyMap.set(mspk, { yearMonth, monthLabel: label, specialty, demands: 0, hours: 0, estimatedValue: 0, benchmarkValue: 0, economy: 0 });
+      }
+      const mspe = monthSpecialtyMap.get(mspk)!;
+      mspe.demands++;  mspe.hours += hrs;  mspe.estimatedValue += val;
+      mspe.benchmarkValue += d.benchmarkValue;  mspe.economy += d.economy;
     }
-    const c = collabMap.get(id)!;
-    c.demands++;
-    c.hours         += d.estimatedHours       ?? 0;
-    c.value         += d.estimatedDemandValue ?? 0;
-    c.benchmarkValue += d.benchmarkValue;
-    c.economy       += d.economy;
 
-    const aMap = areaCountMap.get(id)!;
-    aMap.set(d.requesterArea, (aMap.get(d.requesterArea) ?? 0) + 1);
-  }
+    // ── Complexity × ROI ──
+    if (d.complexity && d.roi) {
+      const cmk = `${d.complexity}__${d.roi}`;
+      if (!complexityRoiMap.has(cmk)) {
+        complexityRoiMap.set(cmk, { complexity: d.complexity, roi: d.roi, demands: 0, value: 0 });
+      }
+      const cell = complexityRoiMap.get(cmk)!;
+      cell.demands++;  cell.value += val;
+    }
 
-  const byCollaborator = [...collabMap.values()].map((c) => {
-    const aMap = areaCountMap.get(c.collaboratorId)!;
-    const topAreaEntry = [...aMap.entries()].sort((a, b) => b[1] - a[1])[0];
-    c.topArea      = topAreaEntry ? topAreaEntry[0] : null;
-    c.averageTicket = c.demands > 0 ? c.value / c.demands : 0;
-    return c;
-  });
-
-  const activeCollaborators         = byCollaborator.length;
-  const avgDemandsPerCollaborator   = activeCollaborators > 0 ? totalDemands / activeCollaborators : 0;
-
-  // By area
-  const areaMap = new Map<string, ExecAreaPoint>();
-  const areaCollabSet = new Map<string, Set<string>>();
-
-  for (const d of demands) {
+    // ── Área ──
     const area = d.requesterArea;
     if (!areaMap.has(area)) {
       areaMap.set(area, { area, demands: 0, hours: 0, value: 0, benchmarkValue: 0, economy: 0, collaborators: 0, averageTicket: 0 });
       areaCollabSet.set(area, new Set());
     }
-    const a = areaMap.get(area)!;
-    a.demands++;
-    a.hours         += d.estimatedHours       ?? 0;
-    a.value         += d.estimatedDemandValue ?? 0;
-    a.benchmarkValue += d.benchmarkValue;
-    a.economy       += d.economy;
+    const ar = areaMap.get(area)!;
+    ar.demands++;  ar.hours += hrs;  ar.value += val;
+    ar.benchmarkValue += d.benchmarkValue;  ar.economy += d.economy;
     if (d.assigneeId) areaCollabSet.get(area)!.add(d.assigneeId);
+
+    // ── Diretor ──
+    const dirKey = d.resolvedDirectorId ?? "__SEM__";
+    if (!dirMap.has(dirKey)) {
+      dirMap.set(dirKey, { directorId: d.resolvedDirectorId, directorName: d.resolvedDirectorName, demands: 0, hours: 0, value: 0, benchmarkValue: 0, economy: 0, areas: 0, collaborators: 0 });
+      dirAreaSet.set(dirKey,  new Set());
+      dirCollabSet.set(dirKey, new Set());
+    }
+    const dir = dirMap.get(dirKey)!;
+    dir.demands++;  dir.hours += hrs;  dir.value += val;
+    dir.benchmarkValue += d.benchmarkValue;  dir.economy += d.economy;
+    dirAreaSet.get(dirKey)!.add(area);
+    if (d.assigneeId) dirCollabSet.get(dirKey)!.add(d.assigneeId);
+
+    // ── Colaborador ──
+    if (d.assigneeId && d.assignee) {
+      const cid = d.assigneeId;
+      if (!collabMap.has(cid)) {
+        collabMap.set(cid, {
+          collaboratorId:    cid,
+          collaboratorName:  d.assignee.name,
+          email:             d.assignee.email,
+          profile:           d.assigneeProfileSnapshot ?? null,
+          seniority:         d.assignee.workerProfile ? String(d.assignee.workerProfile) : null,
+          specialty:         d.assignee.technicalSpecialty,
+          demands: 0, hours: 0, value: 0, benchmarkValue: 0, economy: 0,
+          topArea: null, averageTicket: 0, averageHourlyCost: 0, activeMonths: 0,
+        });
+        collabAreaMap.set(cid,      new Map());
+        collabMonthSetMap.set(cid,  new Set());
+        collabMonthDataMap.set(cid, new Map());
+      }
+      const col = collabMap.get(cid)!;
+      col.demands++;  col.hours += hrs;  col.value += val;
+      col.benchmarkValue += d.benchmarkValue;  col.economy += d.economy;
+
+      const ca = collabAreaMap.get(cid)!;
+      ca.set(area, (ca.get(area) ?? 0) + 1);
+
+      if (d.homologationDate) {
+        const { yearMonth, label } = getMonthInfo(d.homologationDate);
+        collabMonthSetMap.get(cid)!.add(yearMonth);
+        const cmm = collabMonthDataMap.get(cid)!;
+        if (!cmm.has(yearMonth)) {
+          cmm.set(yearMonth, { yearMonth, monthLabel: label, demands: 0, hours: 0, estimatedValue: 0 });
+        }
+        const mc = cmm.get(yearMonth)!;
+        mc.demands++;  mc.hours += hrs;  mc.estimatedValue += val;
+      }
+    }
+
+    // ── Senioridade ──
+    if (!seniorityMap.has(seniority)) {
+      seniorityMap.set(seniority, { seniority, collaborators: 0, demands: 0, hours: 0, estimatedValue: 0, benchmarkValue: 0, economy: 0, averageTicket: 0, averageHourlyCost: 0, productivityPerCollaborator: 0 });
+      seniorityCollabSet.set(seniority, new Set());
+    }
+    const sen = seniorityMap.get(seniority)!;
+    sen.demands++;  sen.hours += hrs;  sen.estimatedValue += val;
+    sen.benchmarkValue += d.benchmarkValue;  sen.economy += d.economy;
+    if (d.assigneeId) seniorityCollabSet.get(seniority)!.add(d.assigneeId);
+
+    // ── Especialidade ──
+    if (!specialtyMap.has(specialty)) {
+      specialtyMap.set(specialty, { specialty, collaborators: 0, demands: 0, hours: 0, estimatedValue: 0, benchmarkValue: 0, economy: 0, averageTicket: 0, averageHourlyCost: 0, productivityPerCollaborator: 0 });
+      specialtyCollabSet.set(specialty, new Set());
+    }
+    const spe = specialtyMap.get(specialty)!;
+    spe.demands++;  spe.hours += hrs;  spe.estimatedValue += val;
+    spe.benchmarkValue += d.benchmarkValue;  spe.economy += d.economy;
+    if (d.assigneeId) specialtyCollabSet.get(specialty)!.add(d.assigneeId);
   }
 
+  // ── Finalizar colaboradores ───────────────────────────────────────
+  const byCollaborator = [...collabMap.values()].map((c) => {
+    const ca       = collabAreaMap.get(c.collaboratorId)!;
+    const topEntry = [...ca.entries()].sort((a, b) => b[1] - a[1])[0];
+    c.topArea          = topEntry ? topEntry[0] : null;
+    c.averageTicket    = c.demands > 0 ? c.value / c.demands : 0;
+    c.averageHourlyCost = c.hours > 0 ? c.value / c.hours : 0;
+    c.activeMonths     = collabMonthSetMap.get(c.collaboratorId)?.size ?? 0;
+    return c;
+  });
+
+  const activeCollaborators       = byCollaborator.length;
+  const avgDemandsPerCollaborator = activeCollaborators > 0 ? totalDemands / activeCollaborators : 0;
+  const economyPercent            = totalBenchmarkValue > 0 ? totalEconomy / totalBenchmarkValue : 0;
+  const averageTicket             = totalDemands > 0 ? totalEstimatedValue / totalDemands : 0;
+  const averageHourlyCost         = totalHours > 0 ? totalEstimatedValue / totalHours : 0;
+  const averageHoursPerDemand     = totalDemands > 0 ? totalHours / totalDemands : 0;
+
+  // ── Finalizar áreas ───────────────────────────────────────────────
   const byArea = [...areaMap.values()].map((a) => {
-    a.collaborators  = areaCollabSet.get(a.area)!.size;
-    a.averageTicket  = a.demands > 0 ? a.value / a.demands : 0;
+    a.collaborators = areaCollabSet.get(a.area)!.size;
+    a.averageTicket = a.demands > 0 ? a.value / a.demands : 0;
     return a;
   });
 
-  // By director
-  const dirMap      = new Map<string, ExecDirectorPoint>();
-  const dirAreaSet  = new Map<string, Set<string>>();
-  const dirCollabSet = new Map<string, Set<string>>();
-
-  for (const d of demands) {
-    const key  = d.resolvedDirectorId ?? "__SEM__";
-    const name = d.resolvedDirectorName;
-
-    if (!dirMap.has(key)) {
-      dirMap.set(key, { directorId: d.resolvedDirectorId, directorName: name, demands: 0, hours: 0, value: 0, benchmarkValue: 0, economy: 0, areas: 0, collaborators: 0 });
-      dirAreaSet.set(key,  new Set());
-      dirCollabSet.set(key, new Set());
-    }
-    const dir = dirMap.get(key)!;
-    dir.demands++;
-    dir.hours         += d.estimatedHours       ?? 0;
-    dir.value         += d.estimatedDemandValue ?? 0;
-    dir.benchmarkValue += d.benchmarkValue;
-    dir.economy       += d.economy;
-    dirAreaSet.get(key)!.add(d.requesterArea);
-    if (d.assigneeId) dirCollabSet.get(key)!.add(d.assigneeId);
-  }
-
+  // ── Finalizar diretores ───────────────────────────────────────────
   const byDirector = [...dirMap.values()].map((dir) => {
     dir.areas        = dirAreaSet.get(dir.directorId ?? "__SEM__")!.size;
     dir.collaborators = dirCollabSet.get(dir.directorId ?? "__SEM__")!.size;
     return dir;
   });
 
-  // Monthly series
-  const monthMap = new Map<string, ExecMonthlyPoint>();
+  // ── Finalizar senioridade ─────────────────────────────────────────
+  const bySeniority = [...seniorityMap.values()].map((s) => {
+    s.collaborators               = seniorityCollabSet.get(s.seniority)?.size ?? 0;
+    s.averageTicket               = s.demands > 0 ? s.estimatedValue / s.demands : 0;
+    s.averageHourlyCost           = s.hours > 0 ? s.estimatedValue / s.hours : 0;
+    s.productivityPerCollaborator = s.collaborators > 0 ? s.demands / s.collaborators : 0;
+    return s;
+  }).sort((a, b) => b.estimatedValue - a.estimatedValue);
 
-  for (const d of demands) {
-    if (!d.homologationDate) continue;
-    const { yearMonth, label } = monthLabel(d.homologationDate);
-    if (!monthMap.has(yearMonth)) {
-      monthMap.set(yearMonth, { yearMonth, label, demands: 0, hours: 0, value: 0, benchmarkValue: 0, economy: 0 });
-    }
-    const m = monthMap.get(yearMonth)!;
-    m.demands++;
-    m.hours         += d.estimatedHours       ?? 0;
-    m.value         += d.estimatedDemandValue ?? 0;
-    m.benchmarkValue += d.benchmarkValue;
-    m.economy       += d.economy;
-  }
+  // ── Finalizar especialidade ───────────────────────────────────────
+  const bySpecialty = [...specialtyMap.values()].map((s) => {
+    s.collaborators               = specialtyCollabSet.get(s.specialty)?.size ?? 0;
+    s.averageTicket               = s.demands > 0 ? s.estimatedValue / s.demands : 0;
+    s.averageHourlyCost           = s.hours > 0 ? s.estimatedValue / s.hours : 0;
+    s.productivityPerCollaborator = s.collaborators > 0 ? s.demands / s.collaborators : 0;
+    return s;
+  }).sort((a, b) => b.estimatedValue - a.estimatedValue);
 
-  const monthlySeries = [...monthMap.entries()]
+  // ── Todos os meses do período ─────────────────────────────────────
+  const allMonths = [...allMonthsMap.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([, v]) => v);
+    .map(([ym, lbl]) => ({ yearMonth: ym, monthLabel: lbl }));
 
-  // Complexity × ROI matrix
-  const matrixMap = new Map<string, ExecMatrixCell>();
+  // ── Matriz colaborador × mês (top 30 por valor) ───────────────────
+  const collaboratorMonthMatrix: CollaboratorMonthRow[] = [...byCollaborator]
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 30)
+    .map((c) => {
+      const mmMap = collabMonthDataMap.get(c.collaboratorId) ?? new Map();
+      const months = allMonths.map(({ yearMonth, monthLabel: ml }) =>
+        mmMap.get(yearMonth) ?? { yearMonth, monthLabel: ml, demands: 0, hours: 0, estimatedValue: 0 }
+      );
+      return {
+        collaboratorId:   c.collaboratorId,
+        collaboratorName: c.collaboratorName,
+        seniority:        c.seniority,
+        specialty:        c.specialty,
+        months,
+        totalDemands:     c.demands,
+        totalHours:       c.hours,
+        totalValue:       c.value,
+      };
+    });
 
-  for (const d of demands) {
-    if (!d.complexity || !d.roi) continue;
-    const key = `${d.complexity}__${d.roi}`;
-    if (!matrixMap.has(key)) {
-      matrixMap.set(key, { complexity: d.complexity, roi: d.roi, demands: 0, value: 0 });
-    }
-    const cell = matrixMap.get(key)!;
-    cell.demands++;
-    cell.value += d.estimatedDemandValue ?? 0;
-  }
-
-  const complexityRoiMatrix = [...matrixMap.values()];
-
-  // Top area
-  const topAreaKey = topEntry(areaMap as unknown as Map<string, Record<string, unknown>>, "demands");
-  const topArea    = topAreaKey ?? null;
-
-  // Top collaborator
-  const topCollabKey  = topEntry(collabMap as unknown as Map<string, Record<string, unknown>>, "value");
-  const topCollabEntry = topCollabKey ? collabMap.get(topCollabKey) : null;
-  const topCollaboratorName = topCollabEntry?.collaboratorName ?? null;
+  // ── Top área / colaborador ────────────────────────────────────────
+  const topAreaKey         = topByKey(areaMap as unknown as Map<string, Record<string, unknown>>, "demands");
+  const topCollabKey       = topByKey(collabMap as unknown as Map<string, Record<string, unknown>>, "value");
+  const topCollaboratorName = topCollabKey ? collabMap.get(topCollabKey)?.collaboratorName ?? null : null;
 
   const summary: ExecSummary = {
     totalDemands, totalHours, totalEstimatedValue, totalBenchmarkValue,
     totalEconomy, economyPercent, averageTicket, averageHourlyCost,
     averageHoursPerDemand, activeCollaborators, avgDemandsPerCollaborator,
-    topArea, topCollaboratorName,
+    topArea: topAreaKey ?? null, topCollaboratorName,
   };
 
-  // Demands list
-  const demandRows: ExecDemandRow[] = demands.slice(0, 500).map((d) => ({
-    id:                   d.id,
-    title:                d.title,
-    requesterArea:        d.requesterArea,
-    demandType:           d.demandType,
-    complexity:           d.complexity,
-    roi:                  d.roi,
-    estimatedHours:       d.estimatedHours       ?? 0,
-    estimatedDemandValue: d.estimatedDemandValue ?? 0,
-    benchmarkValue:       d.benchmarkValue,
-    economy:              d.economy,
-    economyPercent:       d.economyPercent,
-    assigneeId:           d.assigneeId,
-    assigneeName:         d.assignee?.name ?? null,
-    assigneeProfile:      d.assigneeProfileSnapshot,
-    directorId:           d.resolvedDirectorId,
-    directorName:         d.resolvedDirectorName,
-    homologationDate:     d.homologationDate ? d.homologationDate.toISOString() : null,
-  }));
+  // ── Lista de demandas ─────────────────────────────────────────────
+  const demandRows: ExecDemandRow[] = demands.slice(0, 500).map((d) => {
+    const ml = d.homologationDate ? getMonthInfo(d.homologationDate).label : null;
+    return {
+      id:                   d.id,
+      title:                d.title,
+      requesterArea:        d.requesterArea,
+      demandType:           d.demandType,
+      complexity:           d.complexity,
+      roi:                  d.roi,
+      estimatedHours:       d.estimatedHours       ?? 0,
+      estimatedDemandValue: d.estimatedDemandValue ?? 0,
+      benchmarkValue:       d.benchmarkValue,
+      economy:              d.economy,
+      economyPercent:       d.economyPercent,
+      assigneeId:           d.assigneeId,
+      assigneeName:         d.assignee?.name             ?? null,
+      assigneeEmail:        d.assignee?.email            ?? null,
+      assigneeProfile:      d.assigneeProfileSnapshot,
+      assigneeSpecialty:    d.assignee?.technicalSpecialty ?? null,
+      directorId:           d.resolvedDirectorId,
+      directorName:         d.resolvedDirectorName,
+      homologationDate:     d.homologationDate ? d.homologationDate.toISOString() : null,
+      monthLabel:           ml,
+    };
+  });
 
   return {
     summary,
-    monthlySeries,
+    monthlySeries:        [...monthlySeriesMap.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, v]) => v),
     byCollaborator,
     byArea,
     byDirector,
-    complexityRoiMatrix,
+    complexityRoiMatrix:  [...complexityRoiMap.values()],
     rankingCollaborators: [...byCollaborator].sort((a, b) => b.value - a.value),
     rankingAreas:         [...byArea].sort((a, b) => b.value - a.value),
     rankingDirectors:     [...byDirector].sort((a, b) => b.value - a.value),
     demands:              demandRows,
+    bySeniority,
+    bySpecialty,
+    byMonthAndSeniority:  [...monthSeniorityMap.values()].sort((a, b) => a.yearMonth.localeCompare(b.yearMonth) || a.seniority.localeCompare(b.seniority)),
+    byMonthAndSpecialty:  [...monthSpecialtyMap.values()].sort((a, b) => a.yearMonth.localeCompare(b.yearMonth) || a.specialty.localeCompare(b.specialty)),
+    collaboratorMonthMatrix,
+    allMonths,
   };
 }
 

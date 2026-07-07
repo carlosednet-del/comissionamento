@@ -42,10 +42,11 @@ export const userRepository = {
         name:                data.name,
         email:               data.email,
         role:                data.role,
-        workerProfile:       data.workerProfile     ?? null,
-        monthlyBaseSalary:   data.monthlyBaseSalary ?? null,
-        monthlyCapValue:     data.monthlyCapValue   ?? null,
-        isActive:            data.isActive          ?? true,
+        workerProfile:       data.workerProfile       ?? null,
+        monthlyBaseSalary:   data.monthlyBaseSalary   ?? null,
+        monthlyCapValue:     data.monthlyCapValue     ?? null,
+        technicalSpecialty:  data.technicalSpecialty  ?? null,
+        isActive:            data.isActive             ?? true,
         forcePasswordChange: true,
       },
     });
@@ -59,11 +60,12 @@ export const userRepository = {
     return prisma.user.update({
       where: { id },
       data: {
-        name:              data.name,
-        role:              data.role,
-        workerProfile:     data.workerProfile     ?? null,
-        monthlyBaseSalary: data.monthlyBaseSalary ?? null,
-        monthlyCapValue:   data.monthlyCapValue   ?? null,
+        name:               data.name,
+        role:               data.role,
+        workerProfile:      data.workerProfile      ?? null,
+        monthlyBaseSalary:  data.monthlyBaseSalary  ?? null,
+        monthlyCapValue:    data.monthlyCapValue    ?? null,
+        technicalSpecialty: data.technicalSpecialty ?? null,
         ...(data.isActive !== undefined && { isActive: data.isActive }),
       },
     });

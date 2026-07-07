@@ -225,7 +225,7 @@ function isDapRole(role: string): boolean {
 }
 
 export function canViewExecutiveDashboard(actor: UserForPermission): boolean {
-  return ["ADMIN", "DIRETOR", "GESTOR", "FINANCEIRO", "DAP"].includes(actor.role);
+  return ["ADMIN", "DIRETOR", "GESTOR"].includes(actor.role);
 }
 
 export function canExportExecutiveDashboard(actor: UserForPermission): boolean {

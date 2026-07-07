@@ -44,9 +44,9 @@ export function ExecTabDirectors({ byDirector, rankingDirectors }: Props) {
                 contentStyle={{ borderRadius: 8, fontSize: 12 }}
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="value"          name="Valor Interno"  fill="hsl(var(--chart-1))" radius={[3,3,0,0]} />
-              <Bar dataKey="benchmarkValue" name="Benchmark"      fill="hsl(var(--chart-4))" radius={[3,3,0,0]} />
-              <Bar dataKey="economy"        name="Economia"       fill="hsl(var(--chart-2))" radius={[3,3,0,0]} />
+              <Bar dataKey="value"          name="Valor Interno"  fill="#007EB5" radius={[3,3,0,0]} />
+              <Bar dataKey="benchmarkValue" name="Benchmark"      fill="#64748B" radius={[3,3,0,0]} />
+              <Bar dataKey="economy"        name="Economia"       fill="#16A34A" radius={[3,3,0,0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>

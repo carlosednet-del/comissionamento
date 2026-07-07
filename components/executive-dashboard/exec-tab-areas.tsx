@@ -46,8 +46,8 @@ export function ExecTabAreas({ byArea, rankingAreas }: Props) {
                 contentStyle={{ borderRadius: 8, fontSize: 12 }}
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="value"   name="Valor Interno" fill="hsl(var(--chart-3))" radius={[0,3,3,0]} />
-              <Bar dataKey="economy" name="Economia"      fill="hsl(var(--chart-5))" radius={[0,3,3,0]} />
+              <Bar dataKey="value"   name="Valor Interno" fill="#007EB5" radius={[0,3,3,0]} />
+              <Bar dataKey="economy" name="Economia"      fill="#16A34A" radius={[0,3,3,0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>

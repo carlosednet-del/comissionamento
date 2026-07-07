@@ -22,6 +22,7 @@ import type { ComplexityLevel } from "@prisma/client";
 
 import {
   ConfirmTransitionDialog,
+  SendToAnalysisDialog,
   StartDevelopmentDialog,
   SendToHomologationDialog,
   HomologateDialog,
@@ -209,11 +210,14 @@ export function DemandKanbanCard({ demand, actor, evidenceCount = 0 }: Props) {
             />
           )}
           {canAnalysis && (
-            <ConfirmTransitionDialog
-              demandId={demand.id} action="analysis"
-              title="Enviar para análise"
-              description="A demanda será movida para análise técnica."
-              confirmLabel="Enviar"
+            <SendToAnalysisDialog
+              demandId={demand.id}
+              initialData={{
+                assigneeId:     demand.assignee?.id ?? null,
+                estimatedHours: demand.estimatedHours,
+                complexity:     demand.complexity,
+                roi:            demand.roi,
+              }}
               trigger={
                 <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1">
                   <FlaskConical className="h-3 w-3" /> Análise

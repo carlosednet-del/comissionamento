@@ -126,7 +126,7 @@ export function StatementView({ actor, initialData, initialMonth, initialYear }:
         <div>
           <h1 className="text-2xl font-bold text-brand-text-dark">Meu Extrato</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Consulte e assine seu extrato mensal de demandas homologadas.
+            Consulte e assine seu extrato mensal de demandas entregues.
           </p>
         </div>
         {data.statement && (
@@ -199,7 +199,7 @@ export function StatementView({ actor, initialData, initialMonth, initialYear }:
               Nenhuma demanda homologada encontrada para {MM}/{year}.
             </p>
             <p className="text-sm text-muted-foreground/70">
-              Apenas demandas com status <strong>Homologada em produção</strong> no período selecionado são consideradas.
+              Apenas demandas com <strong>data de entrega real</strong> no período selecionado são consideradas.
             </p>
           </CardContent>
         </Card>
@@ -288,7 +288,7 @@ export function StatementView({ actor, initialData, initialMonth, initialYear }:
                       <TableHead className="text-right">Horas</TableHead>
                       <TableHead className="text-right">Valor/h</TableHead>
                       <TableHead className="text-right">Valor estimado</TableHead>
-                      <TableHead>Homologação</TableHead>
+                      <TableHead>Entrega</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -309,7 +309,7 @@ export function StatementView({ actor, initialData, initialMonth, initialYear }:
                         <TableCell className="text-right font-mono font-semibold">
                           {BRL.format(item.estimatedValue)}
                         </TableCell>
-                        <TableCell className="text-xs">{fmtDate(item.homologationDate)}</TableCell>
+                        <TableCell className="text-xs">{fmtDate(item.deliveryDate)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

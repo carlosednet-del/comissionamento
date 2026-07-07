@@ -24,7 +24,7 @@ export default async function EditarUsuarioPage({
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-3xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Editar usuário</h1>

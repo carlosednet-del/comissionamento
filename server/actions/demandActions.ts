@@ -4,6 +4,7 @@ import { revalidatePath }  from "next/cache";
 import { requireAuth }     from "@/server/auth/helpers";
 import { toPermissionUser } from "@/server/auth/helpers";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { prisma }                 from "@/lib/prisma";
 import { demandService }          from "@/services/demandService";
 import { demandWorkflowService }  from "@/services/demandWorkflowService";
 import type { ActionResult, DemandFilters } from "@/types";
@@ -16,10 +17,25 @@ import type {
   RejectDemandInput,
   CancelDemandInput,
   StartDevelopmentInput,
+  SendToAnalysisInput,
 } from "@/validations/demand";
 import type { CreateEvidenceInput } from "@/validations/evidence";
+import {
+  InvalidStatusTransitionError,
+  DemandPermissionError,
+  DemandNotFoundError,
+} from "@/services/demandService";
 
 function handleError(e: unknown): ActionResult<never> {
+  if (e instanceof InvalidStatusTransitionError) {
+    return { success: false, error: "Transição de status não permitida. Atualize a página e tente novamente." };
+  }
+  if (e instanceof DemandPermissionError) {
+    return { success: false, error: "Você não tem permissão para realizar esta operação." };
+  }
+  if (e instanceof DemandNotFoundError) {
+    return { success: false, error: "Demanda não encontrada." };
+  }
   if (e instanceof Error) return { success: false, error: e.message };
   return { success: false, error: "Erro desconhecido" };
 }
@@ -199,6 +215,15 @@ export async function openDemandAction(id: string): Promise<ActionResult<void>> 
   } catch (e) { return handleError(e); }
 }
 
+export async function returnToOpenAction(id: string): Promise<ActionResult<void>> {
+  try {
+    const session = await requireAuth();
+    await demandWorkflowService.returnToOpen(id, toPermissionUser(session));
+    revalidateDemand(id);
+    return { success: true, data: undefined };
+  } catch (e) { return handleError(e); }
+}
+
 export async function sendToAnalysisAction(id: string): Promise<ActionResult<void>> {
   try {
     const session = await requireAuth();
@@ -206,6 +231,36 @@ export async function sendToAnalysisAction(id: string): Promise<ActionResult<voi
     revalidateDemand(id);
     return { success: true, data: undefined };
   } catch (e) { return handleError(e); }
+}
+
+export async function sendToAnalysisWithDataAction(
+  id: string,
+  input: SendToAnalysisInput,
+): Promise<ActionResult<void>> {
+  try {
+    const session = await requireAuth();
+    const actor   = toPermissionUser(session);
+    // Salva os campos técnicos (pricing recalculado pelo service)
+    await demandService.updateDemand(id, {
+      assigneeId:     input.assigneeId,
+      estimatedHours: input.estimatedHours,
+      complexity:     input.complexity,
+      roi:            input.roi,
+    }, actor);
+    // Transiciona status para EM_ANALISE
+    await demandWorkflowService.sendToAnalysis(id, actor);
+    revalidateDemand(id);
+    return { success: true, data: undefined };
+  } catch (e) { return handleError(e); }
+}
+
+export async function getAssigneesAction() {
+  await requireAuth();
+  return prisma.user.findMany({
+    where:   { isActive: true, role: { in: ["DEV", "GESTOR", "ARQUITETO", "SUPORTE", "ADMIN"] } },
+    select:  { id: true, name: true, workerProfile: true, role: true },
+    orderBy: { name: "asc" },
+  });
 }
 
 export async function approveDemandAction(id: string): Promise<ActionResult<void>> {

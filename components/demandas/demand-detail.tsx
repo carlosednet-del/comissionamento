@@ -3,6 +3,7 @@
 import Link from "next/link";
 const DATE_FMT = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 const BRL      = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const safeHref = (url: string) => /^https?:\/\//i.test(url) ? url : "#";
 
 import { useState, useTransition } from "react";
 import { useRouter }               from "next/navigation";
@@ -143,10 +144,10 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
       <WorkflowSection demand={demand} actor={actor} />
 
       {/* ── Grade de informações ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_380px]">
 
         {/* Coluna principal */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6">
 
           {/* Identificação */}
           <Card>
@@ -283,7 +284,7 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
                       <li key={ev.id} className="rounded-md border overflow-hidden">
                         {/* Thumbnail para imagens */}
                         {isImage && (
-                          <a href={ev.url} target="_blank" rel="noopener noreferrer" className="block">
+                          <a href={safeHref(ev.url)} target="_blank" rel="noopener noreferrer" className="block">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={ev.url}
@@ -298,7 +299,7 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
                             : <ExternalLink className="h-4 w-4 mt-0.5 text-brand-primary shrink-0" />}
                           <div className="flex-1 min-w-0">
                             <a
-                              href={ev.url}
+                              href={safeHref(ev.url)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-sm font-medium text-brand-primary hover:underline"

@@ -9,6 +9,7 @@ export type KanbanFilters = {
   priority?:      DemandPriority;
   demandType?:    DemandType;
   assigneeId?:     string;
+  creatorId?:      string;
   requesterArea?:  string;
   requesterAreas?: string[];
   requesterName?:  string;
@@ -66,6 +67,25 @@ export const demandRepository = {
     return prisma.demand.findUnique({
       where: { id },
       include: demandDetailInclude,
+    });
+  },
+
+  async findNextInStatus(
+    id: string,
+    status: DemandStatus,
+    createdAt: Date,
+  ): Promise<{ id: string; title: string } | null> {
+    const next = await prisma.demand.findFirst({
+      where: { status, id: { not: id }, createdAt: { gt: createdAt } },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, title: true },
+    });
+    if (next) return next;
+    // wrap-around: volta para a primeira do mesmo status
+    return prisma.demand.findFirst({
+      where: { status, id: { not: id } },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, title: true },
     });
   },
 
@@ -150,6 +170,7 @@ export const demandRepository = {
       priority,
       demandType,
       assigneeId,
+      creatorId,
       requesterArea,
       requesterAreas,
       requesterName,
@@ -200,6 +221,7 @@ export const demandRepository = {
       ...(complexity     && { complexity }),
       ...(roi            && { roi }),
       ...(assigneeId     && { assigneeId }),
+      ...(creatorId      && { creatorId  }),
       ...(onlyMine && currentUserId
         ? { OR: [{ assigneeId: currentUserId }, { creatorId: currentUserId }] }
         : {}),

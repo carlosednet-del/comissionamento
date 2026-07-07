@@ -16,6 +16,7 @@ import {
   Settings2,
   FileText,
   FileSpreadsheet,
+  TrendingUp,
 } from "lucide-react";
 import type { UserRole } from "@prisma/client";
 
@@ -33,7 +34,8 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard",  icon: LayoutDashboard, roles: ["ADMIN", "GESTOR", "FINANCEIRO", "DEV"] },
+  { href: "/dashboard",           label: "Dashboard",          icon: LayoutDashboard, roles: ["ADMIN", "GESTOR", "FINANCEIRO", "DEV"] },
+  { href: "/dashboard-executivo", label: "Dashboard Executivo", icon: TrendingUp,       roles: ["ADMIN", "DIRETOR", "GESTOR", "FINANCEIRO", "DAP"] },
   { href: "/demandas",        label: "Demandas",   icon: ClipboardList },
   { href: "/demandas/kanban", label: "Kanban",      icon: LayoutGrid },
   { href: "/meu-extrato",     label: "Meu Extrato",     icon: FileText,        roles: ["DEV", "ADMIN", "DIRETOR"] },

@@ -41,7 +41,7 @@ export default async function EditarDemandaPage({
   const statusIsEditable = (DEMAND_EDITABLE_STATUSES as readonly string[]).includes(demand.status);
   if (!statusIsEditable) {
     return (
-      <div className="mx-auto w-full max-w-2xl space-y-6">
+      <div className="w-full max-w-2xl space-y-6">
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="sm" className="-ml-2">
             <Link href={`/demandas/${id}`}>
@@ -92,7 +92,7 @@ export default async function EditarDemandaPage({
   });
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6">
+    <div className="w-full max-w-5xl space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2">
         <Button asChild variant="ghost" size="sm" className="-ml-2">

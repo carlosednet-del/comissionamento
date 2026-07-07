@@ -16,11 +16,11 @@ async function fetchHomologatedDemands(developerId: string, month: number, year:
   const { gte, lte } = periodBounds(month, year);
   return prisma.demand.findMany({
     where: {
-      assigneeId:      developerId,
-      status:          "HOMOLOGADA_PRODUCAO",
-      homologationDate: { gte, lte },
+      assigneeId:        developerId,
+      status:            "HOMOLOGADA_PRODUCAO",
+      actualDeliveryDate: { gte, lte },
     },
-    orderBy: { homologationDate: "asc" },
+    orderBy: { actualDeliveryDate: "asc" },
   });
 }
 
@@ -34,20 +34,20 @@ function demandToPreviewItem(d: {
   estimatedHours: number | null;
   hourlyRateSnapshot: number | null;
   estimatedDemandValue: number | null;
-  homologationDate: Date | null;
+  actualDeliveryDate: Date | null;
 }): StatementPreviewItem {
   return {
-    demandId:        d.id,
-    demandCode:      d.id.slice(-6).toUpperCase(),
-    demandTitle:     d.title,
-    requesterArea:   d.requesterArea,
-    demandType:      d.demandType,
-    complexity:      d.complexity,
-    roi:             d.roi,
-    estimatedHours:  d.estimatedHours ?? 0,
-    hourlyRate:      d.hourlyRateSnapshot,
-    estimatedValue:  d.estimatedDemandValue ?? 0,
-    homologationDate: d.homologationDate ? d.homologationDate.toISOString() : null,
+    demandId:      d.id,
+    demandCode:    d.id.slice(-6).toUpperCase(),
+    demandTitle:   d.title,
+    requesterArea: d.requesterArea,
+    demandType:    d.demandType,
+    complexity:    d.complexity,
+    roi:           d.roi,
+    estimatedHours: d.estimatedHours ?? 0,
+    hourlyRate:    d.hourlyRateSnapshot,
+    estimatedValue: d.estimatedDemandValue ?? 0,
+    deliveryDate:  d.actualDeliveryDate ? d.actualDeliveryDate.toISOString() : null,
   };
 }
 
@@ -97,17 +97,17 @@ export const monthlyStatementService = {
     if (existing?.status === "SIGNED" || existing?.status === "EXPORTED") {
       // Retorna os itens materializados (snapshot imutável)
       const signedItems: StatementPreviewItem[] = existing.items.map((it) => ({
-        demandId:         it.demandId,
-        demandCode:       it.demandCode ?? it.demandId.slice(-6).toUpperCase(),
-        demandTitle:      it.demandTitle,
-        requesterArea:    it.requesterArea,
-        demandType:       it.demandType,
-        complexity:       it.complexity,
-        roi:              it.roi,
-        estimatedHours:   Number(it.estimatedHours),
-        hourlyRate:       it.hourlyRate !== null ? Number(it.hourlyRate) : null,
-        estimatedValue:   Number(it.estimatedValue),
-        homologationDate: it.homologationDate ? it.homologationDate.toISOString() : null,
+        demandId:      it.demandId,
+        demandCode:    it.demandCode ?? it.demandId.slice(-6).toUpperCase(),
+        demandTitle:   it.demandTitle,
+        requesterArea: it.requesterArea,
+        demandType:    it.demandType,
+        complexity:    it.complexity,
+        roi:           it.roi,
+        estimatedHours: Number(it.estimatedHours),
+        hourlyRate:    it.hourlyRate !== null ? Number(it.hourlyRate) : null,
+        estimatedValue: Number(it.estimatedValue),
+        deliveryDate:  it.homologationDate ? it.homologationDate.toISOString() : null,
       }));
 
       return {
@@ -251,18 +251,18 @@ export const monthlyStatementService = {
 
       await tx.developerMonthlyStatementItem.createMany({
         data: items.map((it) => ({
-          statementId:     stmt.id,
-          demandId:        it.demandId,
-          demandCode:      it.demandCode,
-          demandTitle:     it.demandTitle,
-          requesterArea:   it.requesterArea,
-          demandType:      it.demandType,
-          complexity:      it.complexity,
-          roi:             it.roi,
-          estimatedHours:  it.estimatedHours,
-          hourlyRate:      it.hourlyRate,
-          estimatedValue:  it.estimatedValue,
-          homologationDate: it.homologationDate ? new Date(it.homologationDate) : null,
+          statementId:      stmt.id,
+          demandId:         it.demandId,
+          demandCode:       it.demandCode,
+          demandTitle:      it.demandTitle,
+          requesterArea:    it.requesterArea,
+          demandType:       it.demandType,
+          complexity:       it.complexity,
+          roi:              it.roi,
+          estimatedHours:   it.estimatedHours,
+          hourlyRate:       it.hourlyRate,
+          estimatedValue:   it.estimatedValue,
+          homologationDate: it.deliveryDate ? new Date(it.deliveryDate) : null,
         })),
       });
 
@@ -342,7 +342,7 @@ export const monthlyStatementService = {
     rows.push([
       esc("ID"), esc("Título"), esc("Área"), esc("Tipo"),
       esc("Complexidade"), esc("ROI"),
-      esc("Horas"), esc("Valor/hora"), esc("Valor estimado"), esc("Homologação"),
+      esc("Horas"), esc("Valor/hora"), esc("Valor estimado"), esc("Entrega"),
     ].join(","));
 
     // Linhas

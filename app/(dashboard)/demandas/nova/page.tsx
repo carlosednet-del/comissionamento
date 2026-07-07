@@ -24,7 +24,7 @@ export default async function NovaDemandaPage() {
   });
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-5xl">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2">
         <Button asChild variant="ghost" size="sm" className="-ml-2">

@@ -5,7 +5,7 @@ import { DemandType, DemandPriority, DemandStatus, ComplexityLevel, RoiLevel } f
 export const ALLOWED_TRANSITIONS: Record<DemandStatus, DemandStatus[]> = {
   RASCUNHO:               ["ABERTA", "CANCELADA"],
   ABERTA:                 ["EM_ANALISE", "CANCELADA"],
-  EM_ANALISE:             ["PRIORIZACAO_DIRETORIA", "REPROVADA", "CANCELADA"],
+  EM_ANALISE:             ["ABERTA", "PRIORIZACAO_DIRETORIA", "REPROVADA", "CANCELADA"],
   PRIORIZACAO_DIRETORIA:  ["APROVADA", "EM_ANALISE", "CANCELADA"],
   APROVADA:               ["EM_DESENVOLVIMENTO", "CANCELADA"],
   EM_DESENVOLVIMENTO:     ["AGUARDANDO_HOMOLOGACAO", "CANCELADA"],
@@ -186,6 +186,14 @@ export const cancelDemandSchema = z.object({
     .min(10, "Motivo do cancelamento deve ter ao menos 10 caracteres"),
 });
 
+// ── Schema de análise técnica (ABERTA → EM_ANALISE) ─────────────
+export const sendToAnalysisSchema = z.object({
+  assigneeId:     z.string().min(1, "Responsável técnico é obrigatório"),
+  estimatedHours: z.coerce.number().positive("Horas estimadas devem ser maiores que zero"),
+  complexity:     z.nativeEnum(ComplexityLevel, { required_error: "Complexidade é obrigatória" }),
+  roi:            z.nativeEnum(RoiLevel,         { required_error: "ROI é obrigatório" }),
+});
+
 // ── Schema de início de desenvolvimento ──────────────────────────
 export const startDevelopmentSchema = z.object({
   plannedStartDate:    z.coerce.date({ required_error: "Data de início previsto é obrigatória" }),
@@ -202,6 +210,7 @@ export const kanbanFiltersSchema = z.object({
   priority:      z.nativeEnum(DemandPriority).optional(),
   demandType:    z.nativeEnum(DemandType).optional(),
   assigneeId:    z.string().optional(),
+  creatorId:     z.string().optional(),
   requesterArea: z.string().optional(),
   requesterName: z.string().optional(),
   director:      z.string().optional(),
@@ -232,6 +241,7 @@ export const demandFiltersSchema = z.object({
 });
 
 // ── Types exportados ─────────────────────────────────────────────
+export type SendToAnalysisInput        = z.infer<typeof sendToAnalysisSchema>;
 export type CreateDemandInput          = z.infer<typeof createDemandSchema>;
 export type UpdateDemandInput          = z.infer<typeof updateDemandSchema>;
 export type ChangeDemandStatusInput    = z.infer<typeof changeDemandStatusSchema>;

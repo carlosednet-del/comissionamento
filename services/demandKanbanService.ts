@@ -121,6 +121,7 @@ export const demandKanbanService = {
       priority:       filters.priority,
       demandType:     filters.demandType,
       assigneeId:     filters.assigneeId ?? devFilter.assigneeId,
+      creatorId:      filters.creatorId,
       requesterArea:  filters.requesterArea,
       requesterAreas: filters.director ? getAreasByDirector(filters.director) : undefined,
       requesterName:  filters.requesterName,

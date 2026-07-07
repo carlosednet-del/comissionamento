@@ -119,6 +119,7 @@ function DraggableCard({
       <div
         {...attributes}
         {...listeners}
+        suppressHydrationWarning
         className={cn(
           "absolute left-0 top-0 bottom-0 w-5 flex items-center justify-center",
           "cursor-grab active:cursor-grabbing rounded-l-lg",
@@ -165,7 +166,7 @@ function DroppableColumn({
     <div
       className={cn(
         "flex flex-col rounded-lg border border-border bg-muted/30",
-        "border-t-2 min-w-[260px] max-w-[280px] w-[270px] shrink-0",
+        "border-t-2 flex-1 min-w-[270px]",
         "transition-all duration-150",
         COLUMN_ACCENT[column.status] ?? "border-t-slate-300",
         // Destaque quando o item pode ser solto aqui
@@ -358,7 +359,7 @@ export function DemandKanbanBoard({ board, actor }: Props) {
         onDragEnd={onDragEnd}
       >
         <div className="overflow-x-auto pb-4">
-          <div className="flex gap-3 min-w-max">
+          <div className="flex gap-3 min-w-full">
             {columns.map((column) => (
               <DroppableColumn
                 key={column.status}

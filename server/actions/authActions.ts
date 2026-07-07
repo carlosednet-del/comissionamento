@@ -7,6 +7,7 @@ import { requireAuth } from "@/server/auth/helpers";
 import { userRepository } from "@/repositories/userRepository";
 import { auditService } from "@/services/auditService";
 import { getRequestMetadata } from "@/lib/statement/getRequestMetadata";
+import { checkLoginRateLimit, resetLoginRateLimit } from "@/lib/rate-limit";
 import type { ActionResult } from "@/types";
 import { ZodError } from "zod";
 
@@ -16,7 +17,16 @@ const DASHBOARD_ROLES = ["ADMIN", "GESTOR", "FINANCEIRO", "DEV"];
 export async function loginAction(input: LoginInput): Promise<ActionResult<{ redirectTo: string }>> {
   try {
     loginSchema.parse(input);
+
+    const { ip } = await getRequestMetadata();
+    const rl = checkLoginRateLimit(`login:${ip}`);
+    if (rl.limited) {
+      const minutes = Math.ceil(rl.retryAfterMs / 60_000);
+      return { success: false, error: `Muitas tentativas. Aguarde ${minutes} minuto(s) antes de tentar novamente.` };
+    }
+
     await authService.login(input);
+    resetLoginRateLimit(`login:${ip}`);
 
     // Descobre o papel e estado do usuário para redirecionar corretamente
     const { getCurrentUser } = await import("@/server/auth/helpers");

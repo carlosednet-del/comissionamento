@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { LoginForm } from "@/components/auth/login-form";
-import { Check, ClipboardCheck } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Check, ClipboardCheck, AlertCircle } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Entrar — Gestor de Demandas",
@@ -12,7 +13,12 @@ const FEATURES = [
   "Métricas e relatórios de entrega",
 ];
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const sp = await searchParams;
   return (
     <div className="flex min-h-screen">
 
@@ -105,6 +111,15 @@ export default function LoginPage() {
               Use suas credenciais corporativas para acessar.
             </p>
           </div>
+
+          {sp.error === "auth-callback" && (
+            <Alert variant="destructive" className="mb-5 border-red-200 bg-red-50 text-red-700">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <AlertDescription className="text-sm font-medium">
+                Erro na autenticação. Faça login novamente.
+              </AlertDescription>
+            </Alert>
+          )}
 
           <LoginForm />
 

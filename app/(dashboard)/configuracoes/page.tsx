@@ -18,7 +18,7 @@ export default async function ConfiguracoesPage() {
   ]);
 
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-8">
       {/* Cabeçalho */}
       <div>
         <h1 className="text-2xl font-bold">Configurações</h1>

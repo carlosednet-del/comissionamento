@@ -22,6 +22,10 @@ import {
   ROI_LABELS,
 } from "@/lib/demand-pricing";
 
+// Statuses que ainda não foram enviados para a diretoria — podem ter o valor recalculado
+import type { DemandStatus } from "@prisma/client";
+const RECALCULABLE_STATUSES: DemandStatus[] = ["RASCUNHO", "ABERTA", "EM_ANALISE"];
+
 // ── Tipos públicos ────────────────────────────────────────────────────────────
 
 export type PricingConfigRow = {
@@ -196,6 +200,67 @@ async function resetDeflatorFactor(daysLate: number): Promise<void> {
   await prisma.deflatorConfig.deleteMany({ where: { daysLate } });
 }
 
+// ── Recálculo de demandas pendentes ──────────────────────────────────────────
+
+/**
+ * Recalcula estimatedDemandValue e hourlyRateSnapshot de todas as demandas
+ * ainda não enviadas para a diretoria (RASCUNHO, ABERTA, EM_ANALISE) usando
+ * as taxas e fatores efetivos do momento.
+ *
+ * Demandas em PRIORIZACAO_DIRETORIA ou além NÃO são tocadas — seus valores
+ * já fazem parte de uma decisão de negócio registrada.
+ *
+ * Retorna o número de demandas atualizadas.
+ */
+async function recalculatePendingDemands(): Promise<number> {
+  const [effectiveRates, effectiveMatrix] = await Promise.all([
+    getEffectiveRates(),
+    getEffectiveCombinedFactors(),
+  ]);
+
+  const demands = await prisma.demand.findMany({
+    where: {
+      status:         { in: RECALCULABLE_STATUSES },
+      assigneeId:     { not: null },
+      estimatedHours: { not: null },
+      complexity:     { not: null },
+      roi:            { not: null },
+      demandType:     { not: "CORRECAO" },
+    },
+    select: {
+      id:             true,
+      estimatedHours: true,
+      complexity:     true,
+      roi:            true,
+      assignee: {
+        select: { role: true, workerProfile: true, isActive: true },
+      },
+    },
+  });
+
+  let count = 0;
+  for (const demand of demands) {
+    const assignee = demand.assignee;
+    if (!assignee?.isActive || assignee.role !== "DEV" || !assignee.workerProfile) continue;
+    if (!demand.estimatedHours || !demand.complexity || !demand.roi) continue;
+
+    const hourlyRate     = effectiveRates[assignee.workerProfile]?.hourlyRate ?? HOURLY_RATES[assignee.workerProfile];
+    const combinedFactor = effectiveMatrix[demand.complexity as ComplexityLevel]?.[demand.roi as RoiLevel];
+    if (combinedFactor === undefined) continue;
+
+    await prisma.demand.update({
+      where: { id: demand.id },
+      data: {
+        estimatedDemandValue: hourlyRate * demand.estimatedHours * combinedFactor,
+        hourlyRateSnapshot:   hourlyRate,
+      },
+    });
+    count++;
+  }
+
+  return count;
+}
+
 // ── Exports ───────────────────────────────────────────────────────────────────
 
 export const pricingConfigService = {
@@ -214,4 +279,6 @@ export const pricingConfigService = {
   getEffectiveDeflatorFactors,
   upsertDeflatorFactor,
   resetDeflatorFactor,
+  // Recálculo
+  recalculatePendingDemands,
 };

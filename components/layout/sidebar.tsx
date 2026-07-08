@@ -59,7 +59,7 @@ export function Sidebar({ user }: { user: SidebarUser }) {
     .toUpperCase();
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col bg-gradient-to-b from-brand-text-dark to-brand-text-body">
+    <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col overflow-y-auto bg-gradient-to-b from-brand-text-dark to-brand-text-body">
       {/* ── Logo ─────────────────────────────────────────────────── */}
       <div className="flex h-14 items-center gap-2.5 px-4 border-b border-white/10">
         <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-primary/80 shadow-inner shadow-white/10">

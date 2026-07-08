@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
 import type { DemandFilters, DemandSummary, PaginatedResponse } from "@/types";
 import type { Demand, DemandStatus, DemandPriority, DemandType, ComplexityLevel, RoiLevel } from "@prisma/client";
 
@@ -62,16 +61,23 @@ const demandDetailInclude = {
   },
 };
 
-// Returns ID filter for deflated demands (actualDeliveryDate > plannedDeliveryDate)
+// Returns ID filter for deflated demands (actualDeliveryDate > plannedDeliveryDate).
+// Uses Prisma ORM to fetch candidates and compares dates in JS to avoid raw SQL column-name issues.
 async function buildDeflatedIdFilter(
   isDeflated: boolean | undefined,
 ): Promise<{ id?: { in: string[] } | { notIn: string[] } }> {
   if (isDeflated === undefined) return {};
-  const rows = await prisma.$queryRaw<{ id: string }[]>(
-    Prisma.sql`SELECT id FROM demands WHERE "actualDeliveryDate" IS NOT NULL AND "plannedDeliveryDate" IS NOT NULL AND "actualDeliveryDate" > "plannedDeliveryDate"`,
-  );
-  const ids = rows.map((r) => r.id);
-  return isDeflated ? { id: { in: ids } } : { id: { notIn: ids } };
+  const rows = await prisma.demand.findMany({
+    where: {
+      actualDeliveryDate:  { not: null },
+      plannedDeliveryDate: { not: null },
+    },
+    select: { id: true, actualDeliveryDate: true, plannedDeliveryDate: true },
+  });
+  const deflatedIds = rows
+    .filter((r) => r.actualDeliveryDate! > r.plannedDeliveryDate!)
+    .map((r) => r.id);
+  return isDeflated ? { id: { in: deflatedIds } } : { id: { notIn: deflatedIds } };
 }
 
 export const demandRepository = {

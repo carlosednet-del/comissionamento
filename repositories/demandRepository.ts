@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import type { DemandFilters, DemandSummary, PaginatedResponse } from "@/types";
 import type { Demand, DemandStatus, DemandPriority, DemandType, ComplexityLevel, RoiLevel } from "@prisma/client";
 
@@ -22,6 +23,7 @@ export type KanbanFilters = {
   currentUserId?: string;
   visibleStatuses?: DemandStatus[];
   sortBy?:        "priority" | "deadline" | "created" | "title";
+  isDeflated?:    boolean;
 };
 
 // ── Projeção de lista ─────────────────────────────────────────────
@@ -59,6 +61,18 @@ const demandDetailInclude = {
     include: { createdBy: { select: { id: true, name: true } } },
   },
 };
+
+// Returns ID filter for deflated demands (actualDeliveryDate > plannedDeliveryDate)
+async function buildDeflatedIdFilter(
+  isDeflated: boolean | undefined,
+): Promise<{ id?: { in: string[] } | { notIn: string[] } }> {
+  if (isDeflated === undefined) return {};
+  const rows = await prisma.$queryRaw<{ id: string }[]>(
+    Prisma.sql`SELECT id FROM demands WHERE actual_delivery_date IS NOT NULL AND planned_delivery_date IS NOT NULL AND actual_delivery_date > planned_delivery_date`,
+  );
+  const ids = rows.map((r) => r.id);
+  return isDeflated ? { id: { in: ids } } : { id: { notIn: ids } };
+}
 
 export const demandRepository = {
   // ── Read ────────────────────────────────────────────────────────
@@ -103,11 +117,15 @@ export const demandRepository = {
       createdTo,
       deliveryFrom,
       deliveryTo,
+      isDeflated,
       page = 1,
       pageSize = 20,
     } = filters;
 
+    const deflatedIdFilter = await buildDeflatedIdFilter(isDeflated);
+
     const where = {
+      ...deflatedIdFilter,
       ...(status        && { status }),
       ...(priority      && { priority }),
       ...(demandType    && { demandType }),
@@ -183,7 +201,10 @@ export const demandRepository = {
       currentUserId,
       visibleStatuses,
       sortBy = "priority",
+      isDeflated,
     } = filters;
+
+    const deflatedIdFilter = await buildDeflatedIdFilter(isDeflated);
 
     const today    = new Date();
     today.setHours(0, 0, 0, 0);
@@ -215,6 +236,7 @@ export const demandRepository = {
     })();
 
     const where = {
+      ...deflatedIdFilter,
       ...(statusFilter   && { status: { in: statusFilter } }),
       ...(priority       && { priority }),
       ...(demandType     && { demandType }),

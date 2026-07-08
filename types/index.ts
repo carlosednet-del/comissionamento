@@ -121,6 +121,7 @@ export type DemandFilters = {
   createdTo?:      Date;
   deliveryFrom?:   Date;
   deliveryTo?:     Date;
+  isDeflated?:     boolean;
   page?:     number;
   pageSize?: number;
 };

@@ -26,6 +26,7 @@ type SearchParams = {
   requesterName?: string;
   requesterArea?: string;
   director?:      string;
+  isDeflated?:    string;
 };
 
 export type KanbanAssignee = { id: string; name: string; role: string };
@@ -64,6 +65,7 @@ async function KanbanContent({ searchParams }: { searchParams: SearchParams }) {
     requesterName:  sp.requesterName || undefined,
     requesterArea:  sp.requesterArea || undefined,
     director:       sp.director      || undefined,
+    isDeflated:     sp.isDeflated === "true" ? true : sp.isDeflated === "false" ? false : undefined,
   });
 
   return <DemandKanbanBoard board={board} actor={actor} />;

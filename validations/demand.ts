@@ -221,6 +221,7 @@ export const kanbanFiltersSchema = z.object({
   deliveryTo:    z.coerce.date().optional(),
   onlyMine:      z.coerce.boolean().default(false),
   sortBy:        z.enum(["priority", "deadline", "created", "title"]).default("priority"),
+  isDeflated:    z.boolean().optional(),
 });
 
 // ── Schema de filtros ────────────────────────────────────────────
@@ -236,6 +237,7 @@ export const demandFiltersSchema = z.object({
   createdTo:     z.coerce.date().optional(),
   deliveryFrom:  z.coerce.date().optional(),
   deliveryTo:    z.coerce.date().optional(),
+  isDeflated:    z.boolean().optional(),
   page:     z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(20),
 });

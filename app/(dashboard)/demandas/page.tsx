@@ -20,6 +20,7 @@ type SearchParams = {
   demandType?:    string;
   requesterArea?: string;
   director?:      string;
+  isDeflated?:    string;
   page?:          string;
   error?:         string;
 };
@@ -41,6 +42,7 @@ export default async function DemandasPage({
     demandType:    (sp.demandType   as DemandType)     || undefined,
     requesterArea:  sp.requesterArea || undefined,
     requesterAreas: sp.director ? getAreasByDirector(sp.director) : undefined,
+    isDeflated:     sp.isDeflated === "true" ? true : sp.isDeflated === "false" ? false : undefined,
     // Solicitante só vê as demandas que criou
     ...(actor.role === "SOLICITANTE" ? { creatorId: actor.id } : {}),
     page,

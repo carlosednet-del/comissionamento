@@ -42,6 +42,7 @@ import {
   prioritizeAndApproveAction,
   returnFromDirectorPrioritizationAction,
   returnToOpenAction,
+  returnApprovedToAnalysisAction,
 } from "@/server/actions/demandActions";
 import { Button }            from "@/components/ui/button";
 import { Input }             from "@/components/ui/input";
@@ -949,6 +950,88 @@ export function ReturnFromDirectorDialog({ demandId, trigger }: ReturnFromDirect
             A demanda voltará para análise técnica para revisão antes de nova priorização.
           </DialogDescription>
         </DialogHeader>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="returnReason"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Motivo da devolução <span className="text-destructive">*</span></FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Informe o motivo pelo qual esta demanda está sendo devolvida para análise…"
+                      rows={3}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={close} disabled={form.formState.isSubmitting}>
+                Cancelar
+              </Button>
+              <Button type="submit" variant="outline" disabled={form.formState.isSubmitting}
+                className="border-amber-300 text-amber-700 hover:bg-amber-50">
+                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Devolver para análise
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── 5b. Devolver demanda aprovada para análise ─────────────────
+const returnApprovedToAnalysisSchema = z.object({
+  returnReason: z.string().min(5, "Informe o motivo da devolução (mín. 5 caracteres)"),
+});
+type ReturnApprovedToAnalysisFormValues = z.infer<typeof returnApprovedToAnalysisSchema>;
+
+type ReturnApprovedToAnalysisProps = {
+  demandId: string;
+  trigger:  React.ReactNode;
+};
+
+export function ReturnApprovedToAnalysisDialog({ demandId, trigger }: ReturnApprovedToAnalysisProps) {
+  const { open, setOpen, error, setError, close, rerender } = useWorkflowDialog();
+
+  const form = useForm<ReturnApprovedToAnalysisFormValues>({
+    resolver: zodResolver(returnApprovedToAnalysisSchema),
+    defaultValues: { returnReason: "" },
+  });
+
+  async function onSubmit(values: ReturnApprovedToAnalysisFormValues) {
+    setError(null);
+    const result = await returnApprovedToAnalysisAction(demandId, values.returnReason);
+    if (!result.success) { setError(result.error ?? "Erro"); return; }
+    close();
+    form.reset();
+    rerender();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setError(null); form.reset(); } }}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Devolver para análise</DialogTitle>
+          <DialogDescription>
+            A demanda voltará para análise técnica e precisará ser aprovada novamente pela diretoria.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          Atenção: após a devolução, a demanda perderá a aprovação atual e precisará passar pelo processo de priorização e aprovação da diretoria novamente.
+        </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

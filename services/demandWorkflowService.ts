@@ -30,6 +30,7 @@ import {
   canHomologateDemand,
   canCancelDemand,
   canPrioritizeDemand,
+  canReturnApprovedToAnalysis,
 } from "@/server/auth/permissions";
 import type { UserForPermission } from "@/server/auth/permissions";
 import { demandTypeGeneratesValue } from "@/lib/demand-pricing";
@@ -239,6 +240,38 @@ export const demandWorkflowService = {
       action:   "DEMAND_RETURNED_FROM_DIRECTOR_PRIORITIZATION",
       oldValue: { status: demand.status },
       newValue: { status: "EM_ANALISE", returnReason: reason.trim() },
+      userId:   actor.id,
+    });
+  },
+
+  // 3d. APROVADA → EM_ANALISE (devolução por GESTOR/ADMIN — demanda precisará ser re-aprovada)
+  async returnApprovedToAnalysis(id: string, actor: UserForPermission, reason: string) {
+    const demand = await getDemand(id);
+
+    if (demand.status !== "APROVADA") {
+      throw new WorkflowError("Apenas demandas aprovadas podem ser devolvidas para análise.");
+    }
+    if (!canReturnApprovedToAnalysis(actor)) {
+      throw new WorkflowError("Apenas Gestores e Administradores podem devolver uma demanda aprovada para análise.");
+    }
+    if (!reason?.trim() || reason.trim().length < 5) {
+      throw new WorkflowError("Motivo da devolução é obrigatório (mín. 5 caracteres).");
+    }
+
+    await demandRepository.updateStatus(id, "EM_ANALISE", {
+      approvedById:         null,
+      approvedAt:           null,
+      prioritizedById:      null,
+      prioritizedAt:        null,
+      directorPriorityOrder: null,
+    });
+
+    await auditService.log({
+      entity:   "Demand",
+      entityId: id,
+      action:   "STATUS_CHANGE",
+      oldValue: { status: demand.status },
+      newValue: { status: "EM_ANALISE", returnReason: reason.trim(), returnedBy: actor.id },
       userId:   actor.id,
     });
   },

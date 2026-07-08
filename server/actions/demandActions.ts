@@ -374,6 +374,18 @@ export async function returnFromDirectorPrioritizationAction(
   } catch (e) { return handleError(e); }
 }
 
+export async function returnApprovedToAnalysisAction(
+  id: string,
+  reason: string,
+): Promise<ActionResult<void>> {
+  try {
+    const session = await requireAuth();
+    await demandWorkflowService.returnApprovedToAnalysis(id, toPermissionUser(session), reason);
+    revalidateDemand(id);
+    return { success: true, data: undefined };
+  } catch (e) { return handleError(e); }
+}
+
 // ── Delete ───────────────────────────────────────────────────────
 
 export async function deleteDemandAction(id: string): Promise<ActionResult<void>> {

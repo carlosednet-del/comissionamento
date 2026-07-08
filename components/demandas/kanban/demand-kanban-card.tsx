@@ -7,6 +7,7 @@ import {
   canChangeDemandStatus,
   canHomologateDemand,
   canPrioritizeDemand,
+  canReturnApprovedToAnalysis,
 } from "@/server/auth/permissions";
 import { PriorityBadge }   from "@/components/demandas/priority-badge";
 import { TypeBadge }       from "@/components/demandas/type-badge";
@@ -30,6 +31,7 @@ import {
   CancelDemandDialog,
   PrioritizeAndApproveDialog,
   ReturnFromDirectorDialog,
+  ReturnApprovedToAnalysisDialog,
 } from "@/components/demandas/workflow-dialogs";
 import { Button } from "@/components/ui/button";
 import {
@@ -72,9 +74,10 @@ export function DemandKanbanCard({ demand, actor, evidenceCount = 0 }: Props) {
                                 && canChangeDemandStatus(actor, demandPerm, "EM_DESENVOLVIMENTO");
   const canCancel             = ["RASCUNHO","ABERTA","EM_ANALISE","PRIORIZACAO_DIRETORIA","APROVADA","EM_DESENVOLVIMENTO"].includes(demand.status)
                                 && canChangeDemandStatus(actor, demandPerm, "CANCELADA");
+  const canReturnApproved     = demand.status === "APROVADA" && canReturnApprovedToAnalysis(actor);
 
   // canPrioritizeApprove e canReturnFromDirector são exibidos no painel dedicado da diretoria
-  const hasActions = canOpen || canAnalysis || canSendToDirector || canStart ||
+  const hasActions = canOpen || canAnalysis || canSendToDirector || canStart || canReturnApproved ||
                      canHomologation || canHomologate || canReject || canReturn || canCancel;
 
   const benchEconomy = (
@@ -234,6 +237,16 @@ export function DemandKanbanCard({ demand, actor, evidenceCount = 0 }: Props) {
               trigger={
                 <Button size="sm" className="h-6 px-2 text-[10px] gap-1 bg-indigo-600 hover:bg-indigo-700 text-white">
                   <Send className="h-3 w-3" /> Diretoria
+                </Button>
+              }
+            />
+          )}
+          {canReturnApproved && (
+            <ReturnApprovedToAnalysisDialog
+              demandId={demand.id}
+              trigger={
+                <Button variant="outline" size="sm" className="h-6 px-2 text-[10px] gap-1 border-amber-300 text-amber-700 hover:bg-amber-50">
+                  <Undo2 className="h-3 w-3" /> Devolver
                 </Button>
               }
             />

@@ -70,7 +70,7 @@ const ACTION_CONFIG: Record<ActionType, ActionConfig> = {
   prioritizeApprove:  { label: "Priorizar e aprovar",                icon: CheckCircle2, variant: "default", cls: "bg-indigo-600 hover:bg-indigo-700 text-white" },
   returnFromDirector:        { label: "Devolver para análise",       icon: Undo2,     variant: "outline" },
   returnToOpen:              { label: "Devolver para aberta",        icon: Undo2,     variant: "outline" },
-  returnApprovedToAnalysis:  { label: "Devolver aprovada p/ análise", icon: Undo2,   variant: "outline", cls: "border-amber-300 text-amber-700 hover:bg-amber-50" },
+  returnApprovedToAnalysis:  { label: "Devolver para análise",        icon: Undo2,   variant: "outline", cls: "border-amber-300 text-amber-700 hover:bg-amber-50" },
 };
 
 // ── Progressão visual de status ───────────────────────────────────
@@ -196,7 +196,7 @@ export function WorkflowSection({ demand, actor }: Props) {
                                 && canChangeDemandStatus(actor, demandPerm, "EM_DESENVOLVIMENTO");
   const canCancel             = ["RASCUNHO","ABERTA","EM_ANALISE","PRIORIZACAO_DIRETORIA","APROVADA","EM_DESENVOLVIMENTO"].includes(demand.status)
                                 && canChangeDemandStatus(actor, demandPerm, "CANCELADA");
-  const canReturnApproved     = demand.status === "APROVADA" && canReturnApprovedToAnalysis(actor);
+  const canReturnApproved     = ["APROVADA", "EM_DESENVOLVIMENTO"].includes(demand.status) && canReturnApprovedToAnalysis(actor);
 
   const hasAnyAction = canOpen || canAnalysis || canReturnToOpen || canSendToDirector || canPrioritizeApprove ||
                        canReturnFromDirector || canStart || canReturnApproved ||

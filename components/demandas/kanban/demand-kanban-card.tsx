@@ -74,7 +74,7 @@ export function DemandKanbanCard({ demand, actor, evidenceCount = 0 }: Props) {
                                 && canChangeDemandStatus(actor, demandPerm, "EM_DESENVOLVIMENTO");
   const canCancel             = ["RASCUNHO","ABERTA","EM_ANALISE","PRIORIZACAO_DIRETORIA","APROVADA","EM_DESENVOLVIMENTO"].includes(demand.status)
                                 && canChangeDemandStatus(actor, demandPerm, "CANCELADA");
-  const canReturnApproved     = demand.status === "APROVADA" && canReturnApprovedToAnalysis(actor);
+  const canReturnApproved     = ["APROVADA", "EM_DESENVOLVIMENTO"].includes(demand.status) && canReturnApprovedToAnalysis(actor);
 
   // canPrioritizeApprove e canReturnFromDirector são exibidos no painel dedicado da diretoria
   const hasActions = canOpen || canAnalysis || canSendToDirector || canStart || canReturnApproved ||

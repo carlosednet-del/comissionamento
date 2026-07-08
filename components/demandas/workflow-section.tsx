@@ -9,7 +9,7 @@
 
 import type { DemandWithRelations } from "@/types";
 import type { UserForPermission }   from "@/server/auth/permissions";
-import { canChangeDemandStatus, canHomologateDemand, canPrioritizeDemand } from "@/server/auth/permissions";
+import { canChangeDemandStatus, canHomologateDemand, canPrioritizeDemand, canReturnApprovedToAnalysis } from "@/server/auth/permissions";
 import type { DemandStatus }        from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button }   from "@/components/ui/button";
@@ -25,6 +25,7 @@ import {
   CancelDemandDialog,
   PrioritizeAndApproveDialog,
   ReturnFromDirectorDialog,
+  ReturnApprovedToAnalysisDialog,
 } from "./workflow-dialogs";
 import {
   FolderOpen,
@@ -45,7 +46,8 @@ import {
 type ActionType =
   | "open" | "analysis" | "approve" | "start"
   | "homologation" | "homologate" | "reject" | "return" | "cancel"
-  | "sendToDirector" | "prioritizeApprove" | "returnFromDirector" | "returnToOpen";
+  | "sendToDirector" | "prioritizeApprove" | "returnFromDirector" | "returnToOpen"
+  | "returnApprovedToAnalysis";
 
 type ActionConfig = {
   label:   string;
@@ -66,8 +68,9 @@ const ACTION_CONFIG: Record<ActionType, ActionConfig> = {
   cancel:             { label: "Cancelar demanda",                   icon: Ban,       variant: "outline", cls: "text-destructive border-destructive/40 hover:bg-destructive/5" },
   sendToDirector:     { label: "Enviar para priori. diretoria",      icon: Star,      variant: "default", cls: "bg-indigo-600 hover:bg-indigo-700 text-white" },
   prioritizeApprove:  { label: "Priorizar e aprovar",                icon: CheckCircle2, variant: "default", cls: "bg-indigo-600 hover:bg-indigo-700 text-white" },
-  returnFromDirector: { label: "Devolver para análise",              icon: Undo2,     variant: "outline" },
-  returnToOpen:       { label: "Devolver para aberta",               icon: Undo2,     variant: "outline" },
+  returnFromDirector:        { label: "Devolver para análise",       icon: Undo2,     variant: "outline" },
+  returnToOpen:              { label: "Devolver para aberta",        icon: Undo2,     variant: "outline" },
+  returnApprovedToAnalysis:  { label: "Devolver aprovada p/ análise", icon: Undo2,   variant: "outline", cls: "border-amber-300 text-amber-700 hover:bg-amber-50" },
 };
 
 // ── Progressão visual de status ───────────────────────────────────
@@ -193,9 +196,10 @@ export function WorkflowSection({ demand, actor }: Props) {
                                 && canChangeDemandStatus(actor, demandPerm, "EM_DESENVOLVIMENTO");
   const canCancel             = ["RASCUNHO","ABERTA","EM_ANALISE","PRIORIZACAO_DIRETORIA","APROVADA","EM_DESENVOLVIMENTO"].includes(demand.status)
                                 && canChangeDemandStatus(actor, demandPerm, "CANCELADA");
+  const canReturnApproved     = demand.status === "APROVADA" && canReturnApprovedToAnalysis(actor);
 
   const hasAnyAction = canOpen || canAnalysis || canReturnToOpen || canSendToDirector || canPrioritizeApprove ||
-                       canReturnFromDirector || canStart ||
+                       canReturnFromDirector || canStart || canReturnApproved ||
                        canHomologation || canHomologate || canReject || canReturn || canCancel;
 
   function TriggerBtn({ type, onClick }: { type: ActionType; onClick?: React.MouseEventHandler<HTMLButtonElement> }) {
@@ -328,6 +332,12 @@ export function WorkflowSection({ demand, actor }: Props) {
                 <ReturnFromDirectorDialog
                   demandId={demand.id}
                   trigger={<TriggerBtn type="returnFromDirector" />}
+                />
+              )}
+              {canReturnApproved && (
+                <ReturnApprovedToAnalysisDialog
+                  demandId={demand.id}
+                  trigger={<TriggerBtn type="returnApprovedToAnalysis" />}
                 />
               )}
               {canStart && (

@@ -139,6 +139,10 @@ export function canPrioritizeDemand(actor: UserForPermission): boolean {
   return isMaster(actor.role);
 }
 
+export function canReturnApprovedToAnalysis(actor: UserForPermission): boolean {
+  return actor.role === "GESTOR" || actor.role === "ADMIN";
+}
+
 export function canCancelDemand(actor: UserForPermission, demand: DemandForPermission): boolean {
   const cancellable: DemandStatus[] = ["RASCUNHO", "ABERTA", "EM_ANALISE", "PRIORIZACAO_DIRETORIA", "APROVADA", "EM_DESENVOLVIMENTO"];
   if (!cancellable.includes(demand.status)) return false;

@@ -68,7 +68,7 @@ async function buildDeflatedIdFilter(
 ): Promise<{ id?: { in: string[] } | { notIn: string[] } }> {
   if (isDeflated === undefined) return {};
   const rows = await prisma.$queryRaw<{ id: string }[]>(
-    Prisma.sql`SELECT id FROM demands WHERE actual_delivery_date IS NOT NULL AND planned_delivery_date IS NOT NULL AND actual_delivery_date > planned_delivery_date`,
+    Prisma.sql`SELECT id FROM demands WHERE "actualDeliveryDate" IS NOT NULL AND "plannedDeliveryDate" IS NOT NULL AND "actualDeliveryDate" > "plannedDeliveryDate"`,
   );
   const ids = rows.map((r) => r.id);
   return isDeflated ? { id: { in: ids } } : { id: { notIn: ids } };

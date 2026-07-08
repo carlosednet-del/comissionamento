@@ -52,7 +52,7 @@ export function DemandFilters() {
     });
   }
 
-  const hasFilters = ["search", "status", "priority", "demandType", "requesterArea", "director"].some((k) => sp.has(k));
+  const hasFilters = ["search", "status", "priority", "demandType", "requesterArea", "director", "isDeflated"].some((k) => sp.has(k));
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -154,6 +154,21 @@ export function DemandFilters() {
           {DIRECTORS.map((d) => (
             <SelectItem key={d} value={d}>{d}</SelectItem>
           ))}
+        </SelectContent>
+      </Select>
+
+      {/* Deflacionada */}
+      <Select
+        value={get("isDeflated") || ALL_PLACEHOLDER}
+        onValueChange={(v) => update("isDeflated", v === ALL_PLACEHOLDER ? "" : v)}
+      >
+        <SelectTrigger className="h-9 w-36">
+          <SelectValue placeholder="Deflacionada" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL_PLACEHOLDER}>Deflacionada?</SelectItem>
+          <SelectItem value="true">Sim</SelectItem>
+          <SelectItem value="false">Não</SelectItem>
         </SelectContent>
       </Select>
 

@@ -134,6 +134,7 @@ export const demandKanbanService = {
       currentUserId:  actor.id,
       visibleStatuses,
       sortBy:         filters.sortBy,
+      isDeflated:     filters.isDeflated,
     });
 
     // Agrupa por status mantendo a ordem das colunas

@@ -122,7 +122,7 @@ export function DemandKanbanFilters({
   const activeKeys = [
     "search", "priority", "demandType", "complexity", "roi",
     "deadlineStatus", "onlyMine", "assigneeId", "creatorId", "requesterName",
-    "requesterArea", "director",
+    "requesterArea", "director", "isDeflated",
   ];
   const activeCount = activeKeys.filter((k) => !!current(k)).length;
   const hasFilters  = activeCount > 0;
@@ -136,12 +136,12 @@ export function DemandKanbanFilters({
       <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
 
         {/* Busca */}
-        <div className="flex-1 min-w-[200px]">
+        <div className="w-56">
           <FL>Buscar</FL>
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder="Título, descrição, solicitante…"
+              placeholder="Título, solicitante…"
               className="pl-9 h-9"
               defaultValue={current("search")}
               onKeyDown={(e) => {
@@ -390,6 +390,24 @@ export function DemandKanbanFilters({
               {DEADLINE_OPTIONS.map((o) => (
                 <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Deflacionada */}
+        <div className="w-[120px]">
+          <FL>Deflacionada</FL>
+          <Select
+            value={current("isDeflated") || "_all"}
+            onValueChange={(v) => update("isDeflated", v === "_all" ? null : v)}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">Todas</SelectItem>
+              <SelectItem value="true">Sim</SelectItem>
+              <SelectItem value="false">Não</SelectItem>
             </SelectContent>
           </Select>
         </div>

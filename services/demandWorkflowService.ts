@@ -244,15 +244,16 @@ export const demandWorkflowService = {
     });
   },
 
-  // 3d. APROVADA → EM_ANALISE (devolução por GESTOR/ADMIN — demanda precisará ser re-aprovada)
+  // 3d. APROVADA | EM_DESENVOLVIMENTO → EM_ANALISE (devolução por GESTOR/ADMIN — demanda precisará ser re-aprovada)
   async returnApprovedToAnalysis(id: string, actor: UserForPermission, reason: string) {
     const demand = await getDemand(id);
 
-    if (demand.status !== "APROVADA") {
-      throw new WorkflowError("Apenas demandas aprovadas podem ser devolvidas para análise.");
+    const returnableStatuses: DemandStatus[] = ["APROVADA", "EM_DESENVOLVIMENTO"];
+    if (!returnableStatuses.includes(demand.status)) {
+      throw new WorkflowError("Apenas demandas aprovadas ou em desenvolvimento podem ser devolvidas para análise.");
     }
     if (!canReturnApprovedToAnalysis(actor)) {
-      throw new WorkflowError("Apenas Gestores e Administradores podem devolver uma demanda aprovada para análise.");
+      throw new WorkflowError("Apenas Gestores e Administradores podem devolver uma demanda para análise.");
     }
     if (!reason?.trim() || reason.trim().length < 5) {
       throw new WorkflowError("Motivo da devolução é obrigatório (mín. 5 caracteres).");
@@ -519,7 +520,7 @@ export const demandWorkflowService = {
       EM_ANALISE:             ["ABERTA", "PRIORIZACAO_DIRETORIA", "REPROVADA", "CANCELADA"],
       PRIORIZACAO_DIRETORIA:  ["APROVADA", "EM_ANALISE", "CANCELADA"],
       APROVADA:               ["EM_DESENVOLVIMENTO", "CANCELADA"],
-      EM_DESENVOLVIMENTO:     ["AGUARDANDO_HOMOLOGACAO", "CANCELADA"],
+      EM_DESENVOLVIMENTO:     ["EM_ANALISE", "AGUARDANDO_HOMOLOGACAO", "CANCELADA"],
       AGUARDANDO_HOMOLOGACAO: ["HOMOLOGADA_PRODUCAO", "REPROVADA", "EM_DESENVOLVIMENTO"],
       HOMOLOGADA_PRODUCAO:    [],
       REPROVADA:              ["EM_DESENVOLVIMENTO", "CANCELADA"],

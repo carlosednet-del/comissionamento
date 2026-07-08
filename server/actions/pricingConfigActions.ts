@@ -37,7 +37,9 @@ export async function updatePricingConfigAction(input: unknown): Promise<ActionR
     const parsed = updateRateSchema.safeParse(input);
     if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message ?? "Dados inválidos" };
     const row = await pricingConfigService.upsert(parsed.data.profile, parsed.data.ratePerHour, parsed.data.monthlyCap);
+    await pricingConfigService.recalculatePendingDemands();
     revalidatePath("/configuracoes");
+    revalidatePath("/demandas");
     return { success: true, data: row };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Erro ao salvar" };
@@ -50,7 +52,9 @@ export async function resetPricingConfigAction(profile: unknown): Promise<Action
     const parsed = z.enum(ALL_PROFILES).safeParse(profile);
     if (!parsed.success) return { success: false, error: "Perfil inválido" };
     await pricingConfigService.resetToDefault(parsed.data);
+    await pricingConfigService.recalculatePendingDemands();
     revalidatePath("/configuracoes");
+    revalidatePath("/demandas");
     return { success: true, data: undefined };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Erro ao resetar" };
@@ -73,7 +77,9 @@ export async function updateCombinedFactorAction(input: unknown): Promise<Action
     const parsed = updateCombinedSchema.safeParse(input);
     if (!parsed.success) return { success: false, error: parsed.error.errors[0]?.message ?? "Dados inválidos" };
     const row = await pricingConfigService.upsertCombinedFactor(parsed.data.complexity, parsed.data.roi, parsed.data.factor);
+    await pricingConfigService.recalculatePendingDemands();
     revalidatePath("/configuracoes");
+    revalidatePath("/demandas");
     return { success: true, data: row };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Erro ao salvar" };
@@ -86,7 +92,9 @@ export async function resetCombinedFactorAction(input: unknown): Promise<ActionR
     const parsed = z.object({ complexity: z.enum(ALL_COMPLEXITIES), roi: z.enum(ALL_ROIS) }).safeParse(input);
     if (!parsed.success) return { success: false, error: "Dados inválidos" };
     await pricingConfigService.resetCombinedFactor(parsed.data.complexity, parsed.data.roi);
+    await pricingConfigService.recalculatePendingDemands();
     revalidatePath("/configuracoes");
+    revalidatePath("/demandas");
     return { success: true, data: undefined };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Erro ao resetar" };

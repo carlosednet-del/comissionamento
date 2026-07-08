@@ -223,7 +223,7 @@ export const demandService = {
     if (!canEditDemand(actor, demandPerm)) {
       const isStatusBlocked = !["RASCUNHO", "ABERTA"].includes(existing.status);
       if (isStatusBlocked) {
-        throw new Error("Esta demanda não pode mais ser editada livremente. Use as ações do fluxo.");
+        throw new Error("Esta demanda não pode ser editada neste status. Use as ações do fluxo.");
       }
       throw new DemandPermissionError("editar esta demanda");
     }

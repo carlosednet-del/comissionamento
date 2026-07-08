@@ -64,10 +64,15 @@ export function canCreateDemand(actor: UserForPermission): boolean {
 export const DEMAND_EDITABLE_STATUSES: readonly DemandStatus[] = ["RASCUNHO", "ABERTA"];
 
 export function canEditDemand(actor: UserForPermission, demand: DemandForPermission): boolean {
-  // Demandas em análise ou posterior não podem ser editadas livremente — use o fluxo
-  if (!(DEMAND_EDITABLE_STATUSES as readonly string[]).includes(demand.status)) return false;
-  // Qualquer perfil ativo pode editar em RASCUNHO ou ABERTA, independente do criador
-  return actor.isActive;
+  if (!actor.isActive) return false;
+  // ADMIN pode editar em qualquer status do fluxo
+  if (actor.role === "ADMIN") return true;
+  // GESTOR pode editar até EM_ANALISE inclusive
+  if (actor.role === "GESTOR") {
+    return ["RASCUNHO", "ABERTA", "EM_ANALISE"].includes(demand.status);
+  }
+  // Demais perfis: apenas RASCUNHO ou ABERTA
+  return (DEMAND_EDITABLE_STATUSES as readonly string[]).includes(demand.status);
 }
 
 export function canAssignDemand(actor: UserForPermission, demand: DemandForPermission): boolean {

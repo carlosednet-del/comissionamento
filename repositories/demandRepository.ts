@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { compareByDirectorPriority } from "@/lib/demand-sort";
 import type { DemandFilters, DemandSummary, PaginatedResponse } from "@/types";
 import type { Demand, DemandStatus, DemandPriority, DemandType, ComplexityLevel, RoiLevel } from "@prisma/client";
 
@@ -172,20 +173,17 @@ export const demandRepository = {
         : {}),
     };
 
-    const [data, total] = await prisma.$transaction([
-      prisma.demand.findMany({
-        where,
-        select: demandSummarySelect,
-        orderBy: [
-          { directorPriorityOrder: { sort: "asc", nulls: "last" } },
-          { priority: "asc" },
-          { createdAt: "desc" },
-        ],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      prisma.demand.count({ where }),
-    ]);
+    // Fetch all matching demands, sort in JS by director → directorPriorityOrder,
+    // then paginate — needed because director is computed from requesterArea, not a DB column.
+    const allData = await prisma.demand.findMany({
+      where,
+      select: demandSummarySelect,
+    });
+
+    allData.sort(compareByDirectorPriority);
+
+    const total     = allData.length;
+    const data      = allData.slice((page - 1) * pageSize, page * pageSize);
 
     return {
       data: data as unknown as DemandSummary[],

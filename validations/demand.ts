@@ -220,7 +220,7 @@ export const kanbanFiltersSchema = z.object({
   deliveryFrom:  z.coerce.date().optional(),
   deliveryTo:    z.coerce.date().optional(),
   onlyMine:      z.coerce.boolean().default(false),
-  sortBy:        z.enum(["priority", "deadline", "created", "title"]).default("priority"),
+  sortBy:        z.enum(["director", "priority", "deadline", "created", "title"]).default("director"),
   isDeflated:    z.boolean().optional(),
 });
 

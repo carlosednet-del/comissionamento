@@ -54,10 +54,11 @@ const DEADLINE_OPTIONS = [
 ];
 
 const SORT_OPTIONS = [
-  { value: "priority", label: "Prioridade"   },
-  { value: "deadline", label: "Prazo"        },
-  { value: "created",  label: "Mais recente" },
-  { value: "title",    label: "Título"       },
+  { value: "director", label: "Diretor + Prioridade" },
+  { value: "priority", label: "Prioridade"           },
+  { value: "deadline", label: "Prazo"                },
+  { value: "created",  label: "Mais recente"         },
+  { value: "title",    label: "Título"               },
 ];
 
 const ROLE_LABEL: Record<string, string> = {
@@ -248,8 +249,8 @@ export function DemandKanbanFilters({
         <div className="w-36">
           <FL>Ordenar por</FL>
           <Select
-            value={current("sortBy") || "priority"}
-            onValueChange={(v) => update("sortBy", v === "priority" ? null : v)}
+            value={current("sortBy") || "director"}
+            onValueChange={(v) => update("sortBy", v === "director" ? null : v)}
           >
             <SelectTrigger className="h-9">
               <SelectValue />

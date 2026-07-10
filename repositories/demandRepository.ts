@@ -21,7 +21,7 @@ export type KanbanFilters = {
   onlyMine?:      boolean;
   currentUserId?: string;
   visibleStatuses?: DemandStatus[];
-  sortBy?:        "priority" | "deadline" | "created" | "title";
+  sortBy?:        "director" | "priority" | "deadline" | "created" | "title";
   isDeflated?:    boolean;
 };
 
@@ -176,7 +176,11 @@ export const demandRepository = {
       prisma.demand.findMany({
         where,
         select: demandSummarySelect,
-        orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
+        orderBy: [
+          { directorPriorityOrder: { sort: "asc", nulls: "last" } },
+          { priority: "desc" },
+          { createdAt: "desc" },
+        ],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
@@ -287,11 +291,15 @@ export const demandRepository = {
 
     const orderBy = (() => {
       switch (sortBy) {
-        case "deadline": return [{ plannedDeliveryDate: "asc" as const }];
-        case "created":  return [{ createdAt: "desc" as const }];
-        case "title":    return [{ title: "asc" as const }];
-        case "priority":
-        default:         return [{ priority: "desc" as const }, { createdAt: "desc" as const }];
+        case "deadline":  return [{ plannedDeliveryDate: "asc" as const }];
+        case "created":   return [{ createdAt: "desc" as const }];
+        case "title":     return [{ title: "asc" as const }];
+        case "priority":  return [{ priority: "desc" as const }, { createdAt: "desc" as const }];
+        case "director":
+        default:          return [
+          { directorPriorityOrder: { sort: "asc" as const, nulls: "last" as const } },
+          { priority: "desc" as const },
+        ];
       }
     })();
 

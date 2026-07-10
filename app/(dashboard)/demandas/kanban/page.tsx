@@ -58,7 +58,7 @@ async function KanbanContent({ searchParams }: { searchParams: SearchParams }) {
     complexity:     (sp.complexity    as ComplexityLevel)  || undefined,
     roi:            (sp.roi           as RoiLevel)         || undefined,
     deadlineStatus: (sp.deadlineStatus as "overdue" | "today" | "soon" | "ok") || undefined,
-    sortBy:         (sp.sortBy as "priority" | "deadline" | "created" | "title") || undefined,
+    sortBy:         (sp.sortBy as "director" | "priority" | "deadline" | "created" | "title") || undefined,
     onlyMine:       sp.onlyMine === "true",
     assigneeId:     sp.assigneeId    || undefined,
     creatorId:      sp.creatorId     || undefined,

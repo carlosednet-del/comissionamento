@@ -67,17 +67,22 @@ async function buildDeflatedIdFilter(
   isDeflated: boolean | undefined,
 ): Promise<{ id?: { in: string[] } | { notIn: string[] } }> {
   if (isDeflated === undefined) return {};
-  const rows = await prisma.demand.findMany({
-    where: {
-      actualDeliveryDate:  { not: null },
-      plannedDeliveryDate: { not: null },
-    },
-    select: { id: true, actualDeliveryDate: true, plannedDeliveryDate: true },
-  });
-  const deflatedIds = rows
-    .filter((r) => r.actualDeliveryDate! > r.plannedDeliveryDate!)
-    .map((r) => r.id);
-  return isDeflated ? { id: { in: deflatedIds } } : { id: { notIn: deflatedIds } };
+  try {
+    const rows = await prisma.demand.findMany({
+      where: {
+        actualDeliveryDate:  { not: null },
+        plannedDeliveryDate: { not: null },
+      },
+      select: { id: true, actualDeliveryDate: true, plannedDeliveryDate: true },
+    });
+    const deflatedIds = rows
+      .filter((r) => r.actualDeliveryDate! > r.plannedDeliveryDate!)
+      .map((r) => r.id);
+    return isDeflated ? { id: { in: deflatedIds } } : { id: { notIn: deflatedIds } };
+  } catch (err) {
+    console.error("[demandRepository] buildDeflatedIdFilter error:", err);
+    return {};
+  }
 }
 
 export const demandRepository = {

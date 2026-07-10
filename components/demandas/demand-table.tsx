@@ -28,7 +28,7 @@ import { deleteDemandAction } from "@/server/actions/demandActions";
 import { StatusBadge } from "./status-badge";
 import { PriorityBadge } from "./priority-badge";
 import { TypeBadge } from "./type-badge";
-import { Eye, Trash2, ChevronLeft, ChevronRight, TrendingDown } from "lucide-react";
+import { Eye, Trash2, ChevronLeft, ChevronRight, TrendingDown, Star } from "lucide-react";
 import { calculateBenchmarkEconomy } from "@/lib/benchmark/calculateBenchmarkEconomy";
 import type { WorkerProfile } from "@prisma/client";
 const DATE_FMT = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -148,7 +148,15 @@ export function DemandTable({ demands, total, page, pageSize, totalPages, canDel
                   <TypeBadge type={d.demandType} />
                 </TableCell>
                 <TableCell>
-                  <PriorityBadge priority={d.priority} showIcon />
+                  <div className="flex items-center gap-1.5">
+                    <PriorityBadge priority={d.priority} showIcon />
+                    {d.directorPriorityOrder != null && (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                        <Star className="h-2.5 w-2.5" />
+                        {d.directorPriorityOrder}
+                      </span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <StatusBadge status={d.status} />

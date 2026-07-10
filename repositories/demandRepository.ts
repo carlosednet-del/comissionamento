@@ -178,7 +178,7 @@ export const demandRepository = {
         select: demandSummarySelect,
         orderBy: [
           { directorPriorityOrder: { sort: "asc", nulls: "last" } },
-          { priority: "desc" },
+          { priority: "asc" },
           { createdAt: "desc" },
         ],
         skip: (page - 1) * pageSize,
@@ -298,7 +298,7 @@ export const demandRepository = {
         case "director":
         default:          return [
           { directorPriorityOrder: { sort: "asc" as const, nulls: "last" as const } },
-          { priority: "desc" as const },
+          { priority: "asc" as const },
         ];
       }
     })();

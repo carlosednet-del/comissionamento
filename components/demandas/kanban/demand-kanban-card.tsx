@@ -114,13 +114,21 @@ export function DemandKanbanCard({ demand, actor, evidenceCount = 0 }: Props) {
         {demand.title}
       </Link>
 
-      {/* Linha 3: Área + ID */}
-      <p className="text-[11px] text-muted-foreground truncate">
-        {demand.requesterArea}
-        <span className="ml-1.5 font-mono opacity-60">
-          #{demand.id.slice(-6).toUpperCase()}
-        </span>
-      </p>
+      {/* Linha 3: Área + ID + Ordem Diretoria */}
+      <div className="flex items-center gap-1.5 min-w-0">
+        <p className="text-[11px] text-muted-foreground truncate flex-1">
+          {demand.requesterArea}
+          <span className="ml-1.5 font-mono opacity-60">
+            #{demand.id.slice(-6).toUpperCase()}
+          </span>
+        </p>
+        {demand.directorPriorityOrder != null && (
+          <span className="inline-flex items-center gap-0.5 shrink-0 rounded-full bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+            <Star className="h-2.5 w-2.5" />
+            {demand.directorPriorityOrder}
+          </span>
+        )}
+      </div>
 
       {/* Linha 4: Responsável + horas */}
       <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">

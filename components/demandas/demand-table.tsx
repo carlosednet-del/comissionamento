@@ -28,6 +28,7 @@ import { deleteDemandAction } from "@/server/actions/demandActions";
 import { StatusBadge } from "./status-badge";
 import { PriorityBadge } from "./priority-badge";
 import { TypeBadge } from "./type-badge";
+import { DirectorBadge } from "./director-badge";
 import { Eye, Trash2, ChevronLeft, ChevronRight, TrendingDown, Star } from "lucide-react";
 import { calculateBenchmarkEconomy } from "@/lib/benchmark/calculateBenchmarkEconomy";
 import type { WorkerProfile } from "@prisma/client";
@@ -142,7 +143,10 @@ export function DemandTable({ demands, total, page, pageSize, totalPages, canDel
               <TableRow key={d.id} className="hover:bg-muted/30 transition-colors">
                 <TableCell>
                   <div className="font-medium leading-snug line-clamp-2">{d.title}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{d.requesterArea}</div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-xs text-muted-foreground">{d.requesterArea}</span>
+                    <DirectorBadge requesterArea={d.requesterArea} />
+                  </div>
                 </TableCell>
                 <TableCell>
                   <TypeBadge type={d.demandType} />

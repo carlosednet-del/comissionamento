@@ -11,6 +11,7 @@ import {
 } from "@/server/auth/permissions";
 import { PriorityBadge }   from "@/components/demandas/priority-badge";
 import { TypeBadge }       from "@/components/demandas/type-badge";
+import { DirectorBadge }   from "@/components/demandas/director-badge";
 import { DeadlineBadge }   from "./deadline-badge";
 import { EstimatedValueBadge } from "./estimated-value-badge";
 import { COMPLEXITY_LABELS }   from "@/lib/demand-pricing";
@@ -100,10 +101,11 @@ export function DemandKanbanCard({ demand, actor, evidenceCount = 0 }: Props) {
         "hover:shadow-md hover:border-brand-primary/30 transition-all duration-150",
       )}
     >
-      {/* Linha 1: Prioridade + Tipo */}
+      {/* Linha 1: Prioridade + Tipo + Diretor */}
       <div className="flex flex-wrap items-center gap-1.5">
         <PriorityBadge priority={demand.priority} showIcon />
         <TypeBadge     type={demand.demandType} />
+        <DirectorBadge requesterArea={demand.requesterArea} />
       </div>
 
       {/* Linha 2: Título */}

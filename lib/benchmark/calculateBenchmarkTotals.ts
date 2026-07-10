@@ -1,6 +1,11 @@
 import type { WorkerProfile } from "@prisma/client";
 import { calculateBenchmarkEconomy } from "./calculateBenchmarkEconomy";
 
+export type BenchmarkConfig = {
+  rates:       Record<WorkerProfile, number>;
+  accelerator: number;
+};
+
 export type DemandForBenchmark = {
   estimatedHours?:          number | null;
   assigneeProfileSnapshot?: WorkerProfile | string | null;
@@ -18,7 +23,7 @@ export type BenchmarkTotals = {
   count:                    number;
 };
 
-export function calculateBenchmarkTotals(demands: DemandForBenchmark[]): BenchmarkTotals {
+export function calculateBenchmarkTotals(demands: DemandForBenchmark[], config?: BenchmarkConfig): BenchmarkTotals {
   let totalOurValue            = 0;
   let totalMarketBenchBase     = 0;
   let totalMarketBenchAdjusted = 0;
@@ -28,11 +33,14 @@ export function calculateBenchmarkTotals(demands: DemandForBenchmark[]): Benchma
     if (!d.estimatedHours || d.estimatedHours <= 0) continue;
     if (!d.assigneeProfileSnapshot) continue;
 
+    const profile = d.assigneeProfileSnapshot as WorkerProfile;
     const r = calculateBenchmarkEconomy({
-      estimatedHours: d.estimatedHours,
-      workerProfile:  d.assigneeProfileSnapshot as WorkerProfile,
-      ourHourlyRate:  d.hourlyRateSnapshot ?? undefined,
-      ourValue:       d.estimatedDemandValue ?? undefined,
+      estimatedHours:   d.estimatedHours,
+      workerProfile:    profile,
+      ourHourlyRate:    d.hourlyRateSnapshot ?? undefined,
+      ourValue:         d.estimatedDemandValue ?? undefined,
+      marketHourlyRate: config?.rates[profile],
+      teamAccelerator:  config?.accelerator,
     });
 
     totalOurValue            += r.ourValue;

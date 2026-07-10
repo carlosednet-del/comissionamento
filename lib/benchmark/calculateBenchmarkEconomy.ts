@@ -10,6 +10,7 @@ export type CalculateBenchmarkEconomyInput = {
   complexityMultiplier?: number;
   roiMultiplier?:        number;
   teamAccelerator?:      number;
+  marketHourlyRate?:     number;
 };
 
 export type BenchmarkEconomyResult = {
@@ -62,7 +63,7 @@ export function calculateBenchmarkEconomy(
     ? ourValue
     : estimatedHours * resolvedOurRate * resolvedComplexity * resolvedRoi;
 
-  const marketHourlyRate    = DEVELOPER_BENCHMARK_HOURLY_RATES[workerProfile];
+  const marketHourlyRate    = input.marketHourlyRate ?? DEVELOPER_BENCHMARK_HOURLY_RATES[workerProfile];
   const marketBenchBase     = estimatedHours * marketHourlyRate;
   const acceleratorImpact   = (resolvedAccelerator / 100) * 0.10;
   const marketBenchAdjusted = marketBenchBase * (1 + acceleratorImpact);

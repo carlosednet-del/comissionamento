@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireAuth, toPermissionUser } from "@/server/auth/helpers";
 import { demandService } from "@/services/demandService";
 import { demandRepository } from "@/repositories/demandRepository";
+import { benchmarkConfigService } from "@/services/benchmarkConfigService";
 import { DemandDetail } from "@/components/demandas/demand-detail";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -32,8 +33,12 @@ export default async function DemandaDetailPage({
 
   if (!demand) notFound();
 
-  const auditLogs = await demandService.getAuditLogs(id);
-  const nextDemand = await demandRepository.findNextInStatus(id, demand.status, demand.createdAt);
+  const [auditLogs, nextDemand, benchRates, benchAccel] = await Promise.all([
+    demandService.getAuditLogs(id),
+    demandRepository.findNextInStatus(id, demand.status, demand.createdAt),
+    benchmarkConfigService.getEffectiveRates(),
+    benchmarkConfigService.getAccelerator(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -68,6 +73,7 @@ export default async function DemandaDetailPage({
         demand={demand}
         actor={actor}
         auditLogs={auditLogs as AuditLogWithUser[]}
+        benchmarkConfig={{ rates: benchRates, accelerator: benchAccel.accelerator }}
       />
     </div>
   );

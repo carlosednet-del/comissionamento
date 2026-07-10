@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAuth, toPermissionUser } from "@/server/auth/helpers";
 import { demandKanbanService }           from "@/services/demandKanbanService";
+import { benchmarkConfigService }        from "@/services/benchmarkConfigService";
 import { DemandKanbanBoard }             from "@/components/demandas/kanban/demand-kanban-board";
 import { DemandKanbanFilters }           from "@/components/demandas/kanban/demand-kanban-filters";
 import { Button }  from "@/components/ui/button";
@@ -51,24 +52,34 @@ async function KanbanContent({ searchParams }: { searchParams: SearchParams }) {
   const actor   = toPermissionUser(session);
   const sp      = searchParams;
 
-  const board = await demandKanbanService.getKanbanBoard(actor, {
-    search:         sp.search        || undefined,
-    priority:       (sp.priority      as DemandPriority)  || undefined,
-    demandType:     (sp.demandType    as DemandType)       || undefined,
-    complexity:     (sp.complexity    as ComplexityLevel)  || undefined,
-    roi:            (sp.roi           as RoiLevel)         || undefined,
-    deadlineStatus: (sp.deadlineStatus as "overdue" | "today" | "soon" | "ok") || undefined,
-    sortBy:         (sp.sortBy as "director" | "priority" | "deadline" | "created" | "title") || undefined,
-    onlyMine:       sp.onlyMine === "true",
-    assigneeId:     sp.assigneeId    || undefined,
-    creatorId:      sp.creatorId     || undefined,
-    requesterName:  sp.requesterName || undefined,
-    requesterArea:  sp.requesterArea || undefined,
-    director:       sp.director      || undefined,
-    isDeflated:     sp.isDeflated === "true" ? true : sp.isDeflated === "false" ? false : undefined,
-  });
+  const [board, benchRates, benchAccel] = await Promise.all([
+    demandKanbanService.getKanbanBoard(actor, {
+      search:         sp.search        || undefined,
+      priority:       (sp.priority      as DemandPriority)  || undefined,
+      demandType:     (sp.demandType    as DemandType)       || undefined,
+      complexity:     (sp.complexity    as ComplexityLevel)  || undefined,
+      roi:            (sp.roi           as RoiLevel)         || undefined,
+      deadlineStatus: (sp.deadlineStatus as "overdue" | "today" | "soon" | "ok") || undefined,
+      sortBy:         (sp.sortBy as "director" | "priority" | "deadline" | "created" | "title") || undefined,
+      onlyMine:       sp.onlyMine === "true",
+      assigneeId:     sp.assigneeId    || undefined,
+      creatorId:      sp.creatorId     || undefined,
+      requesterName:  sp.requesterName || undefined,
+      requesterArea:  sp.requesterArea || undefined,
+      director:       sp.director      || undefined,
+      isDeflated:     sp.isDeflated === "true" ? true : sp.isDeflated === "false" ? false : undefined,
+    }),
+    benchmarkConfigService.getEffectiveRates(),
+    benchmarkConfigService.getAccelerator(),
+  ]);
 
-  return <DemandKanbanBoard board={board} actor={actor} />;
+  return (
+    <DemandKanbanBoard
+      board={board}
+      actor={actor}
+      benchmarkConfig={{ rates: benchRates, accelerator: benchAccel.accelerator }}
+    />
+  );
 }
 
 export default async function KanbanPage({

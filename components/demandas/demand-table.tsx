@@ -36,14 +36,20 @@ const DATE_FMT = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-di
 const BRL      = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const PCT      = new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 });
 
+type BenchmarkConfig = {
+  rates:       Record<string, number>;
+  accelerator: number;
+};
+
 type Props = {
-  demands:       DemandSummary[];
-  total:         number;
-  page:          number;
-  pageSize:      number;
-  totalPages:    number;
-  canDelete?:    boolean;
-  showBenchmark?: boolean;
+  demands:         DemandSummary[];
+  total:           number;
+  page:            number;
+  pageSize:        number;
+  totalPages:      number;
+  canDelete?:      boolean;
+  showBenchmark?:  boolean;
+  benchmarkConfig?: BenchmarkConfig;
 };
 
 function fmtDate(d: Date | string | null | undefined): string {
@@ -53,7 +59,7 @@ function fmtDate(d: Date | string | null | undefined): string {
   return DATE_FMT.format(date);
 }
 
-export function DemandTable({ demands, total, page, pageSize, totalPages, canDelete = false, showBenchmark = false }: Props) {
+export function DemandTable({ demands, total, page, pageSize, totalPages, canDelete = false, showBenchmark = false, benchmarkConfig }: Props) {
   const router = useRouter();
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [isPending, startTransition]    = useTransition();
@@ -185,10 +191,12 @@ export function DemandTable({ demands, total, page, pageSize, totalPages, canDel
                     );
                   }
                   const bench = calculateBenchmarkEconomy({
-                    estimatedHours: d.estimatedHours,
-                    workerProfile:  d.assigneeProfileSnapshot as WorkerProfile,
-                    ourHourlyRate:  d.hourlyRateSnapshot ?? undefined,
-                    ourValue:       d.estimatedDemandValue ?? undefined,
+                    estimatedHours:   d.estimatedHours,
+                    workerProfile:    d.assigneeProfileSnapshot as WorkerProfile,
+                    ourHourlyRate:    d.hourlyRateSnapshot ?? undefined,
+                    ourValue:         d.estimatedDemandValue ?? undefined,
+                    marketHourlyRate: benchmarkConfig?.rates[d.assigneeProfileSnapshot as string],
+                    teamAccelerator:  benchmarkConfig?.accelerator,
                   });
                   return (
                     <>

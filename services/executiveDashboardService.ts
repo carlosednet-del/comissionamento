@@ -6,7 +6,9 @@ import {
   type ExecRawDemand,
 } from "@/repositories/executiveDashboardRepository";
 import { calculateBenchmarkEconomy } from "@/lib/benchmark/calculateBenchmarkEconomy";
+import { benchmarkConfigService } from "@/services/benchmarkConfigService";
 import type { ExecutiveDashboardFilters } from "@/validations/executive-dashboard";
+import type { BenchmarkConfig } from "@/lib/benchmark/calculateBenchmarkTotals";
 
 const SEM_SENIORIDADE       = "Sem senioridade";
 const SEM_ESPECIALIDADE_LBL = "Sem especialidade";
@@ -234,7 +236,7 @@ type EnrichedDemand = ExecRawDemand & {
   resolvedSpecialty:    string;
 };
 
-function enrich(d: ExecRawDemand): EnrichedDemand {
+function enrich(d: ExecRawDemand, config?: BenchmarkConfig): EnrichedDemand {
   const hours = d.estimatedHours ?? 0;
   const value = d.estimatedDemandValue ?? 0;
 
@@ -243,11 +245,14 @@ function enrich(d: ExecRawDemand): EnrichedDemand {
   let economyPercent = 0;
 
   if (hours > 0 && d.assigneeProfileSnapshot) {
+    const profile = d.assigneeProfileSnapshot as WorkerProfile;
     const b = calculateBenchmarkEconomy({
-      estimatedHours: hours,
-      workerProfile:  d.assigneeProfileSnapshot as WorkerProfile,
-      ourHourlyRate:  d.hourlyRateSnapshot ?? undefined,
-      ourValue:       value > 0 ? value : undefined,
+      estimatedHours:   hours,
+      workerProfile:    profile,
+      ourHourlyRate:    d.hourlyRateSnapshot ?? undefined,
+      ourValue:         value > 0 ? value : undefined,
+      marketHourlyRate: config?.rates[profile],
+      teamAccelerator:  config?.accelerator,
     });
     benchmarkValue = b.marketBenchAdjusted;
     economy        = b.economy;
@@ -676,12 +681,15 @@ function compute(
 
 export const executiveDashboardService = {
   async getData(filters: ExecutiveDashboardFilters): Promise<ExecDashboardData> {
-    const [raw, incomingRaw, statusRaw] = await Promise.all([
+    const [raw, incomingRaw, statusRaw, benchRates, benchAccel] = await Promise.all([
       getExecDashboardDemands(filters),
       getExecIncomingDemands(filters.startDate, filters.endDate),
       getExecStatusCounts(filters.startDate, filters.endDate),
+      benchmarkConfigService.getEffectiveRates(),
+      benchmarkConfigService.getAccelerator(),
     ]);
-    const enriched = raw.map(enrich);
+    const config: BenchmarkConfig = { rates: benchRates, accelerator: benchAccel.accelerator };
+    const enriched = raw.map((d) => enrich(d, config));
     return compute(enriched, incomingRaw, statusRaw);
   },
 };

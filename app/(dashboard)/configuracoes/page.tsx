@@ -1,20 +1,24 @@
 import { requireRole } from "@/server/auth/helpers";
-import { pricingConfigService } from "@/services/pricingConfigService";
+import { pricingConfigService }   from "@/services/pricingConfigService";
+import { benchmarkConfigService } from "@/services/benchmarkConfigService";
 import { PricingTable }       from "@/components/configuracoes/pricing-table";
 import { CombinedFactorTable } from "@/components/configuracoes/combined-factor-table";
 import { DeflatorTable }      from "@/components/configuracoes/deflator-table";
+import { BenchmarkTable }     from "@/components/configuracoes/benchmark-table";
 import { Separator } from "@/components/ui/separator";
-import { DollarSign, BarChart3, TrendingDown, Table2 } from "lucide-react";
+import { DollarSign, BarChart3, TrendingDown, Table2, LineChart } from "lucide-react";
 
 export const metadata = { title: "Configurações — Gestor de Demandas" };
 
 export default async function ConfiguracoesPage() {
   await requireRole(["ADMIN"]);
 
-  const [pricingRows, combinedRows, deflatorRows] = await Promise.all([
+  const [pricingRows, combinedRows, deflatorRows, benchmarkRates, benchmarkAccelerator] = await Promise.all([
     pricingConfigService.getAll(),
     pricingConfigService.getAllCombinedFactors(),
     pricingConfigService.getAllDeflatorFactors(),
+    benchmarkConfigService.getAllRates(),
+    benchmarkConfigService.getAccelerator(),
   ]);
 
   return (
@@ -73,6 +77,24 @@ export default async function ConfiguracoesPage() {
           &ldquo;DU&rdquo; = dias úteis (seg–sex). Fator entre 0 e 1 (ex: 0.75 = −25%).
         </p>
         <DeflatorTable initialRows={deflatorRows} />
+      </section>
+
+      <Separator />
+
+      {/* ── Tabela 4: Benchmark de mercado ──────────────────────────────── */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <LineChart className="h-5 w-5 text-brand-primary" />
+          <h2 className="text-lg font-semibold">Benchmark de mercado</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Taxa de mercado por perfil técnico e acelerador de equipe usados para calcular a economia
+          gerada em relação ao mercado. Fórmula:{" "}
+          <code className="text-xs bg-muted px-1 py-0.5 rounded">
+            bench = horas × taxa_mercado × (1 + acelerador × 0,10)
+          </code>.
+        </p>
+        <BenchmarkTable initialRates={benchmarkRates} initialAccelerator={benchmarkAccelerator} />
       </section>
 
       {/* ── Nota de rodapé ──────────────────────────────────────────────── */}

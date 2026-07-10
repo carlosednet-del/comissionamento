@@ -22,9 +22,9 @@ import {
   ROI_LABELS,
 } from "@/lib/demand-pricing";
 
-// Statuses que ainda não foram enviados para a diretoria — podem ter o valor recalculado
+// Statuses não aprovados pela diretoria — podem ter o valor recalculado quando a config muda
 import type { DemandStatus } from "@prisma/client";
-const RECALCULABLE_STATUSES: DemandStatus[] = ["RASCUNHO", "ABERTA", "EM_ANALISE"];
+const RECALCULABLE_STATUSES: DemandStatus[] = ["RASCUNHO", "ABERTA", "EM_ANALISE", "PRIORIZACAO_DIRETORIA"];
 
 // ── Tipos públicos ────────────────────────────────────────────────────────────
 
@@ -204,11 +204,11 @@ async function resetDeflatorFactor(daysLate: number): Promise<void> {
 
 /**
  * Recalcula estimatedDemandValue e hourlyRateSnapshot de todas as demandas
- * ainda não enviadas para a diretoria (RASCUNHO, ABERTA, EM_ANALISE) usando
- * as taxas e fatores efetivos do momento.
+ * ainda não aprovadas pela diretoria (RASCUNHO, ABERTA, EM_ANALISE, PRIORIZACAO_DIRETORIA)
+ * usando as taxas e fatores efetivos do momento.
  *
- * Demandas em PRIORIZACAO_DIRETORIA ou além NÃO são tocadas — seus valores
- * já fazem parte de uma decisão de negócio registrada.
+ * Demandas em APROVADA ou além NÃO são tocadas — seus valores já fazem parte
+ * de uma decisão de negócio registrada.
  *
  * Retorna o número de demandas atualizadas.
  */

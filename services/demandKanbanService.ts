@@ -10,9 +10,10 @@
  * ⚠ NÃO gera comissão/RV. O valor estimado é exibido apenas como informação.
  */
 
-import { demandRepository }    from "@/repositories/demandRepository";
-import { isTechnicalRole }     from "@/lib/demand-pricing";
-import { getAreasByDirector }  from "@/lib/constants/departments";
+import { demandRepository }         from "@/repositories/demandRepository";
+import { isTechnicalRole }          from "@/lib/demand-pricing";
+import { getAreasByDirector }       from "@/lib/constants/departments";
+import { compareByDirectorPriority } from "@/lib/demand-sort";
 import type { UserForPermission } from "@/server/auth/permissions";
 import type { DemandSummary, DemandStatus } from "@/types";
 import type { KanbanFiltersInput } from "@/validations/demand";
@@ -147,14 +148,11 @@ export const demandKanbanService = {
       if (col) col.push(d);
     }
 
-    // Coluna PRIORIZACAO_DIRETORIA: ordenar por directorPriorityOrder asc (nulls last)
-    const dirCol = grouped.get("PRIORIZACAO_DIRETORIA");
-    if (dirCol) {
-      dirCol.sort((a, b) => {
-        const ao = a.directorPriorityOrder ?? Infinity;
-        const bo = b.directorPriorityOrder ?? Infinity;
-        return ao - bo;
-      });
+    // Quando sortBy é "director" (padrão): re-ordena cada coluna por diretor → prioridade do diretor
+    if (!filters.sortBy || filters.sortBy === "director") {
+      for (const col of grouped.values()) {
+        col.sort(compareByDirectorPriority);
+      }
     }
 
     // Filtra colunas pela seleção do usuário (se especificada)

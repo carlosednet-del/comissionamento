@@ -281,6 +281,25 @@ model DeflatorConfig {
   @@map("deflator_configs")
 }
 
+/// Taxa de mercado por perfil técnico — benchmark externo editável pelo ADMIN.
+model BenchmarkRateConfig {
+  profile    WorkerProfile @id
+  marketRate Float
+  updatedAt  DateTime      @updatedAt
+
+  @@map("benchmark_rate_configs")
+}
+
+/// Acelerador de equipe (% de ganho de produtividade) — benchmark editável pelo ADMIN.
+/// Armazenado como linha única (id = 1). Padrão: 20 (%).
+model BenchmarkAcceleratorConfig {
+  id          Int      @id @default(1)
+  accelerator Float    @default(20)
+  updatedAt   DateTime @updatedAt
+
+  @@map("benchmark_accelerator_configs")
+}
+
 // ── Extrato mensal do desenvolvedor ───────────────────────────────
 
 /// Extrato mensal consolidado de demandas homologadas por um DEV.

@@ -44,15 +44,21 @@ const BRL_COMPACT = new Intl.NumberFormat("pt-BR", { style: "currency", currency
 
 // ── Props ─────────────────────────────────────────────────────────
 
+type BenchmarkConfig = {
+  rates:       Record<string, number>;
+  accelerator: number;
+};
+
 type Props = {
-  demand: DemandSummary;
-  actor:  UserForPermission;
-  evidenceCount?: number; // para SendToHomologationDialog
+  demand:          DemandSummary;
+  actor:           UserForPermission;
+  evidenceCount?:  number;
+  benchmarkConfig?: BenchmarkConfig;
 };
 
 // ── Componente ────────────────────────────────────────────────────
 
-export function DemandKanbanCard({ demand, actor, evidenceCount = 0 }: Props) {
+export function DemandKanbanCard({ demand, actor, evidenceCount = 0, benchmarkConfig }: Props) {
   const demandPerm = {
     id:         demand.id,
     creatorId:  demand.creator.id,
@@ -87,10 +93,12 @@ export function DemandKanbanCard({ demand, actor, evidenceCount = 0 }: Props) {
     demand.assigneeProfileSnapshot != null
   )
     ? calculateBenchmarkEconomy({
-        estimatedHours: demand.estimatedHours,
-        workerProfile:  demand.assigneeProfileSnapshot,
-        ourHourlyRate:  demand.hourlyRateSnapshot ?? undefined,
-        ourValue:       demand.estimatedDemandValue ?? undefined,
+        estimatedHours:   demand.estimatedHours,
+        workerProfile:    demand.assigneeProfileSnapshot,
+        ourHourlyRate:    demand.hourlyRateSnapshot ?? undefined,
+        ourValue:         demand.estimatedDemandValue ?? undefined,
+        marketHourlyRate: benchmarkConfig?.rates[demand.assigneeProfileSnapshot as string],
+        teamAccelerator:  benchmarkConfig?.accelerator,
       })
     : null;
 

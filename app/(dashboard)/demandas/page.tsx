@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAuth, toPermissionUser } from "@/server/auth/helpers";
 import { canCreateDemand, canDeleteDemand, canViewBenchmark } from "@/server/auth/permissions";
 import { demandService } from "@/services/demandService";
+import { benchmarkConfigService } from "@/services/benchmarkConfigService";
 import { DemandStats } from "@/components/demandas/demand-stats";
 import { DemandFilters } from "@/components/demandas/demand-filters";
 import { DemandTable } from "@/components/demandas/demand-table";
@@ -49,9 +50,11 @@ export default async function DemandasPage({
     pageSize: 20,
   };
 
-  const [result, stats] = await Promise.all([
+  const [result, stats, benchRates, benchAccel] = await Promise.all([
     demandService.listDemands(filters),
     demandService.getStats(),
+    benchmarkConfigService.getEffectiveRates(),
+    benchmarkConfigService.getAccelerator(),
   ]);
 
   const userCanCreate    = canCreateDemand(actor);
@@ -102,6 +105,7 @@ export default async function DemandasPage({
         totalPages={result.totalPages}
         canDelete={userCanDelete}
         showBenchmark={userCanBenchmark}
+        benchmarkConfig={{ rates: benchRates, accelerator: benchAccel.accelerator }}
       />
     </div>
   );

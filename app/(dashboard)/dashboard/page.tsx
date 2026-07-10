@@ -3,6 +3,7 @@ import { prisma }            from "@/lib/prisma";
 import { dashboardService }  from "@/services/dashboardService";
 import { canViewBenchmark }  from "@/server/auth/permissions";
 import { calculateBenchmarkTotals } from "@/lib/benchmark/calculateBenchmarkTotals";
+import { benchmarkConfigService } from "@/services/benchmarkConfigService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MonthlySummaryFilters } from "@/components/dashboard/monthly-summary-filters";
 import { MonthlySummaryTable }   from "@/components/dashboard/monthly-summary-table";
@@ -128,21 +129,25 @@ export default async function DashboardPage({
   const showBenchmark = canViewBenchmark(actor);
   let benchTotals = null;
   if (showBenchmark) {
-    const benchDemands = await prisma.demand.findMany({
-      where: {
-        ...demandWhere,
-        estimatedHours: { gt: 0 },
-        assigneeProfileSnapshot: { not: null },
-        status: { notIn: ["CANCELADA", "REPROVADA"] },
-      },
-      select: {
-        estimatedHours:          true,
-        assigneeProfileSnapshot: true,
-        estimatedDemandValue:    true,
-        hourlyRateSnapshot:      true,
-      },
-    });
-    benchTotals = calculateBenchmarkTotals(benchDemands);
+    const [benchDemands, benchRates, benchAccel] = await Promise.all([
+      prisma.demand.findMany({
+        where: {
+          ...demandWhere,
+          estimatedHours: { gt: 0 },
+          assigneeProfileSnapshot: { not: null },
+          status: { notIn: ["CANCELADA", "REPROVADA"] },
+        },
+        select: {
+          estimatedHours:          true,
+          assigneeProfileSnapshot: true,
+          estimatedDemandValue:    true,
+          hourlyRateSnapshot:      true,
+        },
+      }),
+      benchmarkConfigService.getEffectiveRates(),
+      benchmarkConfigService.getAccelerator(),
+    ]);
+    benchTotals = calculateBenchmarkTotals(benchDemands, { rates: benchRates, accelerator: benchAccel.accelerator });
   }
 
   return (

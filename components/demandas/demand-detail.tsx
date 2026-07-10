@@ -40,10 +40,16 @@ import type { ComplexityLevel, RoiLevel, WorkerProfile } from "@prisma/client";
 
 type AuditLogEntry = AuditLog & { user: { id: string; name: string } };
 
+type BenchmarkConfig = {
+  rates:       Record<string, number>;
+  accelerator: number;
+};
+
 type Props = {
-  demand:    DemandWithRelations;
-  actor:     UserForPermission;
-  auditLogs: AuditLogEntry[];
+  demand:          DemandWithRelations;
+  actor:           UserForPermission;
+  auditLogs:       AuditLogEntry[];
+  benchmarkConfig?: BenchmarkConfig;
 };
 
 function fmtDate(d: Date | string | null | undefined): string {
@@ -67,7 +73,7 @@ function OptionalText({ value }: { value: string | null | undefined }) {
   return <span className="whitespace-pre-wrap">{value}</span>;
 }
 
-export function DemandDetail({ demand, actor, auditLogs }: Props) {
+export function DemandDetail({ demand, actor, auditLogs, benchmarkConfig }: Props) {
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, startTransition]  = useTransition();
@@ -392,6 +398,8 @@ export function DemandDetail({ demand, actor, auditLogs }: Props) {
               ourHourlyRate={demand.hourlyRateSnapshot ?? undefined}
               ourValue={demand.estimatedDemandValue ?? undefined}
               isCorrectionOnly={!demandTypeGeneratesValue(demand.demandType as never)}
+              marketHourlyRate={benchmarkConfig?.rates[demand.assigneeProfileSnapshot as string]}
+              teamAccelerator={benchmarkConfig?.accelerator}
             />
           )}
         </div>

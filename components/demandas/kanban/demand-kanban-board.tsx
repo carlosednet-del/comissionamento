@@ -86,14 +86,21 @@ const COLUMN_ACCENT: Record<string, string> = {
 
 // ── DraggableCard ─────────────────────────────────────────────────
 
+type BenchmarkConfig = {
+  rates:       Record<string, number>;
+  accelerator: number;
+};
+
 function DraggableCard({
   demand,
   actor,
   isDragOverlay = false,
+  benchmarkConfig,
 }: {
   demand: DemandSummary;
   actor:  UserForPermission;
   isDragOverlay?: boolean;
+  benchmarkConfig?: BenchmarkConfig;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id:   demand.id,
@@ -133,7 +140,7 @@ function DraggableCard({
 
       {/* Card (com margem à esquerda para a alça) */}
       <div className="pl-5">
-        <DemandKanbanCard demand={demand} actor={actor} />
+        <DemandKanbanCard demand={demand} actor={actor} benchmarkConfig={benchmarkConfig} />
       </div>
     </div>
   );
@@ -146,11 +153,13 @@ function DroppableColumn({
   actor,
   activeId,
   activeDemand,
+  benchmarkConfig,
 }: {
-  column:        KanbanColumnType;
-  actor:         UserForPermission;
-  activeId:      UniqueIdentifier | null;
-  activeDemand:  DemandSummary | null;
+  column:          KanbanColumnType;
+  actor:           UserForPermission;
+  activeId:        UniqueIdentifier | null;
+  activeDemand:    DemandSummary | null;
+  benchmarkConfig?: BenchmarkConfig;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.status });
   const cfg = STATUS_CONFIG[column.status];
@@ -208,6 +217,7 @@ function DroppableColumn({
               key={demand.id}
               demand={demand}
               actor={actor}
+              benchmarkConfig={benchmarkConfig}
             />
           ))
         )}
@@ -226,11 +236,12 @@ function DroppableColumn({
 // ── Board principal ───────────────────────────────────────────────
 
 type Props = {
-  board: KanbanBoard;
-  actor: UserForPermission;
+  board:           KanbanBoard;
+  actor:           UserForPermission;
+  benchmarkConfig?: BenchmarkConfig;
 };
 
-export function DemandKanbanBoard({ board, actor }: Props) {
+export function DemandKanbanBoard({ board, actor, benchmarkConfig }: Props) {
   // Estado local para updates otimistas
   const [columns, setColumns] = useState<KanbanColumnType[]>(board.columns);
 
@@ -367,6 +378,7 @@ export function DemandKanbanBoard({ board, actor }: Props) {
                 actor={actor}
                 activeId={activeId}
                 activeDemand={activeDemand}
+                benchmarkConfig={benchmarkConfig}
               />
             ))}
           </div>

@@ -16,6 +16,7 @@ type Props = {
   complexityMultiplier?: number;
   roiMultiplier?:        number;
   teamAccelerator?:      number;
+  marketHourlyRate?:     number;
   isCorrectionOnly?:     boolean;
 };
 
@@ -63,6 +64,7 @@ export function BenchmarkSummaryCard({
   complexityMultiplier,
   roiMultiplier,
   teamAccelerator,
+  marketHourlyRate,
   isCorrectionOnly = false,
 }: Props) {
   const result = calculateBenchmarkEconomy({
@@ -73,6 +75,7 @@ export function BenchmarkSummaryCard({
     complexityMultiplier,
     roiMultiplier,
     teamAccelerator,
+    marketHourlyRate,
   });
 
   const accel = teamAccelerator ?? TEAM_ACCELERATOR;

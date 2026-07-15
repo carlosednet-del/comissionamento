@@ -15,10 +15,10 @@ PORT="${PORT:-3001}"
 
 cd "$SRC_DIR"
 
-echo "==> [1/6] npm ci"
+echo "==> [1/7] npm ci"
 npm ci
 
-echo "==> [2/6] carregar env (CRLF normalizado, NODE_ENV fora do ambiente)"
+echo "==> [2/7] carregar env (CRLF normalizado, NODE_ENV fora do ambiente)"
 if [ ! -f .env.local ]; then
   echo "ERRO: $SRC_DIR/.env.local nao existe. Crie-o antes do primeiro deploy." >&2
   exit 1
@@ -27,33 +27,56 @@ sed -i 's/\r$//' .env.local
 set -a; . ./.env.local; set +a
 unset NODE_ENV   # critico: NODE_ENV no ambiente quebra o build standalone
 
-echo "==> [3/6] prisma generate + migrate deploy"
+echo "==> [3/7] prisma generate + migrate deploy"
 npx prisma generate
 npx prisma migrate deploy
 
-echo "==> [4/6] build standalone (limpo)"
+echo "==> [4/7] build standalone (limpo)"
 rm -rf .next
 npm run build
 
-echo "==> [5/6] montar runtime em $APP_DIR"
+echo "==> [5/7] montar runtime em $APP_DIR"
 mkdir -p "$APP_DIR"
 # standalone (preserva .env* que porventura existam no APP_DIR)
-rsync -a --delete --exclude='.env' --exclude='.env.local' .next/standalone/ "$APP_DIR/"
+rsync -a --delete --exclude='.env' --exclude='.env.local' --exclude='ecosystem.config.js' .next/standalone/ "$APP_DIR/"
 mkdir -p "$APP_DIR/.next/static"
 rsync -a --delete .next/static/ "$APP_DIR/.next/static/"
 mkdir -p "$APP_DIR/prisma"
 cp prisma/schema.prisma "$APP_DIR/prisma/"
 rsync -a --delete prisma/migrations/ "$APP_DIR/prisma/migrations/"
 
-echo "==> [6/6] (re)start pm2 na porta $PORT"
+echo "==> [6/7] gerar ecosystem.config.js com variaveis de ambiente"
+# Gera o arquivo de configuracao do PM2 com todas as vars do .env.local
+# injetadas estaticamente — assim pm2 reload/restart sempre tem o env correto.
+node -e "
+const fs = require('fs');
+const env = {};
+// copia todas as vars do processo atual (carregadas do .env.local pelo set -a)
+for (const [k, v] of Object.entries(process.env)) {
+  if (v !== undefined) env[k] = v;
+}
+// garante vars criticas
+env.PORT = '${PORT}';
+env.HOSTNAME = '0.0.0.0';
+env.NODE_ENV = 'production';
+const config = {
+  apps: [{
+    name: '${APP_NAME}',
+    script: './server.js',
+    cwd: '${APP_DIR}',
+    env,
+  }]
+};
+fs.writeFileSync('${APP_DIR}/ecosystem.config.js', 'module.exports = ' + JSON.stringify(config, null, 2));
+console.log('ecosystem.config.js gerado com', Object.keys(env).length, 'variaveis');
+"
+
+echo "==> [7/7] (re)start pm2 via ecosystem.config.js na porta $PORT"
 cd "$APP_DIR"
-set -a; . "$SRC_DIR/.env.local"; set +a
-unset NODE_ENV
-export PORT
 if pm2 describe "$APP_NAME" > /dev/null 2>&1; then
-  pm2 restart "$APP_NAME" --update-env
+  pm2 reload ecosystem.config.js --update-env
 else
-  pm2 start "$APP_DIR/server.js" --name "$APP_NAME"
+  pm2 start ecosystem.config.js
 fi
 pm2 save
 

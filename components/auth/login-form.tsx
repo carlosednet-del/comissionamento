@@ -18,7 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { AlertCircle, Eye, EyeOff, Loader2, LogIn } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { signIn } from "next-auth/react";
 
 function MicrosoftIcon({ className }: { className?: string }) {
   return (
@@ -61,18 +61,9 @@ export function LoginForm({ next }: { next?: string }) {
     setServerError(null);
     setMicrosoftLoading(true);
     try {
-      const supabase = createClient();
       const redirectPath = next && /^\/[^/]/.test(next) ? next : "/dashboard";
-      const redirectTo = `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(redirectPath)}`;
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "azure",
-        options: { redirectTo, scopes: "email profile openid" },
-      });
-      if (error) {
-        setServerError("Erro ao conectar com Microsoft. Tente novamente.");
-        setMicrosoftLoading(false);
-      }
-      // sucesso: o browser será redirecionado automaticamente para a Microsoft
+      await signIn("microsoft-entra-id", { redirectTo: redirectPath });
+      // NextAuth redireciona automaticamente para a Microsoft
     } catch {
       setServerError("Erro ao conectar com Microsoft. Tente novamente.");
       setMicrosoftLoading(false);

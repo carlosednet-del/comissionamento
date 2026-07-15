@@ -1,76 +1,65 @@
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import type { UserRole } from "@prisma/client";
+import type { UserRole, WorkerProfile } from "@prisma/client";
 import type { UserForPermission } from "@/server/auth/permissions";
 
 export type SessionUser = {
-  id: string;
-  authUserId: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  isActive: boolean;
-  workerProfile: string | null;
+  id:                  string;
+  authUserId:          string | null;
+  name:                string;
+  email:               string;
+  role:                UserRole;
+  isActive:            boolean;
+  workerProfile:       WorkerProfile | null;
   forcePasswordChange: boolean;
 };
 
 /**
- * Retorna o usuário autenticado atual (sessão Supabase + registro DB).
+ * Retorna o usuário autenticado atual lido do banco.
+ * Usa o ID da sessão NextAuth para buscar dados frescos no Prisma.
  * Retorna null se não houver sessão ou usuário não existir no DB.
  */
 export async function getCurrentUser(): Promise<SessionUser | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
+  const session = await auth();
+  if (!session?.user?.id) return null;
 
   const dbUser = await prisma.user.findUnique({
-    where: { authUserId: user.id },
+    where: { id: session.user.id },
     select: {
-      id: true,
-      authUserId: true,
-      name: true,
-      email: true,
-      role: true,
-      isActive: true,
-      workerProfile: true,
+      id:                  true,
+      authUserId:          true,
+      name:                true,
+      email:               true,
+      role:                true,
+      isActive:            true,
+      workerProfile:       true,
       forcePasswordChange: true,
     },
   });
 
-  if (!dbUser || !dbUser.authUserId) return null;
-
+  if (!dbUser) return null;
   return dbUser as SessionUser;
 }
 
 /**
  * Exige autenticação. Redireciona para /login se não autenticado.
- * Redireciona para /sem-perfil se há sessão Supabase mas sem registro no DB.
+ * Redireciona para /sem-perfil se há sessão mas sem registro no DB.
  */
 export async function requireAuth(): Promise<SessionUser> {
+  const session = await auth();
+
+  if (!session?.user?.id) redirect("/login");
+
   const user = await getCurrentUser();
-
-  if (!user) {
-    // Distingue: sem sessão Supabase vs. sessão existe mas sem perfil no DB
-    const supabase = await createClient();
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (authUser) {
-      // Usuário autenticado no Supabase mas sem registro na tabela users
-      redirect("/sem-perfil");
-    }
-    redirect("/login");
-  }
-
+  if (!user) redirect("/sem-perfil");
   if (!user.isActive) redirect("/acesso-bloqueado");
+
   return user;
 }
 
 /**
  * Exige autenticação E um dos papéis informados.
- * Redireciona para /dashboard com erro se não tiver permissão.
  */
 export async function requireRole(roles: UserRole[]): Promise<SessionUser> {
   const user = await requireAuth();

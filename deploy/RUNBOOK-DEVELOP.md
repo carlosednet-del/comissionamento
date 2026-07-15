@@ -12,9 +12,8 @@
 | URL | https://devvariavelit.7lm.app.br |
 | Porta | `3001` |
 | Processo pm2 | `comissionamento` |
-| Pasta de build (clone) | `/var/www/_src/comissionamento` |
-| Pasta de runtime | `/var/www/comissionamento` (standalone) |
-| Modelo de execução | **standalone** (`.next/standalone/server.js`) |
+| Pasta de build **e** runtime | `/var/www/_src/comissionamento` (pasta única) |
+| Modelo de execução | **`next start`** (lê o `.env.local` nativamente em runtime) |
 | Workflow | `.github/workflows/deploy-develop.yml` |
 | Script | `deploy/deploy-develop.sh` |
 
@@ -23,8 +22,9 @@
 1. Push/merge na `develop` dispara o workflow (GitHub Actions).
 2. A Action conecta por SSH no servidor (`appleboy/ssh-action`).
 3. No servidor: `git fetch` + `reset --hard origin/develop` → `bash deploy/deploy-develop.sh`.
-4. O script: `npm ci` → `prisma generate` + `migrate deploy` → `build` (standalone) →
-   `rsync` para `/var/www/comissionamento` → `pm2 restart comissionamento` → health check `:3001`.
+4. O script: `npm ci` → export do `.env.local` (o Prisma CLI só lê `.env`) → `prisma generate` +
+   `migrate deploy` → `build` → gera `ecosystem.config.js` (cwd no `_src`) → `pm2 delete`+`start`
+   → health check `:3001`. Não há mais cópia para `/var/www/comissionamento`.
 
 Sem gate de aprovação — o merge já publica no teste.
 

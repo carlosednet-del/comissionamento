@@ -33,17 +33,21 @@ server {
     # Tamanho máximo de upload (evidências de imagem)
     client_max_body_size 10M;
 
-    # Arquivos estáticos Next.js — cache agressivo
+    # Arquivos estáticos Next.js — cache agressivo.
+    # IMPORTANTE: o alias precisa apontar para a MESMA pasta de onde o app
+    # roda (cwd do pm2). Modelo pasta única = onde ocorre o `next build`.
+    # Se preferir evitar esse acoplamento, remova este bloco e deixe o Next
+    # servir os estáticos via proxy_pass abaixo.
     location /_next/static/ {
-        alias /var/www/gestor-demandas/.next/static/;
+        alias /var/www/_src/comissionamento/.next/static/;
         expires 1y;
         add_header Cache-Control "public, immutable";
         access_log off;
     }
 
-    # Proxy para o servidor Next.js
+    # Proxy para o servidor Next.js (next start -p 3001)
     location / {
-        proxy_pass         http://127.0.0.1:3000;
+        proxy_pass         http://127.0.0.1:3001;
         proxy_http_version 1.1;
         proxy_set_header   Upgrade $http_upgrade;
         proxy_set_header   Connection 'upgrade';

@@ -121,7 +121,7 @@ export default async function LoginPage({
             </Alert>
           )}
 
-          <LoginForm next={sp.next} />
+          <LoginForm next={sp.next} microsoftEnabled={!!process.env.AUTH_MICROSOFT_ENTRA_ID_ID} />
 
           <p className="mt-10 text-center text-xs text-brand-text-muted/60">
             Gestor de Demandas Técnicas

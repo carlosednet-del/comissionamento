@@ -5,10 +5,8 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   : ["localhost:3000"];
 
 const nextConfig: NextConfig = {
-  output: "standalone",
-  // Garante que o file-tracing aponte para este projeto e não para
-  // um package-lock.json pai detectado automaticamente.
-  outputFileTracingRoot: process.cwd(),
+  // Sem "output: standalone": o app roda em pasta única via `next start`,
+  // que carrega o .env.local nativamente em runtime (ver deploy/deploy-develop.sh).
   experimental: {
     serverActions: {
       allowedOrigins,

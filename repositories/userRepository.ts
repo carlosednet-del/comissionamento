@@ -34,11 +34,12 @@ export const userRepository = {
   },
 
   async create(
-    data: Omit<CreateUserInput, "password"> & { authUserId: string },
+    data: Omit<CreateUserInput, "password"> & { authUserId?: string | null; passwordHash?: string },
   ) {
     return prisma.user.create({
       data: {
-        authUserId:          data.authUserId,
+        authUserId:          data.authUserId          ?? null,
+        passwordHash:        data.passwordHash        ?? null,
         name:                data.name,
         email:               data.email,
         role:                data.role,

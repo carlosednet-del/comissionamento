@@ -1,18 +1,19 @@
 "use server";
 
+import { signIn, signOut } from "@/auth";
 import { redirect } from "next/navigation";
-import { authService } from "@/services/authService";
 import { loginSchema, changePasswordSchema, type LoginInput, type ChangePasswordInput } from "@/validations/auth";
 import { requireAuth } from "@/server/auth/helpers";
+import { authService } from "@/services/authService";
 import { userRepository } from "@/repositories/userRepository";
 import { auditService } from "@/services/auditService";
 import { getRequestMetadata } from "@/lib/statement/getRequestMetadata";
 import { checkLoginRateLimit, resetLoginRateLimit } from "@/lib/rate-limit";
 import type { ActionResult } from "@/types";
 import { ZodError } from "zod";
+import { AuthError } from "next-auth";
 
-/** Papéis que têm acesso ao dashboard. Os demais caem em /demandas. */
-const DASHBOARD_ROLES = ["ADMIN", "GESTOR", "FINANCEIRO", "DEV"];
+const DASHBOARD_ROLES = ["ADMIN", "GESTOR", "FINANCEIRO", "DEV", "DIRETOR"];
 
 export async function loginAction(input: LoginInput): Promise<ActionResult<{ redirectTo: string }>> {
   try {
@@ -25,26 +26,24 @@ export async function loginAction(input: LoginInput): Promise<ActionResult<{ red
       return { success: false, error: `Muitas tentativas. Aguarde ${minutes} minuto(s) antes de tentar novamente.` };
     }
 
-    await authService.login(input);
+    await signIn("credentials", { ...input, redirect: false });
     resetLoginRateLimit(`login:${ip}`);
 
-    // Descobre o papel e estado do usuário para redirecionar corretamente
     const { getCurrentUser } = await import("@/server/auth/helpers");
     const user = await getCurrentUser();
 
-    // Troca obrigatória de senha tem prioridade sobre qualquer outro redirect
     if (user?.forcePasswordChange) {
       return { success: true, data: { redirectTo: "/change-password" } };
     }
 
-    const redirectTo = user && DASHBOARD_ROLES.includes(user.role)
-      ? "/dashboard"
-      : "/demandas";
-
+    const redirectTo = user && DASHBOARD_ROLES.includes(user.role) ? "/dashboard" : "/demandas";
     return { success: true, data: { redirectTo } };
   } catch (error) {
     if (error instanceof ZodError) {
       return { success: false, error: "Dados inválidos", details: error.flatten() };
+    }
+    if (error instanceof AuthError) {
+      return { success: false, error: "E-mail ou senha incorretos" };
     }
     if (error instanceof Error) {
       return { success: false, error: error.message };
@@ -54,7 +53,7 @@ export async function loginAction(input: LoginInput): Promise<ActionResult<{ red
 }
 
 export async function logoutAction(): Promise<void> {
-  await authService.logout();
+  await signOut({ redirect: false });
   redirect("/login");
 }
 
@@ -63,16 +62,11 @@ export async function updatePasswordAction(
 ): Promise<ActionResult<void>> {
   try {
     const session = await requireAuth();
-
     changePasswordSchema.parse(input);
 
-    // Atualiza senha no Supabase Auth + seta forcePasswordChange = false nos metadados
-    await authService.updateCurrentUserPassword(input.newPassword);
-
-    // Atualiza flag no banco
+    await authService.updateCurrentUserPassword(session.id, input.newPassword);
     await userRepository.setForcePasswordChange(session.id, false);
 
-    // Auditoria (sem registrar senha)
     const meta = await getRequestMetadata();
     await auditService.log({
       entity:   "User",
@@ -85,9 +79,10 @@ export async function updatePasswordAction(
     return { success: true, data: undefined };
   } catch (e) {
     if (e instanceof ZodError) {
-      const firstError = Object.values(e.flatten().fieldErrors)[0]?.[0]
-        ?? e.flatten().formErrors[0]
-        ?? "Dados inválidos.";
+      const firstError =
+        Object.values(e.flatten().fieldErrors)[0]?.[0] ??
+        e.flatten().formErrors[0] ??
+        "Dados inválidos.";
       return { success: false, error: firstError };
     }
     return { success: false, error: e instanceof Error ? e.message : "Erro ao atualizar senha." };

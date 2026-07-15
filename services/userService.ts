@@ -47,17 +47,11 @@ export const userService = {
     const existing = await userRepository.findByEmail(data.email);
     if (existing) throw new EmailAlreadyExistsError(data.email);
 
-    // 1. Criar no Supabase Auth
-    const authUser = await authService.createAuthUser({
-      email: data.email,
-      password: data.password,
-      role: data.role,
-      isActive: data.isActive ?? true,
-    });
+    // Cria hash bcrypt da senha temporária
+    const passwordHash = await authService.hashPassword(data.password);
 
-    // 2. Criar no banco com authUserId
+    // Cria no banco com passwordHash (sem Supabase Auth)
     const user = await userRepository.create({
-      authUserId:         authUser.id,
       name:               data.name,
       email:              data.email,
       role:               data.role,
@@ -66,6 +60,7 @@ export const userService = {
       monthlyCapValue:    data.monthlyCapValue,
       technicalSpecialty: data.technicalSpecialty,
       isActive:           data.isActive ?? true,
+      passwordHash,
     });
 
     await auditService.log({
@@ -96,17 +91,6 @@ export const userService = {
 
     const updated = await userRepository.update(id, data);
 
-    // Sincronizar metadata no Supabase Auth se role ou isActive mudou
-    if (
-      existing.authUserId &&
-      (data.role !== existing.role || data.isActive !== existing.isActive)
-    ) {
-      await authService.updateAuthUserMetadata(existing.authUserId, {
-        ...(data.role !== existing.role && { role: data.role }),
-        ...(data.isActive !== undefined && data.isActive !== existing.isActive && { isActive: data.isActive }),
-      });
-    }
-
     await auditService.log({
       entity: "User",
       entityId: id,
@@ -131,10 +115,6 @@ export const userService = {
 
     const updated = await userRepository.activate(id);
 
-    if (existing.authUserId) {
-      await authService.updateAuthUserMetadata(existing.authUserId, { isActive: true });
-    }
-
     await auditService.log({
       entity: "User",
       entityId: id,
@@ -158,10 +138,6 @@ export const userService = {
     });
 
     const updated = await userRepository.deactivate(id);
-
-    if (existing.authUserId) {
-      await authService.updateAuthUserMetadata(existing.authUserId, { isActive: false });
-    }
 
     await auditService.log({
       entity: "User",
@@ -188,10 +164,6 @@ export const userService = {
     if (!existing) throw new UserNotFoundError(id);
 
     const updated = await userRepository.setForcePasswordChange(id, true);
-
-    if (existing.authUserId) {
-      await authService.updateAuthUserMetadata(existing.authUserId, { forcePasswordChange: true });
-    }
 
     await auditService.log({
       entity:   "User",
@@ -254,18 +226,5 @@ export const userService = {
       await tx.user.delete({ where: { id } });
     });
 
-    // 6. Remove do Supabase Auth (fora da transação — operação externa)
-    if (existing.authUserId) {
-      try {
-        await authService.deleteAuthUser(existing.authUserId);
-      } catch (authErr) {
-        // Não reverte a transação — o banco já está limpo.
-        // Loga para facilitar diagnóstico (ex.: usuário já removido do Auth).
-        console.warn(
-          `[deleteUser] falha ao remover authUserId ${existing.authUserId} do Supabase Auth:`,
-          authErr instanceof Error ? authErr.message : authErr,
-        );
-      }
-    }
   },
 };

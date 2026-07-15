@@ -22,27 +22,29 @@ cd "$SRC_DIR"
 echo "==> [1/6] npm ci"
 npm ci
 
-echo "==> [2/6] validar .env.local (CRLF normalizado)"
+echo "==> [2/6] carregar .env.local (CRLF normalizado)"
 if [ ! -f .env.local ]; then
   echo "ERRO: $SRC_DIR/.env.local nao existe. Crie-o antes do primeiro deploy." >&2
   exit 1
 fi
 sed -i 's/\r$//' .env.local
-# Vars criticas que o app precisa em runtime (NextAuth). Falha cedo se faltarem.
+# Vars criticas que o app precisa em runtime (NextAuth). Avisa se faltarem.
 for var in AUTH_SECRET AUTH_URL AUTH_MICROSOFT_ENTRA_ID_ISSUER; do
   if ! grep -qE "^${var}=" .env.local; then
     echo "AVISO: ${var} nao encontrado em .env.local" >&2
   fi
 done
+# O Prisma CLI (generate/migrate) le apenas .env, NAO .env.local. Entao
+# exportamos as vars para o ambiente do shell durante os passos de build
+# (o runtime nao depende disso: `next start` le o .env.local nativamente).
+set -a; . ./.env.local; set +a
+unset NODE_ENV   # critico: NODE_ENV herdado quebra o `next build`
 
 echo "==> [3/6] prisma generate + migrate deploy"
 npx prisma generate
 npx prisma migrate deploy
 
 echo "==> [4/6] build (limpo)"
-# Blindagem: NODE_ENV herdado no ambiente pode quebrar o `next build`.
-# Nao sourçamos o .env.local (Next/Prisma leem sozinhos em runtime).
-unset NODE_ENV || true
 rm -rf .next
 npm run build
 

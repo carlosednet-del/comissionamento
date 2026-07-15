@@ -31,7 +31,7 @@ function MicrosoftIcon({ className }: { className?: string }) {
   );
 }
 
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({ next, microsoftEnabled = false }: { next?: string; microsoftEnabled?: boolean }) {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -81,33 +81,37 @@ export function LoginForm({ next }: { next?: string }) {
         </Alert>
       )}
 
-      {/* Botão Microsoft */}
-      <Button
-        type="button"
-        variant="outline"
-        disabled={microsoftLoading || isSubmitting}
-        onClick={handleMicrosoftLogin}
-        className="h-11 w-full rounded-xl border-slate-200 bg-white font-semibold text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:shadow-md active:scale-[0.98] disabled:opacity-60"
-      >
-        {microsoftLoading ? (
-          <span className="flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Redirecionando...
-          </span>
-        ) : (
-          <span className="flex items-center gap-2">
-            <MicrosoftIcon className="h-4 w-4 shrink-0" />
-            Entrar com Microsoft
-          </span>
-        )}
-      </Button>
+      {/* Botão Microsoft — só aparece quando o provider está configurado */}
+      {microsoftEnabled && (
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={microsoftLoading || isSubmitting}
+            onClick={handleMicrosoftLogin}
+            className="h-11 w-full rounded-xl border-slate-200 bg-white font-semibold text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:shadow-md active:scale-[0.98] disabled:opacity-60"
+          >
+            {microsoftLoading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Redirecionando...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <MicrosoftIcon className="h-4 w-4 shrink-0" />
+                Entrar com Microsoft
+              </span>
+            )}
+          </Button>
 
-      {/* Divisor */}
-      <div className="relative flex items-center gap-3">
-        <div className="h-px flex-1 bg-slate-200" />
-        <span className="text-xs text-slate-400">ou</span>
-        <div className="h-px flex-1 bg-slate-200" />
-      </div>
+          {/* Divisor */}
+          <div className="relative flex items-center gap-3">
+            <div className="h-px flex-1 bg-slate-200" />
+            <span className="text-xs text-slate-400">ou</span>
+            <div className="h-px flex-1 bg-slate-200" />
+          </div>
+        </>
+      )}
 
       {/* Formulário email + senha */}
       <Form {...form}>

@@ -57,16 +57,16 @@ async function fetchDemandsForPeriod(month: number, year: number) {
   const { gte, lte } = periodBounds(month, year);
   return prisma.demand.findMany({
     where: {
-      status:          "HOMOLOGADA_PRODUCAO",
-      homologationDate: { gte, lte },
-      assigneeId:      { not: null },
+      status:            "HOMOLOGADA_PRODUCAO",
+      actualDeliveryDate: { gte, lte },
+      assigneeId:        { not: null },
     },
     include: {
       assignee: {
         select: { id: true, name: true, email: true, workerProfile: true },
       },
     },
-    orderBy: [{ assigneeId: "asc" }, { homologationDate: "asc" }],
+    orderBy: [{ assigneeId: "asc" }, { actualDeliveryDate: "asc" }],
   });
 }
 

@@ -1,6 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { loginSchema, type LoginInput } from "@/validations/auth";
+import bcrypt from "bcryptjs";
+import { prisma } from "@/lib/prisma";
 import type { UserRole } from "@prisma/client";
 
 export class AuthError extends Error {
@@ -11,110 +10,33 @@ export class AuthError extends Error {
 }
 
 export const authService = {
-  async login(input: LoginInput) {
-    const { email, password } = loginSchema.parse(input);
-    const supabase = await createClient();
-
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      if (error.message.includes("Invalid login credentials")) {
-        throw new AuthError("E-mail ou senha incorretos");
-      }
-      throw new AuthError("Erro ao autenticar. Tente novamente mais tarde.");
-    }
-
-    return data;
+  /** Cria o hash bcrypt da senha — usado ao criar ou redefinir usuários. */
+  async hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, 12);
   },
 
-  async logout() {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.signOut();
-    if (error) throw new AuthError(error.message);
+  /** Atualiza a senha do usuário armazenando o hash bcrypt no banco. */
+  async updateCurrentUserPassword(userId: string, newPassword: string): Promise<void> {
+    const hash = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({
+      where: { id: userId },
+      data:  { passwordHash: hash, forcePasswordChange: false },
+    });
   },
 
-  async getSession() {
-    const supabase = await createClient();
-    const { data } = await supabase.auth.getSession();
-    return data.session;
-  },
-
-  /** Cria usuário no Supabase Auth via service role (server-side only) */
-  async createAuthUser(params: {
-    email: string;
-    password: string;
-    role: UserRole;
-    isActive: boolean;
-  }) {
-    const admin = createAdminClient();
-
-    const authPayload = {
-      email:         params.email,
-      password:      params.password,
-      email_confirm: true,
-      user_metadata: { role: params.role, isActive: params.isActive, forcePasswordChange: true },
-    };
-
-    const { data, error } = await admin.auth.admin.createUser(authPayload);
-
-    // E-mail já cadastrado no Auth mas sem registro no banco (usuário excluído
-    // permanentemente enquanto a remoção do Auth falhou silenciosamente).
-    // Localiza o usuário órfão pelo e-mail, remove e recria.
-    if (error) {
-      const isEmailTaken =
-        error.message.includes("already been registered") ||
-        error.message.includes("already registered")      ||
-        error.message.includes("already exists");
-
-      if (isEmailTaken) {
-        // Lista usuários (até 1 000 — suficiente para a maioria dos ambientes)
-        const { data: list } = await admin.auth.admin.listUsers({ perPage: 1000, page: 1 });
-        const orphan = list?.users?.find((u) => u.email === params.email);
-
-        if (orphan) {
-          await admin.auth.admin.deleteUser(orphan.id);
-
-          // Tenta criar novamente após limpar o órfão
-          const { data: retry, error: retryErr } = await admin.auth.admin.createUser(authPayload);
-          if (retryErr) throw new AuthError(`Erro ao criar usuário no Auth: ${retryErr.message}`);
-          return retry.user;
-        }
-      }
-
-      throw new AuthError(`Erro ao criar usuário no Auth: ${error.message}`);
-    }
-
-    return data.user;
-  },
-
-  /** Atualiza metadata do usuário no Supabase Auth (merges com metadata existente). */
+  /**
+   * @deprecated Mantido para não quebrar chamadas existentes.
+   * Com NextAuth, o metadata do Supabase não é mais usado.
+   */
   async updateAuthUserMetadata(
-    authUserId: string,
-    metadata: { role?: UserRole; isActive?: boolean; forcePasswordChange?: boolean },
-  ) {
-    const admin = createAdminClient();
-
-    const { error } = await admin.auth.admin.updateUserById(authUserId, {
-      user_metadata: metadata,
-    });
-
-    if (error) throw new AuthError(`Erro ao atualizar metadata no Auth: ${error.message}`);
+    _authUserId: string,
+    _metadata: { role?: UserRole; isActive?: boolean; forcePasswordChange?: boolean },
+  ): Promise<void> {
+    // no-op: NextAuth lê dados direto do Prisma
   },
 
-  /** Atualiza a senha do usuário autenticado via sessão atual (não requer admin). */
-  async updateCurrentUserPassword(newPassword: string): Promise<void> {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword,
-      data: { forcePasswordChange: false },
-    });
-    if (error) throw new AuthError(`Erro ao atualizar senha: ${error.message}`);
-  },
-
-  /** Remove usuário do Supabase Auth */
-  async deleteAuthUser(authUserId: string) {
-    const admin = createAdminClient();
-    const { error } = await admin.auth.admin.deleteUser(authUserId);
-    if (error) throw new AuthError(`Erro ao remover usuário no Auth: ${error.message}`);
+  /** @deprecated Não necessário com NextAuth — mantido para compatibilidade. */
+  async deleteAuthUser(_authUserId: string): Promise<void> {
+    // no-op: sem Supabase Auth
   },
 };

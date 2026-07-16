@@ -16,7 +16,7 @@ const FEATURES = [
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
   const sp = await searchParams;
   return (
@@ -121,7 +121,7 @@ export default async function LoginPage({
             </Alert>
           )}
 
-          <LoginForm />
+          <LoginForm next={sp.next} microsoftEnabled={!!process.env.AUTH_MICROSOFT_ENTRA_ID_ID} />
 
           <p className="mt-10 text-center text-xs text-brand-text-muted/60">
             Gestor de Demandas Técnicas

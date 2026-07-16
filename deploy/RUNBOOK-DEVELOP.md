@@ -12,9 +12,8 @@
 | URL | https://devvariavelit.7lm.app.br |
 | Porta | `3001` |
 | Processo pm2 | `comissionamento` |
-| Pasta de build (clone) | `/var/www/_src/comissionamento` |
-| Pasta de runtime | `/var/www/comissionamento` (standalone) |
-| Modelo de execução | **standalone** (`.next/standalone/server.js`) |
+| Pasta de build **e** runtime | `/var/www/_src/comissionamento` (pasta única) |
+| Modelo de execução | **`next start`** (lê o `.env.local` nativamente em runtime) |
 | Workflow | `.github/workflows/deploy-develop.yml` |
 | Script | `deploy/deploy-develop.sh` |
 
@@ -23,8 +22,9 @@
 1. Push/merge na `develop` dispara o workflow (GitHub Actions).
 2. A Action conecta por SSH no servidor (`appleboy/ssh-action`).
 3. No servidor: `git fetch` + `reset --hard origin/develop` → `bash deploy/deploy-develop.sh`.
-4. O script: `npm ci` → `prisma generate` + `migrate deploy` → `build` (standalone) →
-   `rsync` para `/var/www/comissionamento` → `pm2 restart comissionamento` → health check `:3001`.
+4. O script: `npm ci` → export do `.env.local` (o Prisma CLI só lê `.env`) → `prisma generate` +
+   `migrate deploy` → `build` → gera `ecosystem.config.js` (cwd no `_src`) → `pm2 delete`+`start`
+   → health check `:3001`. Não há mais cópia para `/var/www/comissionamento`.
 
 Sem gate de aprovação — o merge já publica no teste.
 
@@ -60,7 +60,7 @@ Adicione a linha no servidor **antes** de mergear. **Nunca** colocar `NODE_ENV` 
 Pela UI: Actions → "Deploy develop" → **Run workflow** → branch `develop`.
 Ou direto no servidor:
 ```bash
-export SRC_DIR=/var/www/_src/comissionamento APP_DIR=/var/www/comissionamento APP_NAME=comissionamento PORT=3001
+export SRC_DIR=/var/www/_src/comissionamento APP_NAME=comissionamento PORT=3001
 cd "$SRC_DIR" && git fetch origin && git checkout -f develop && git reset --hard origin/develop
 bash deploy/deploy-develop.sh
 ```
@@ -92,6 +92,24 @@ Ou reverter o commit na `develop` (git revert) e deixar o auto-deploy publicar.
 - **`connection refused` na 3001** → app não subiu; ver `pm2 logs comissionamento`.
 - **Erro de Prisma engine/conexão** → checar `DATABASE_URL`/`DIRECT_URL` no `.env.local` do servidor.
 - **`ERR_TOO_MANY_REDIRECTS` no navegador** → cookie de sessão antigo; testar em janela anônima / limpar cookies do domínio.
+- **Botão "Entrar com Microsoft" não faz nada** → o servidor está lançando `TypeError: Invalid URL`
+  e o NextAuth devolve `/login?error=Configuration`. Causa: URL malformada no `.env.local`.
+  Conferir com o **mesmo loader do `next start`**:
+  ```bash
+  cd /var/www/_src/comissionamento
+  node -e "require('@next/env').loadEnvConfig(process.cwd(), false);
+    console.log('AUTH_URL=['+process.env.AUTH_URL+']');
+    console.log('ISSUER=['+process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER+']')"
+  ```
+  Ambos precisam ser **URL completa com `https://`**. Erros já vistos: `ISSUER` com só o tenant id
+  (GUID solto), `AUTH_URL` ausente, e `AUTH_URL` duplicado no arquivo.
+- **`AUTH_SECRET` ausente** → todas as rotas `/api/auth/*` respondem 500
+  "There was a problem with the server configuration".
+- **Mudou o `.env.local` e nada aconteceu** → o env só é relido ao **recriar** o processo:
+  `pm2 delete comissionamento && pm2 start ecosystem.config.js` (um `restart` pode reaproveitar
+  a definição antiga).
+- **`Loading chunk ... failed` logo após um deploy** → aba velha com hashes antigos.
+  Hard refresh (Ctrl+Shift+R). Só investigar se persistir depois do refresh.
 
 ## Infra / segredos (referência)
 

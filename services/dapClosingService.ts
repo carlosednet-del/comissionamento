@@ -1,5 +1,6 @@
 import { prisma }       from "@/lib/prisma";
 import { auditService } from "@/services/auditService";
+import { periodBounds } from "@/lib/statement/statementPeriod";
 import type {
   DapClosingFilters,
   DapClosingPreview,
@@ -7,15 +8,6 @@ import type {
   DapDemandRow,
 } from "@/types";
 import type { StatementStatus } from "@prisma/client";
-
-// ── Helpers ───────────────────────────────────────────────────────
-
-function periodBounds(month: number, year: number) {
-  return {
-    gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
-    lte: new Date(year, month, 0, 23, 59, 59, 999),
-  };
-}
 
 const SEP  = ";";
 const BOM  = "﻿";

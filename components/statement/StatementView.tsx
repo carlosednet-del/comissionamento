@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/table";
 import {
   ClipboardList, Clock, DollarSign, BadgeCheck,
-  Download, Search, Info, ShieldCheck, Copy,
+  Download, Search, Info, ShieldCheck, Copy, CalendarClock, Lock,
 } from "lucide-react";
 import type { StatementData } from "@/types";
 import type { UserForPermission } from "@/server/auth/permissions";
@@ -81,8 +81,9 @@ export function StatementView({ actor, initialData, initialMonth, initialYear }:
   const [isQuerying, startQuery]      = useTransition();
   const [isExporting, startExport]    = useTransition();
 
-  const isOwnExtrato = actor.role === "DEV" && actor.id === data.developer.id;
-  const canSign      = isOwnExtrato && (!data.statement || data.statement.status === "PENDING");
+  const isOwnExtrato    = actor.role === "DEV" && actor.id === data.developer.id;
+  const windowIsOpen    = data.signingWindow.isOpen;
+  const canSign         = isOwnExtrato && windowIsOpen && (!data.statement || data.statement.status === "PENDING");
 
   // Reconsulta via action (sem reload de página)
   const query = useCallback(() => {
@@ -119,6 +120,17 @@ export function StatementView({ actor, initialData, initialMonth, initialYear }:
 
   const MM = String(month).padStart(2, "0");
 
+  const fmtShort = (iso: string) =>
+    DATE_FMT.format(new Date(iso));
+
+  const windowOpen  = fmtShort(data.signingWindow.open);
+  const windowClose = fmtShort(data.signingWindow.close);
+  const periodLabel = `${fmtShort(data.periodStart)} a ${fmtShort(data.periodEnd)}`;
+
+  const now = new Date();
+  const windowStart = new Date(data.signingWindow.open);
+  const windowPending = now < windowStart;
+
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6">
       {/* ── Cabeçalho ─────────────────────────────────────────────── */}
@@ -126,7 +138,7 @@ export function StatementView({ actor, initialData, initialMonth, initialYear }:
         <div>
           <h1 className="text-2xl font-bold text-brand-text-dark">Meu Extrato</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Consulte e assine seu extrato mensal de demandas entregues.
+            Período: <strong>{periodLabel}</strong> · Assinatura: {windowOpen} a {windowClose}
           </p>
         </div>
         {data.statement && (
@@ -325,14 +337,42 @@ export function StatementView({ actor, initialData, initialMonth, initialYear }:
             </CardContent>
           </Card>
 
-          {/* ── Ação: assinar (PENDING) ─────────────────────────────── */}
+          {/* ── Ação: assinar (PENDING + janela aberta) ────────────── */}
           {canSign && (
             <Alert className="border-amber-200 bg-amber-50">
               <Info className="h-4 w-4 text-amber-600" />
               <AlertTitle className="text-amber-800">Extrato pendente de assinatura</AlertTitle>
               <AlertDescription className="text-amber-700 mt-2 space-y-3">
                 <p>Confira as demandas e valores antes de assinar. Após a assinatura, o extrato não poderá mais ser alterado.</p>
+                <p className="text-xs flex items-center gap-1.5">
+                  <CalendarClock className="h-3.5 w-3.5 shrink-0" />
+                  Prazo de assinatura: <strong>{windowOpen}</strong> até <strong>{windowClose}</strong>
+                </p>
                 <SignStatementDialog month={month} year={year} onSigned={handleSigned} />
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Janela ainda não aberta */}
+          {isOwnExtrato && windowPending && (!data.statement || data.statement.status === "PENDING") && (
+            <Alert className="border-blue-200 bg-blue-50">
+              <CalendarClock className="h-4 w-4 text-blue-600" />
+              <AlertTitle className="text-blue-800">Assinatura disponível a partir de {windowOpen}</AlertTitle>
+              <AlertDescription className="text-blue-700">
+                O período de demandas ainda não encerrou. A janela de assinatura abre em{" "}
+                <strong>{windowOpen}</strong> e fecha em <strong>{windowClose}</strong>.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Janela expirada */}
+          {isOwnExtrato && !windowIsOpen && !windowPending && (!data.statement || data.statement.status === "PENDING") && (
+            <Alert className="border-red-200 bg-red-50">
+              <Lock className="h-4 w-4 text-red-600" />
+              <AlertTitle className="text-red-800">Prazo de assinatura encerrado</AlertTitle>
+              <AlertDescription className="text-red-700">
+                A janela de assinatura para {MM}/{year} encerrou em <strong>{windowClose}</strong>.
+                Não é mais possível assinar este extrato.
               </AlertDescription>
             </Alert>
           )}

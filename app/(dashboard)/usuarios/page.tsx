@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { requireRole } from "@/server/auth/helpers";
 import { userService } from "@/services/userService";
-import { UserTable } from "@/components/usuarios/user-table";
-import { Button } from "@/components/ui/button";
-import { UserPlus } from "lucide-react";
+import { UserTable }   from "@/components/usuarios/user-table";
+import { Button }    from "@/components/ui/button";
+import { UserPlus }  from "lucide-react";
 
 export const metadata = { title: "Usuários — Gestor de Demandas" };
 

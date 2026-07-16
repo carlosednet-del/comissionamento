@@ -16,7 +16,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { activateUserAction, deactivateUserAction, deleteUserAction, forcePasswordResetAction } from "@/server/actions/userActions";
+import { activateUserAction, deactivateUserAction, deleteUserAction, forcePasswordResetAction, toggleUserEntraIdAction } from "@/server/actions/userActions";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   MoreHorizontal, Pencil, UserCheck, UserX, Trash2,
-  Search, ChevronsUpDown, ChevronUp, ChevronDown, KeyRound,
+  Search, ChevronsUpDown, ChevronUp, ChevronDown, KeyRound, ShieldCheck, ShieldOff,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -136,6 +136,20 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
     setLoadingId(id);
     startAction(async () => {
       await deleteUserAction(id);
+      router.refresh();
+      setLoadingId(null);
+    });
+  }
+
+  function handleToggleEntraId(id: string, current: boolean) {
+    setLoadingId(id);
+    startAction(async () => {
+      const result = await toggleUserEntraIdAction(id, !current);
+      if (result.success) {
+        toast.success(result.message ?? "Entra ID atualizado.");
+      } else {
+        toast.error(result.error ?? "Erro ao atualizar Entra ID.");
+      }
       router.refresh();
       setLoadingId(null);
     });
@@ -309,6 +323,12 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
                         Senha temp.
                       </Badge>
                     )}
+                    {user.useEntraId && (
+                      <Badge variant="outline" className="text-xs text-blue-600 border-blue-300 bg-blue-50 gap-1">
+                        <ShieldCheck className="h-3 w-3" />
+                        Entra ID
+                      </Badge>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">
@@ -349,6 +369,22 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
                           Ativar
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => handleToggleEntraId(user.id, user.useEntraId)}
+                      >
+                        {user.useEntraId ? (
+                          <>
+                            <ShieldOff className="mr-2 h-4 w-4 text-muted-foreground" />
+                            Desativar Entra ID
+                          </>
+                        ) : (
+                          <>
+                            <ShieldCheck className="mr-2 h-4 w-4 text-blue-600" />
+                            Ativar Entra ID
+                          </>
+                        )}
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-amber-600 focus:text-amber-600"

@@ -1,5 +1,6 @@
 import { prisma }       from "@/lib/prisma";
 import { auditService } from "@/services/auditService";
+import { periodBounds } from "@/lib/statement/statementPeriod";
 import type {
   DapClosingFilters,
   DapClosingPreview,
@@ -7,15 +8,6 @@ import type {
   DapDemandRow,
 } from "@/types";
 import type { StatementStatus } from "@prisma/client";
-
-// ── Helpers ───────────────────────────────────────────────────────
-
-function periodBounds(month: number, year: number) {
-  return {
-    gte: new Date(year, month - 1, 1, 0, 0, 0, 0),
-    lte: new Date(year, month, 0, 23, 59, 59, 999),
-  };
-}
 
 const SEP  = ";";
 const BOM  = "﻿";
@@ -57,16 +49,16 @@ async function fetchDemandsForPeriod(month: number, year: number) {
   const { gte, lte } = periodBounds(month, year);
   return prisma.demand.findMany({
     where: {
-      status:          "HOMOLOGADA_PRODUCAO",
-      homologationDate: { gte, lte },
-      assigneeId:      { not: null },
+      status:            "HOMOLOGADA_PRODUCAO",
+      actualDeliveryDate: { gte, lte },
+      assigneeId:        { not: null },
     },
     include: {
       assignee: {
         select: { id: true, name: true, email: true, workerProfile: true },
       },
     },
-    orderBy: [{ assigneeId: "asc" }, { homologationDate: "asc" }],
+    orderBy: [{ assigneeId: "asc" }, { actualDeliveryDate: "asc" }],
   });
 }
 

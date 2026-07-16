@@ -171,11 +171,18 @@ export type StatementData = {
     email:        string;
     workerProfile: string | null;
   };
-  periodMonth:  number;
-  periodYear:   number;
-  items:        StatementPreviewItem[];
-  totals:       StatementTotals;
-  statement:    StatementSignatureInfo | null;
+  periodMonth:   number;
+  periodYear:    number;
+  periodStart:   string;   // ISO — dia 16 do mês anterior
+  periodEnd:     string;   // ISO — dia 15 do mês atual
+  items:         StatementPreviewItem[];
+  totals:        StatementTotals;
+  statement:     StatementSignatureInfo | null;
+  signingWindow: {
+    open:   string;   // ISO — dia 16 do mês atual
+    close:  string;   // ISO — dia 20 do mês atual
+    isOpen: boolean;
+  };
 };
 
 // ── DAP Closing composite types ───────────────────────────────────

@@ -2,15 +2,8 @@ import { prisma }                   from "@/lib/prisma";
 import { auditService }              from "@/services/auditService";
 import { generateSignatureCode }     from "@/lib/statement/generateSignatureCode";
 import { generateStatementContentHash } from "@/lib/statement/generateContentHash";
+import { periodBounds, signingWindow, isSigningWindowOpen } from "@/lib/statement/statementPeriod";
 import type { StatementData, StatementPreviewItem, StatementTotals } from "@/types";
-
-// ── Helpers internos ──────────────────────────────────────────────
-
-function periodBounds(month: number, year: number): { gte: Date; lte: Date } {
-  const gte = new Date(year, month - 1, 1, 0, 0, 0, 0);
-  const lte = new Date(year, month, 0, 23, 59, 59, 999);
-  return { gte, lte };
-}
 
 async function fetchHomologatedDemands(developerId: string, month: number, year: number) {
   const { gte, lte } = periodBounds(month, year);
@@ -81,6 +74,10 @@ export const monthlyStatementService = {
     });
     if (!developer) throw new Error("Usuário não encontrado.");
 
+    const { gte: periodStart, lte: periodEnd } = periodBounds(month, year);
+    const window = signingWindow(month, year);
+    const windowIsOpen = isSigningWindowOpen(month, year);
+
     // Busca demandas homologadas no período
     const demands = await fetchHomologatedDemands(userId, month, year);
     const items   = demands.map(demandToPreviewItem);
@@ -117,9 +114,11 @@ export const monthlyStatementService = {
           email:        developer.email,
           workerProfile: developer.workerProfile,
         },
-        periodMonth: month,
-        periodYear:  year,
-        items:       signedItems,
+        periodMonth:  month,
+        periodYear:   year,
+        periodStart:  periodStart.toISOString(),
+        periodEnd:    periodEnd.toISOString(),
+        items:        signedItems,
         totals: {
           totalDemands:        existing.totalDemands,
           totalEstimatedHours: existing.totalEstimatedHours,
@@ -134,6 +133,11 @@ export const monthlyStatementService = {
           signatureUserAgent: existing.signatureUserAgent,
           contentHash:        existing.contentHash,
         },
+        signingWindow: {
+          open:   window.open.toISOString(),
+          close:  window.close.toISOString(),
+          isOpen: windowIsOpen,
+        },
       };
     }
 
@@ -144,8 +148,10 @@ export const monthlyStatementService = {
         email:        developer.email,
         workerProfile: developer.workerProfile,
       },
-      periodMonth: month,
-      periodYear:  year,
+      periodMonth:  month,
+      periodYear:   year,
+      periodStart:  periodStart.toISOString(),
+      periodEnd:    periodEnd.toISOString(),
       items,
       totals,
       statement: existing
@@ -159,6 +165,11 @@ export const monthlyStatementService = {
             contentHash:        null,
           }
         : null,
+      signingWindow: {
+        open:   window.open.toISOString(),
+        close:  window.close.toISOString(),
+        isOpen: windowIsOpen,
+      },
     };
   },
 
@@ -175,6 +186,16 @@ export const monthlyStatementService = {
     });
     if (!developer) throw new Error("Usuário não encontrado.");
     if (developer.role !== "DEV") throw new Error("Apenas DEVs podem assinar extratos.");
+
+    if (!isSigningWindowOpen(month, year)) {
+      const { open, close } = signingWindow(month, year);
+      const fmt = (d: Date) =>
+        d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+      throw new Error(
+        `Fora do prazo de assinatura. O extrato de ${String(month).padStart(2, "0")}/${year} ` +
+        `só pode ser assinado entre ${fmt(open)} e ${fmt(close)}.`,
+      );
+    }
 
     const demands = await fetchHomologatedDemands(userId, month, year);
     if (demands.length === 0) {

@@ -67,9 +67,14 @@ export const userRepository = {
         monthlyBaseSalary:  data.monthlyBaseSalary  ?? null,
         monthlyCapValue:    data.monthlyCapValue    ?? null,
         technicalSpecialty: data.technicalSpecialty ?? null,
-        ...(data.isActive !== undefined && { isActive: data.isActive }),
+        ...(data.isActive    !== undefined && { isActive:    data.isActive }),
+        ...(data.useEntraId  !== undefined && { useEntraId:  data.useEntraId }),
       },
     });
+  },
+
+  async setUseEntraId(id: string, value: boolean) {
+    return prisma.user.update({ where: { id }, data: { useEntraId: value } });
   },
 
   async activate(id: string) {

@@ -87,6 +87,20 @@ export async function deleteUserAction(id: string): Promise<ActionResult> {
   }
 }
 
+export async function toggleUserEntraIdAction(userId: string, value: boolean): Promise<ActionResult> {
+  try {
+    const actor = await requireAuth();
+    await userService.setUseEntraId(userId, value, toPermissionUser(actor));
+    return {
+      success: true,
+      data: undefined,
+      message: value ? "Entra ID ativado para o usuário." : "Entra ID desativado — login por e-mail/senha restaurado.",
+    };
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
 export async function forcePasswordResetAction(userId: string): Promise<ActionResult> {
   try {
     const actor = await requireAuth();

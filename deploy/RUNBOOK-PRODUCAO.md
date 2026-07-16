@@ -35,8 +35,14 @@ Levar para produção o que já foi validado em teste:
 
 ## Fase 0 — Pré-requisitos (fazer antes de tudo)
 
-- [ ] Confirmar que o `.env` de prod já tem `DATABASE_URL`, `DIRECT_URL` e um `AUTH_SECRET` forte
-      (**distinto** do de teste). Gerar um novo se necessário: `openssl rand -base64 32`.
+- [ ] Confirmar `DATABASE_URL` e `DIRECT_URL` no `.env` de prod.
+- [ ] **`AUTH_SECRET`**: o build antigo usava Supabase Auth e **não** tinha essa variável —
+      sem ela o NextAuth v5 responde **500 "There was a problem with the server configuration"**
+      em **todas** as rotas `/api/auth/*`. Gerar e adicionar:
+      ```bash
+      cd /var/www/comissionamento
+      echo "AUTH_SECRET=$(openssl rand -base64 32)" >> .env
+      ```
 - [ ] Confirmar quem é o revisor aprovador do Environment `production` no GitHub.
 - [ ] Ter o **client secret Value** do app do Azure em mãos (o mesmo do `.env.local` de teste).
 
@@ -66,7 +72,8 @@ AUTH_MICROSOFT_ENTRA_ID_ID=dc4c0577-4e8a-46b8-9953-f0bfd24ca568
 AUTH_MICROSOFT_ENTRA_ID_SECRET=<client secret VALUE do mesmo app>
 AUTH_MICROSOFT_ENTRA_ID_ISSUER=https://login.microsoftonline.com/65d94465-e0c0-422c-bd51-6eff1e60fe3e/v2.0
 ```
-> `AUTH_SECRET` já deve existir no `.env` de prod (sessões atuais). **Não** troque sem necessidade.
+> `AUTH_SECRET` também é obrigatório — ver Fase 0. Alterações no `.env` **não** exigem rebuild:
+> `pm2 restart comissionamento` já basta, pois o `next start` relê o arquivo ao subir.
 
 ⚠️ **Erros que já nos custaram horas — evitar:**
 - `AUTH_URL` **sem** `https://` → `TypeError: Invalid URL` → botão "não faz nada".
@@ -136,6 +143,31 @@ bash deploy/deploy-main.sh
 Ou `git revert <sha>` na `main` e deixar o deploy (com aprovação) republicar.
 Reverter só o `.env` (ex.: comentar as vars do Entra) **não** exige rebuild: basta
 `pm2 restart comissionamento` para reler o arquivo.
+
+## ⚠️ Pendência conhecida — deploy automático falha no `git fetch`
+
+O workflow roda, mas o passo SSH morre com:
+```
+fatal: could not read Username for 'https://github.com': No such device or address
+```
+O remote do clone de prod (`/var/www/comissionamento`) usa **HTTPS**, que pede usuário/senha e
+**não funciona em sessão não-interativa** (a da Action). Rodando manualmente como `root` no
+servidor funciona porque a credencial está em cache/interativa.
+
+**Contorno atual:** rodar o deploy manualmente no servidor:
+```bash
+cd /var/www/comissionamento
+git fetch origin && git reset --hard origin/main
+bash deploy/deploy-main.sh
+```
+
+**Correção definitiva** (deixa o deploy automático funcionar, como no de teste): trocar o remote
+para **SSH com deploy key**, igual ao servidor de teste (que usa `git@github-comissionamento`).
+Gerar uma deploy key read-only no servidor de prod, cadastrar no repo (Settings → Deploy keys),
+configurar o `~/.ssh/config` e então:
+```bash
+git -C /var/www/comissionamento remote set-url origin git@github-comissionamento:lucianocandido7lm/variavaelit.git
+```
 
 ## Troubleshooting (específico de prod)
 

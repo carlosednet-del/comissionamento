@@ -134,6 +134,8 @@ model User {
   forcePasswordChange  Boolean  @default(false)
   /// Especialidade técnica principal (ex.: Power BI, Backend, Dados). Opcional.
   technicalSpecialty   String?
+  /// Quando true, o usuário autentica via Microsoft Entra ID (login com e-mail/senha desabilitado).
+  useEntraId           Boolean  @default(false)
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
@@ -323,6 +325,7 @@ model BenchmarkAcceleratorConfig {
 
   @@map("benchmark_accelerator_configs")
 }
+
 
 // ── Extrato mensal do desenvolvedor ───────────────────────────────
 

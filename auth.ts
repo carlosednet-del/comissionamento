@@ -53,18 +53,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const user = await prisma.user.findUnique({
           where: { email },
           select: {
-            id:                 true,
-            name:               true,
-            email:              true,
-            role:               true,
-            isActive:           true,
-            workerProfile:      true,
-            forcePasswordChange:true,
-            passwordHash:       true,
+            id:                  true,
+            name:                true,
+            email:               true,
+            role:                true,
+            isActive:            true,
+            workerProfile:       true,
+            forcePasswordChange: true,
+            passwordHash:        true,
+            useEntraId:          true,
           },
         });
 
         if (!user || !user.isActive) return null;
+
+        // Bloqueia login por e-mail/senha para usuários com Entra ID ativo
+        if (user.useEntraId) return null;
 
         let valid = false;
 

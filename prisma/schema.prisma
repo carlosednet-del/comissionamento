@@ -134,6 +134,8 @@ model User {
   forcePasswordChange  Boolean  @default(false)
   /// Especialidade técnica principal (ex.: Power BI, Backend, Dados). Opcional.
   technicalSpecialty   String?
+  /// Quando true, o usuário autentica via Microsoft Entra ID (login com e-mail/senha desabilitado).
+  useEntraId           Boolean  @default(false)
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
@@ -324,16 +326,6 @@ model BenchmarkAcceleratorConfig {
   @@map("benchmark_accelerator_configs")
 }
 
-/// Configuração do provedor de autenticação — linha única (id = 1).
-/// useEntraId = true  → login via Microsoft Entra ID (desabilita e-mail/senha).
-/// useEntraId = false → login via e-mail e senha (padrão).
-model AuthProviderConfig {
-  id          Int      @id @default(1)
-  useEntraId  Boolean  @default(false)
-  updatedAt   DateTime @updatedAt
-
-  @@map("auth_provider_config")
-}
 
 // ── Extrato mensal do desenvolvedor ───────────────────────────────
 

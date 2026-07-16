@@ -1,11 +1,9 @@
 import Link from "next/link";
 import { requireRole } from "@/server/auth/helpers";
-import { userService }      from "@/services/userService";
-import { authConfigService } from "@/services/authConfigService";
-import { UserTable }             from "@/components/usuarios/user-table";
-import { AuthProviderToggle }    from "@/components/usuarios/auth-provider-toggle";
-import { Button } from "@/components/ui/button";
-import { UserPlus } from "lucide-react";
+import { userService } from "@/services/userService";
+import { UserTable }   from "@/components/usuarios/user-table";
+import { Button }    from "@/components/ui/button";
+import { UserPlus }  from "lucide-react";
 
 export const metadata = { title: "Usuários — Gestor de Demandas" };
 
@@ -17,10 +15,7 @@ export default async function UsuariosPage({
   const actor = await requireRole(["ADMIN"]);
   const { search } = await searchParams;
 
-  const [users, authConfig] = await Promise.all([
-    userService.listUsers({ search }),
-    authConfigService.getConfig(),
-  ]);
+  const users = await userService.listUsers({ search });
 
   return (
     <div className="space-y-6">
@@ -36,8 +31,6 @@ export default async function UsuariosPage({
           </Link>
         </Button>
       </div>
-
-      <AuthProviderToggle initialValue={authConfig.useEntraId} />
 
       <UserTable users={users} currentUserId={actor.id} defaultSearch={search ?? ""} />
     </div>

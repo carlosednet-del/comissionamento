@@ -151,6 +151,28 @@ export const userService = {
     return updated;
   },
 
+  async setUseEntraId(id: string, value: boolean, actor: UserForPermission) {
+    if (actor.role !== "ADMIN") {
+      throw new Error("Apenas administradores podem alterar o provedor de autenticação.");
+    }
+
+    const existing = await userRepository.findById(id);
+    if (!existing) throw new UserNotFoundError(id);
+
+    const updated = await userRepository.setUseEntraId(id, value);
+
+    await auditService.log({
+      entity:   "User",
+      entityId: id,
+      action:   "UPDATE",
+      oldValue: { useEntraId: existing.useEntraId },
+      newValue: { useEntraId: value },
+      userId:   actor.id,
+    });
+
+    return updated;
+  },
+
   async forcePasswordReset(id: string, actor: UserForPermission) {
     const { canForcePasswordReset } = await import("@/server/auth/permissions");
     if (!canForcePasswordReset(actor)) {

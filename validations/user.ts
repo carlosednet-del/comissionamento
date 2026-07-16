@@ -77,6 +77,7 @@ export const updateUserSchema = z
     monthlyCapValue:    positiveFloatRule,
     technicalSpecialty: technicalSpecialtyRule,
     isActive:           z.boolean().optional(),
+    useEntraId:         z.boolean().optional().default(false),
   })
   .refine(
     (data) => {

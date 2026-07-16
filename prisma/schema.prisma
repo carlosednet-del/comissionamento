@@ -324,6 +324,17 @@ model BenchmarkAcceleratorConfig {
   @@map("benchmark_accelerator_configs")
 }
 
+/// Configuração do provedor de autenticação — linha única (id = 1).
+/// useEntraId = true  → login via Microsoft Entra ID (desabilita e-mail/senha).
+/// useEntraId = false → login via e-mail e senha (padrão).
+model AuthProviderConfig {
+  id          Int      @id @default(1)
+  useEntraId  Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+
+  @@map("auth_provider_config")
+}
+
 // ── Extrato mensal do desenvolvedor ───────────────────────────────
 
 /// Extrato mensal consolidado de demandas homologadas por um DEV.

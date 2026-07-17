@@ -55,7 +55,7 @@ async function fetchDemandsForPeriod(month: number, year: number) {
     },
     include: {
       assignee: {
-        select: { id: true, name: true, email: true, workerProfile: true },
+        select: { id: true, name: true, email: true, workerProfile: true, monthlyBaseSalary: true },
       },
     },
     orderBy: [{ assigneeId: "asc" }, { actualDeliveryDate: "asc" }],
@@ -218,10 +218,11 @@ export const dapClosingService = {
       }));
 
       return {
-        developerId:      dev.id,
-        developerName:    dev.name,
-        developerEmail:   dev.email,
-        developerProfile: dev.workerProfile,
+        developerId:         dev.id,
+        developerName:       dev.name,
+        developerEmail:      dev.email,
+        developerProfile:    dev.workerProfile,
+        monthlyBaseSalary:   dev.monthlyBaseSalary ?? null,
         totalDemands:        demandRows.length,
         totalEstimatedHours: demandRows.reduce((s, d) => s + d.estimatedHours, 0),
         totalEstimatedValue: demandRows.reduce((s, d) => s + d.estimatedValue, 0),

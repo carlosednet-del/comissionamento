@@ -70,7 +70,7 @@ export const monthlyStatementService = {
   async getMyStatement(userId: string, month: number, year: number): Promise<StatementData> {
     const developer = await prisma.user.findUnique({
       where:  { id: userId },
-      select: { id: true, name: true, email: true, workerProfile: true },
+      select: { id: true, name: true, email: true, workerProfile: true, monthlyBaseSalary: true },
     });
     if (!developer) throw new Error("Usuário não encontrado.");
 
@@ -109,10 +109,11 @@ export const monthlyStatementService = {
 
       return {
         developer: {
-          id:           developer.id,
-          name:         developer.name,
-          email:        developer.email,
-          workerProfile: developer.workerProfile,
+          id:                developer.id,
+          name:              developer.name,
+          email:             developer.email,
+          workerProfile:     developer.workerProfile,
+          monthlyBaseSalary: developer.monthlyBaseSalary ?? null,
         },
         periodMonth:  month,
         periodYear:   year,
@@ -143,10 +144,11 @@ export const monthlyStatementService = {
 
     return {
       developer: {
-        id:           developer.id,
-        name:         developer.name,
-        email:        developer.email,
-        workerProfile: developer.workerProfile,
+        id:                developer.id,
+        name:              developer.name,
+        email:             developer.email,
+        workerProfile:     developer.workerProfile,
+        monthlyBaseSalary: developer.monthlyBaseSalary ?? null,
       },
       periodMonth:  month,
       periodYear:   year,

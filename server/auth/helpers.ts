@@ -13,6 +13,7 @@ export type SessionUser = {
   isActive:            boolean;
   workerProfile:       WorkerProfile | null;
   forcePasswordChange: boolean;
+  authProvider:        string;
 };
 
 /**
@@ -23,6 +24,9 @@ export type SessionUser = {
 export async function getCurrentUser(): Promise<SessionUser | null> {
   const session = await auth();
   if (!session?.user?.id) return null;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const authProvider: string = (session.user as any).authProvider ?? "credentials";
 
   const dbUser = await prisma.user.findUnique({
     where: { id: session.user.id },
@@ -35,11 +39,20 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
       isActive:            true,
       workerProfile:       true,
       forcePasswordChange: true,
+      useEntraId:          true,
     },
   });
 
   if (!dbUser) return null;
-  return dbUser as SessionUser;
+
+  // Sessão via credenciais, mas o usuário agora exige Entra ID → força logout imediato
+  if (dbUser.useEntraId && authProvider === "credentials") {
+    redirect("/api/signout-entra");
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { useEntraId: _entraId, ...rest } = dbUser;
+  return { ...rest, authProvider } as SessionUser;
 }
 
 /**

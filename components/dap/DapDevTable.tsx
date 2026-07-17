@@ -76,7 +76,20 @@ function DevCard({ row }: DevRowProps) {
           <span>{row.developerProfile ?? "—"}</span>
           <span className="font-semibold text-brand-text-dark">{row.totalDemands}d</span>
           <span>{row.totalEstimatedHours}h</span>
-          <span className="font-mono font-semibold">{BRL.format(row.totalEstimatedValue)}</span>
+          <span className="font-mono font-semibold text-emerald-700">
+            {BRL.format(row.totalEstimatedValue)}
+          </span>
+          {row.monthlyBaseSalary !== null && (
+            <>
+              <span className="text-muted-foreground/50">|</span>
+              <span className="font-mono text-slate-500">
+                mín. {BRL.format(row.monthlyBaseSalary)}
+              </span>
+              <span className="font-mono font-semibold text-teal-700">
+                pagar {BRL.format(Math.max(0, row.totalEstimatedValue - row.monthlyBaseSalary))}
+              </span>
+            </>
+          )}
         </div>
 
         <div className="shrink-0">
@@ -163,10 +176,18 @@ function DevCard({ row }: DevRowProps) {
             </Table>
           </div>
           <Separator />
-          <div className="flex justify-end gap-6 px-4 py-2 text-xs font-semibold text-muted-foreground">
+          <div className="flex flex-wrap justify-end gap-6 px-4 py-2 text-xs font-semibold text-muted-foreground">
             <span>{row.totalDemands} demanda{row.totalDemands !== 1 ? "s" : ""}</span>
             <span>{row.totalEstimatedHours}h</span>
-            <span className="font-mono text-emerald-700">{BRL.format(row.totalEstimatedValue)}</span>
+            <span className="font-mono text-emerald-700">Total: {BRL.format(row.totalEstimatedValue)}</span>
+            {row.monthlyBaseSalary !== null && (
+              <>
+                <span className="font-mono text-slate-500">Mínimo: {BRL.format(row.monthlyBaseSalary)}</span>
+                <span className="font-mono text-teal-700">
+                  A pagar: {BRL.format(Math.max(0, row.totalEstimatedValue - row.monthlyBaseSalary))}
+                </span>
+              </>
+            )}
           </div>
         </CardContent>
       )}

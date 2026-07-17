@@ -26,6 +26,15 @@ export async function loginAction(input: LoginInput): Promise<ActionResult<{ red
       return { success: false, error: `Muitas tentativas. Aguarde ${minutes} minuto(s) antes de tentar novamente.` };
     }
 
+    // Verifica Entra ID antes de tentar credenciais — dá mensagem clara ao usuário
+    const candidate = await userRepository.findByEmail(input.email);
+    if (candidate?.useEntraId) {
+      return {
+        success: false,
+        error: "Este usuário está configurado para autenticação via Microsoft Entra ID. Use o botão \"Entrar com Microsoft\".",
+      };
+    }
+
     await signIn("credentials", { ...input, redirect: false });
     resetLoginRateLimit(`login:${ip}`);
 

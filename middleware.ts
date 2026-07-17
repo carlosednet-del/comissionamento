@@ -6,7 +6,7 @@ import type { UserRole } from "@prisma/client";
 
 const { auth } = NextAuth(authConfig);
 
-const PUBLIC_ROUTES  = ["/login", "/acesso-bloqueado", "/sem-perfil", "/api/auth"];
+const PUBLIC_ROUTES  = ["/login", "/acesso-bloqueado", "/sem-perfil", "/api/auth", "/api/signout-entra"];
 const ADMIN_ROUTES   = ["/usuarios", "/configuracoes", "/parametros"];
 const DASHBOARD_ROLES: UserRole[] = ["ADMIN", "DIRETOR", "GESTOR", "FINANCEIRO", "DEV"];
 const STATEMENT_ROLES: UserRole[] = ["DEV", "ADMIN", "DIRETOR"];

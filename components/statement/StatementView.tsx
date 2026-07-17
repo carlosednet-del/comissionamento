@@ -221,62 +221,93 @@ export function StatementView({ actor, initialData, initialMonth, initialYear }:
       {data.items.length > 0 && (
         <>
           {/* ── Cards de resumo ──────────────────────────────────── */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Card className="border-blue-200 bg-blue-50/60">
-              <CardHeader className="pb-1 pt-3 px-4">
-                <CardTitle className="text-xs font-medium text-blue-600 flex items-center gap-1.5">
-                  <ClipboardList className="h-3.5 w-3.5" />
-                  Demandas
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pb-3 px-4">
-                <p className="text-2xl font-bold text-blue-700">{data.totals.totalDemands}</p>
-              </CardContent>
-            </Card>
+          {(() => {
+            const total    = data.totals.totalEstimatedValue;
+            const minimo   = data.developer.monthlyBaseSalary ?? 0;
+            const aPagar   = Math.max(0, total - minimo);
+            return (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                <Card className="border-blue-200 bg-blue-50/60">
+                  <CardHeader className="pb-1 pt-3 px-4">
+                    <CardTitle className="text-xs font-medium text-blue-600 flex items-center gap-1.5">
+                      <ClipboardList className="h-3.5 w-3.5" />
+                      Demandas
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-3 px-4">
+                    <p className="text-2xl font-bold text-blue-700">{data.totals.totalDemands}</p>
+                  </CardContent>
+                </Card>
 
-            <Card className="border-violet-200 bg-violet-50/60">
-              <CardHeader className="pb-1 pt-3 px-4">
-                <CardTitle className="text-xs font-medium text-violet-600 flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5" />
-                  Total de horas
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pb-3 px-4">
-                <p className="text-2xl font-bold text-violet-700">{data.totals.totalEstimatedHours}h</p>
-              </CardContent>
-            </Card>
+                <Card className="border-violet-200 bg-violet-50/60">
+                  <CardHeader className="pb-1 pt-3 px-4">
+                    <CardTitle className="text-xs font-medium text-violet-600 flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5" />
+                      Total de horas
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-3 px-4">
+                    <p className="text-2xl font-bold text-violet-700">{data.totals.totalEstimatedHours}h</p>
+                  </CardContent>
+                </Card>
 
-            <Card className="border-emerald-200 bg-emerald-50/60">
-              <CardHeader className="pb-1 pt-3 px-4">
-                <CardTitle className="text-xs font-medium text-emerald-600 flex items-center gap-1.5">
-                  <DollarSign className="h-3.5 w-3.5" />
-                  Valor total
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pb-3 px-4">
-                <p className="text-lg font-bold text-emerald-700 font-mono">
-                  {BRL.format(data.totals.totalEstimatedValue)}
-                </p>
-              </CardContent>
-            </Card>
+                <Card className="border-emerald-200 bg-emerald-50/60">
+                  <CardHeader className="pb-1 pt-3 px-4">
+                    <CardTitle className="text-xs font-medium text-emerald-600 flex items-center gap-1.5">
+                      <DollarSign className="h-3.5 w-3.5" />
+                      Valor total
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-3 px-4">
+                    <p className="text-sm font-bold text-emerald-700 font-mono">{BRL.format(total)}</p>
+                  </CardContent>
+                </Card>
 
-            <Card className={data.statement?.status === "SIGNED" || data.statement?.status === "EXPORTED"
-              ? "border-emerald-200 bg-emerald-50/60"
-              : "border-amber-200 bg-amber-50/60"}>
-              <CardHeader className="pb-1 pt-3 px-4">
-                <CardTitle className={`text-xs font-medium flex items-center gap-1.5 ${
-                  data.statement?.status === "SIGNED" || data.statement?.status === "EXPORTED"
-                    ? "text-emerald-600" : "text-amber-600"
-                }`}>
-                  <BadgeCheck className="h-3.5 w-3.5" />
-                  Status
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pb-3 px-4">
-                <StatementStatusBadge status={data.statement?.status ?? "PENDING"} />
-              </CardContent>
-            </Card>
-          </div>
+                <Card className="border-slate-200 bg-slate-50/60">
+                  <CardHeader className="pb-1 pt-3 px-4">
+                    <CardTitle className="text-xs font-medium text-slate-600 flex items-center gap-1.5">
+                      <DollarSign className="h-3.5 w-3.5" />
+                      Mínimo garantido
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-3 px-4">
+                    <p className="text-sm font-bold text-slate-700 font-mono">
+                      {data.developer.monthlyBaseSalary !== null ? BRL.format(data.developer.monthlyBaseSalary) : "—"}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-teal-200 bg-teal-50/60">
+                  <CardHeader className="pb-1 pt-3 px-4">
+                    <CardTitle className="text-xs font-medium text-teal-600 flex items-center gap-1.5">
+                      <DollarSign className="h-3.5 w-3.5" />
+                      Valor a pagar
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-3 px-4">
+                    <p className="text-sm font-bold text-teal-700 font-mono">{BRL.format(aPagar)}</p>
+                  </CardContent>
+                </Card>
+
+                <Card className={data.statement?.status === "SIGNED" || data.statement?.status === "EXPORTED"
+                  ? "border-emerald-200 bg-emerald-50/60"
+                  : "border-amber-200 bg-amber-50/60"}>
+                  <CardHeader className="pb-1 pt-3 px-4">
+                    <CardTitle className={`text-xs font-medium flex items-center gap-1.5 ${
+                      data.statement?.status === "SIGNED" || data.statement?.status === "EXPORTED"
+                        ? "text-emerald-600" : "text-amber-600"
+                    }`}>
+                      <BadgeCheck className="h-3.5 w-3.5" />
+                      Status
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-3 px-4">
+                    <StatementStatusBadge status={data.statement?.status ?? "PENDING"} />
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
 
           {/* ── Tabela de demandas ─────────────────────────────────── */}
           <Card>

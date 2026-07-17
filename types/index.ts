@@ -166,10 +166,11 @@ export type StatementSignatureInfo = {
 
 export type StatementData = {
   developer: {
-    id:           string;
-    name:         string;
-    email:        string;
-    workerProfile: string | null;
+    id:                string;
+    name:              string;
+    email:             string;
+    workerProfile:     string | null;
+    monthlyBaseSalary: number | null;
   };
   periodMonth:   number;
   periodYear:    number;
@@ -216,21 +217,22 @@ export type DapDemandRow = {
 };
 
 export type DapDeveloperRow = {
-  developerId:      string;
-  developerName:    string;
-  developerEmail:   string;
-  developerProfile: string | null;
-  totalDemands:     number;
+  developerId:         string;
+  developerName:       string;
+  developerEmail:      string;
+  developerProfile:    string | null;
+  monthlyBaseSalary:   number | null;
+  totalDemands:        number;
   totalEstimatedHours: number;
   totalEstimatedValue: number;
-  statementId:      string | null;
-  statementStatus:  StatementStatus | null;
-  signatureCode:    string | null;
-  signedAt:         string | null;
-  signatureIp:      string | null;
-  signatureUserAgent: string | null;
-  contentHash:      string | null;
-  demands:          DapDemandRow[];
+  statementId:         string | null;
+  statementStatus:     StatementStatus | null;
+  signatureCode:       string | null;
+  signedAt:            string | null;
+  signatureIp:         string | null;
+  signatureUserAgent:  string | null;
+  contentHash:         string | null;
+  demands:             DapDemandRow[];
 };
 
 export type DapClosingPreview = {

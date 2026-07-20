@@ -121,7 +121,7 @@ export function StatementView({ actor, initialData, initialMonth, initialYear }:
 
       // Import dinâmico: mantém o jsPDF fora do bundle inicial da página.
       const { generateStatementPdf } = await import("@/lib/statement/generateStatementPdf");
-      generateStatementPdf(data);
+      await generateStatementPdf(data);
 
       setData((prev) => ({
         ...prev,

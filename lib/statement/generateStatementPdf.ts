@@ -16,13 +16,36 @@ const fmtDate = (iso: string | null | undefined) => {
 const ACCENT: [number, number, number] = [5, 150, 105];
 const MUTED: [number, number, number] = [100, 116, 139];
 
+/** Logo no cabeçalho. jsPDF não renderiza SVG — precisa ser PNG/JPEG/WEBP. */
+const LOGO_SRC = "/simbolo-cor.png";
+const LOGO_MAX_H = 12; // mm — símbolo quase quadrado (650x670)
+
+/**
+ * Carrega a logo como imagem. Retorna null se o arquivo não existir ou falhar,
+ * para que o PDF continue sendo gerado — a logo é decorativa, não pode ser
+ * um ponto de falha na exportação de um documento assinado.
+ */
+async function loadLogo(): Promise<HTMLImageElement | null> {
+  try {
+    const img = new Image();
+    img.src = LOGO_SRC;
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("logo não encontrada"));
+    });
+    return img;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Gera o PDF do extrato mensal assinado e dispara o download.
  *
  * O conteúdo espelha o CSV de `monthlyStatementService.exportSignedStatement`
  * para que os dois formatos representem o mesmo documento.
  */
-export function generateStatementPdf(data: StatementData): string {
+export async function generateStatementPdf(data: StatementData): Promise<string> {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const marginX = 12;
@@ -32,11 +55,26 @@ export function generateStatementPdf(data: StatementData): string {
   const stmt = data.statement;
 
   // ── Cabeçalho ───────────────────────────────────────────────────
+  // A logo desloca o texto para a direita; sem ela, o layout original é mantido.
+  const logo = await loadLogo();
+  let textX = marginX;
+
+  if (logo) {
+    const ratio = logo.naturalWidth / logo.naturalHeight;
+    const h = LOGO_MAX_H;
+    const w = h * ratio;
+    // y=9 centra a logo verticalmente com as duas linhas do título (15 e 20.5).
+    // A compressão é essencial: sem ela o jsPDF embute o bitmap cru e o PDF
+    // salta de ~30 KB para ~1,7 MB. "FAST" já reduz ~99%.
+    doc.addImage(logo, "PNG", marginX, 9, w, h, undefined, "FAST");
+    textX = marginX + w + 5;
+  }
+
   doc.setFontSize(15).setFont("helvetica", "bold");
-  doc.text("Extrato Mensal Assinado", marginX, 15);
+  doc.text("Extrato Mensal Assinado", textX, 15);
 
   doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(...MUTED);
-  doc.text("Gestor de Demandas Técnicas", marginX, 20.5);
+  doc.text("Gestor de Demandas Técnicas", textX, 20.5);
   doc.setTextColor(0, 0, 0);
 
   // Período em destaque à direita

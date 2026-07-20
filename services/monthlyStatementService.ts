@@ -317,6 +317,43 @@ export const monthlyStatementService = {
     };
   },
 
+  /**
+   * Registra a exportação de um extrato assinado: valida o status, marca como
+   * EXPORTED e grava auditoria. Usado tanto pelo CSV quanto pelo PDF — o PDF é
+   * renderizado no cliente, mas precisa do mesmo rastro do documento assinado.
+   */
+  async registerStatementExport(
+    statementId: string,
+    actorId: string,
+    format: "csv" | "pdf",
+  ): Promise<void> {
+    const stmt = await prisma.developerMonthlyStatement.findUnique({
+      where:  { id: statementId },
+      select: { status: true, periodMonth: true, periodYear: true },
+    });
+
+    if (!stmt) throw new Error("Extrato não encontrado.");
+    if (stmt.status !== "SIGNED" && stmt.status !== "EXPORTED") {
+      throw new Error("Assine o extrato antes de exportar.");
+    }
+
+    if (stmt.status === "SIGNED") {
+      await prisma.developerMonthlyStatement.update({
+        where: { id: statementId },
+        data:  { status: "EXPORTED" },
+      });
+    }
+
+    const mm = String(stmt.periodMonth).padStart(2, "0");
+    await auditService.log({
+      entity:   "DeveloperMonthlyStatement",
+      entityId: statementId,
+      action:   "STATEMENT_EXPORTED",
+      newValue: { statementId, exportedBy: actorId, period: `${mm}/${stmt.periodYear}`, format },
+      userId:   actorId,
+    });
+  },
+
   /** Gera o conteúdo CSV de um extrato assinado. */
   async exportSignedStatement(
     statementId: string,
@@ -389,21 +426,8 @@ export const monthlyStatementService = {
     rows.push(`${esc("Total de horas")},${esc(String(stmt.totalEstimatedHours))}`);
     rows.push(`${esc("Total de valor")},${esc(BRL.format(stmt.totalEstimatedValue))}`);
 
-    // Marca como EXPORTED se ainda SIGNED
-    if (stmt.status === "SIGNED") {
-      await prisma.developerMonthlyStatement.update({
-        where: { id: statementId },
-        data:  { status: "EXPORTED" },
-      });
-    }
-
-    await auditService.log({
-      entity:   "DeveloperMonthlyStatement",
-      entityId: statementId,
-      action:   "STATEMENT_EXPORTED",
-      newValue: { statementId, exportedBy: actorId, period: `${mm}/${yy}` },
-      userId:   actorId,
-    });
+    // Marca como EXPORTED (se ainda SIGNED) e registra auditoria
+    await this.registerStatementExport(statementId, actorId, "csv");
 
     return {
       content:  rows.join("\n"),

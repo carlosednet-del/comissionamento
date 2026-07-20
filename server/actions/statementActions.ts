@@ -96,3 +96,36 @@ export async function exportMyStatementAction(
     return { success: false, error: e instanceof Error ? e.message : "Erro desconhecido." };
   }
 }
+
+/**
+ * Registra a exportação em PDF. O arquivo é renderizado no cliente (jsPDF) a
+ * partir dos dados já carregados; esta action aplica as mesmas checagens de
+ * permissão do CSV e mantém o rastro de auditoria do documento assinado.
+ */
+export async function registerPdfExportAction(
+  statementId: string,
+): Promise<ActionResult<null>> {
+  try {
+    const session = await requireAuth();
+    const actor   = toPermissionUser(session);
+
+    if (!canViewMyStatement(actor)) {
+      return { success: false, error: "Sem permissão para exportar extratos." };
+    }
+
+    const stmt = await prisma.developerMonthlyStatement.findUnique({
+      where:  { id: statementId },
+      select: { developerId: true },
+    });
+    if (!stmt) return { success: false, error: "Extrato não encontrado." };
+
+    if (!canExportStatement(actor, stmt)) {
+      return { success: false, error: "Sem permissão para exportar este extrato." };
+    }
+
+    await monthlyStatementService.registerStatementExport(statementId, actor.id, "pdf");
+    return { success: true, data: null };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Erro desconhecido." };
+  }
+}

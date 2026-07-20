@@ -3,7 +3,7 @@
 import { useState, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { getMyStatementAction, exportMyStatementAction } from "@/server/actions/statementActions";
+import { getMyStatementAction, exportMyStatementAction, registerPdfExportAction } from "@/server/actions/statementActions";
 import { SignStatementDialog } from "./SignStatementDialog";
 import { StatementStatusBadge } from "./StatementStatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/table";
 import {
   ClipboardList, Clock, DollarSign, BadgeCheck,
-  Download, Search, Info, ShieldCheck, Copy, CalendarClock, Lock,
+  Download, Search, Info, ShieldCheck, Copy, CalendarClock, Lock, FileText,
 } from "lucide-react";
 import type { StatementData } from "@/types";
 import type { UserForPermission } from "@/server/auth/permissions";
@@ -80,6 +80,7 @@ export function StatementView({ actor, initialData, initialMonth, initialYear }:
 
   const [isQuerying, startQuery]      = useTransition();
   const [isExporting, startExport]    = useTransition();
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const isOwnExtrato    = actor.role === "DEV" && actor.id === data.developer.id;
   const windowIsOpen    = data.signingWindow.isOpen;
@@ -108,6 +109,30 @@ export function StatementView({ actor, initialData, initialMonth, initialYear }:
       }));
       toast.success("Extrato exportado com sucesso.");
     });
+  }
+
+  async function handleExportPdf() {
+    if (!data.statement?.id) return;
+    setIsExportingPdf(true);
+    try {
+      // Registra no servidor antes de gerar: se não houver permissão, nada é baixado.
+      const result = await registerPdfExportAction(data.statement.id);
+      if (!result.success) { toast.error(result.error); return; }
+
+      // Import dinâmico: mantém o jsPDF fora do bundle inicial da página.
+      const { generateStatementPdf } = await import("@/lib/statement/generateStatementPdf");
+      generateStatementPdf(data);
+
+      setData((prev) => ({
+        ...prev,
+        statement: prev.statement ? { ...prev.statement, status: "EXPORTED" } : null,
+      }));
+      toast.success("Extrato exportado em PDF.");
+    } catch {
+      toast.error("Falha ao gerar o PDF. Tente novamente.");
+    } finally {
+      setIsExportingPdf(false);
+    }
   }
 
   function handleSigned() {
@@ -453,17 +478,30 @@ export function StatementView({ actor, initialData, initialMonth, initialYear }:
 
                 <Separator className="my-4" />
 
-                <Button
-                  onClick={handleExport}
-                  disabled={isExporting}
-                  variant="outline"
-                  className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                >
-                  {isExporting
-                    ? <><Clock className="h-4 w-4 animate-spin" /> Exportando…</>
-                    : <><Download className="h-4 w-4" /> Exportar extrato assinado (.csv)</>
-                  }
-                </Button>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    onClick={handleExportPdf}
+                    disabled={isExportingPdf || isExporting}
+                    className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                  >
+                    {isExportingPdf
+                      ? <><Clock className="h-4 w-4 animate-spin" /> Gerando PDF…</>
+                      : <><FileText className="h-4 w-4" /> Exportar extrato assinado (.pdf)</>
+                    }
+                  </Button>
+
+                  <Button
+                    onClick={handleExport}
+                    disabled={isExporting || isExportingPdf}
+                    variant="outline"
+                    className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                  >
+                    {isExporting
+                      ? <><Clock className="h-4 w-4 animate-spin" /> Exportando…</>
+                      : <><Download className="h-4 w-4" /> Exportar (.csv)</>
+                    }
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}

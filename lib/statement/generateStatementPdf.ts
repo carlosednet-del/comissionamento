@@ -18,7 +18,7 @@ const MUTED: [number, number, number] = [100, 116, 139];
 
 /** Logo no cabeçalho. jsPDF não renderiza SVG — precisa ser PNG/JPEG/WEBP. */
 const LOGO_SRC = "/simbolo-cor.png";
-const LOGO_MAX_H = 12; // mm — símbolo quase quadrado (650x670)
+const LOGO_MAX_H = 8.5; // mm — símbolo quase quadrado (650x670)
 
 /**
  * Carrega a logo como imagem. Retorna null se o arquivo não existir ou falhar,
@@ -63,10 +63,12 @@ export async function generateStatementPdf(data: StatementData): Promise<string>
     const ratio = logo.naturalWidth / logo.naturalHeight;
     const h = LOGO_MAX_H;
     const w = h * ratio;
-    // y=9 centra a logo verticalmente com as duas linhas do título (15 e 20.5).
+    // O bloco de título ocupa ~y11–y21 (baselines em 15 e 20.5); centrar a
+    // logo nesse intervalo mantém o alinhamento se a altura mudar.
+    const y = 16 - h / 2;
     // A compressão é essencial: sem ela o jsPDF embute o bitmap cru e o PDF
     // salta de ~30 KB para ~1,7 MB. "FAST" já reduz ~99%.
-    doc.addImage(logo, "PNG", marginX, 9, w, h, undefined, "FAST");
+    doc.addImage(logo, "PNG", marginX, y, w, h, undefined, "FAST");
     textX = marginX + w + 5;
   }
 

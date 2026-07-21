@@ -3,7 +3,7 @@
  *
  * Mês de referência N (ex: Julho):
  *   - Período de demandas : dia 16 do mês N-1  →  dia 15 do mês N
- *   - Janela de assinatura: dia 16 do mês N     →  dia 20 do mês N
+ *   - Janela de assinatura: dia 16 do mês N     →  dia 25 do mês N
  */
 
 export function periodBounds(month: number, year: number) {
@@ -19,7 +19,7 @@ export function periodBounds(month: number, year: number) {
 export function signingWindow(month: number, year: number) {
   return {
     open:  new Date(year, month - 1, 16, 0,  0,  0,   0),  // 16 do mês atual
-    close: new Date(year, month - 1, 20, 23, 59, 59, 999),  // 20 do mês atual
+    close: new Date(year, month - 1, 25, 23, 59, 59, 999),  // 25 do mês atual
   };
 }
 

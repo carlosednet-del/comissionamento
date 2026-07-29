@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { updatePasswordAction } from "@/server/actions/authActions";
 import { logoutAction } from "@/server/actions/authActions";
@@ -13,9 +12,11 @@ import { Loader2, Eye, EyeOff, Lock, LogOut } from "lucide-react";
 
 type FieldErrors = Partial<Record<"newPassword" | "confirmPassword", string>>;
 
-export function ChangePasswordForm() {
-  const router = useRouter();
+function homeForRole(role: string): string {
+  return role === "DAP" ? "/fechamento-dap" : "/dashboard";
+}
 
+export function ChangePasswordForm({ role }: { role: string }) {
   const [newPassword,     setNewPassword]     = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNew,         setShowNew]         = useState(false);
@@ -59,8 +60,8 @@ export function ChangePasswordForm() {
         return;
       }
       toast.success("Senha alterada com sucesso.");
-      router.push("/dashboard");
-      router.refresh();
+      // Força reload completo para renovar o JWT (forcePasswordChange já foi removido)
+      window.location.href = homeForRole(role);
     });
   }
 

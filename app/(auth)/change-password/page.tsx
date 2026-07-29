@@ -37,7 +37,7 @@ export default async function ChangePasswordPage() {
           </CardHeader>
 
           <CardContent>
-            <ChangePasswordForm />
+            <ChangePasswordForm role={user.role} />
           </CardContent>
         </Card>
 

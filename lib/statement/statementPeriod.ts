@@ -17,9 +17,11 @@ export function periodBounds(month: number, year: number) {
 }
 
 export function signingWindow(month: number, year: number) {
+  // Exceção: julho/2026 prazo estendido até dia 30
+  const closeDay = (month === 7 && year === 2026) ? 30 : 25;
   return {
-    open:  new Date(year, month - 1, 16, 0,  0,  0,   0),  // 16 do mês atual
-    close: new Date(year, month - 1, 25, 23, 59, 59, 999),  // 25 do mês atual
+    open:  new Date(year, month - 1, 16, 0,  0,  0,   0),
+    close: new Date(year, month - 1, closeDay, 23, 59, 59, 999),
   };
 }
 

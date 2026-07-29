@@ -241,7 +241,7 @@ export const dapClosingService = {
     return buildPreview(filtered, month, year);
   },
 
-  /** Gera o CSV completo das variáveis do período para download. */
+  /** Gera o CSV resumo por desenvolvedor (igual à tela) para download. */
   async exportPeriodVariables(
     month: number,
     year: number,
@@ -251,61 +251,55 @@ export const dapClosingService = {
   ): Promise<{ content: string; filename: string }> {
     const preview = await this.getClosingPreview(month, year, filters);
 
-    const mm  = String(month).padStart(2, "0");
-    const yy  = year;
+    const mm = String(month).padStart(2, "0");
+    const yy = year;
 
     // ── Cabeçalho CSV ──────────────────────────────────────────────
     const HEADERS = [
-      "periodoMes", "periodoAno",
-      "developerName", "developerEmail", "developerProfile",
-      "demandId", "demandCode", "demandTitle",
-      "requesterArea", "demandType", "complexity", "roi",
-      "estimatedHours", "hourlyRate", "estimatedDemandValue",
-      "homologationDate",
-      "directorPriorityOrder",
-      "plannedDeliveryDate", "actualDeliveryDate",
-      "statementStatus", "statementId",
-      "signatureCode", "signedAt", "signatureIp", "signatureUserAgent",
-      "contentHash",
+      "Período",
+      "Desenvolvedor", "E-mail", "Perfil",
+      "Demandas", "Horas",
+      "Valor estimado", "Mínimo garantido", "Valor a pagar",
+      "Status assinatura",
+      "Código assinatura", "Assinado em", "IP assinatura",
     ];
 
     const rows: string[] = [];
     rows.push(HEADERS.map(esc).join(SEP));
 
-    // ── Linhas: uma por demanda ─────────────────────────────────────
+    // ── Linhas: uma por desenvolvedor ──────────────────────────────
     for (const dev of preview.developers) {
-      const stmtStatus = dev.statementStatus ?? "PENDING";
-      for (const d of dev.demands) {
-        rows.push([
-          esc(String(month)),
-          esc(String(yy)),
-          esc(dev.developerName),
-          esc(dev.developerEmail),
-          esc(dev.developerProfile),
-          esc(d.demandCode),
-          esc(d.demandCode),
-          esc(d.demandTitle),
-          esc(d.requesterArea),
-          esc(d.demandType),
-          esc(d.complexity),
-          esc(d.roi),
-          esc(fmtDecimal(d.estimatedHours)),
-          esc(fmtDecimal(d.hourlyRate)),
-          esc(fmtDecimal(d.estimatedValue)),
-          esc(fmtDate(d.homologationDate)),
-          esc(d.directorPriorityOrder !== null ? String(d.directorPriorityOrder) : ""),
-          esc(fmtDate(d.plannedDeliveryDate)),
-          esc(fmtDate(d.actualDeliveryDate)),
-          esc(stmtStatus),
-          esc(dev.statementId),
-          esc(dev.signatureCode),
-          esc(fmtDateTime(dev.signedAt)),
-          esc(dev.signatureIp),
-          esc(dev.signatureUserAgent),
-          esc(dev.contentHash),
-        ].join(SEP));
-      }
+      const minimo  = dev.monthlyBaseSalary ?? 0;
+      const aPagar  = Math.max(0, dev.totalEstimatedValue - minimo);
+      const status  = dev.statementStatus ?? "PENDING";
+
+      rows.push([
+        esc(`${mm}/${yy}`),
+        esc(dev.developerName),
+        esc(dev.developerEmail),
+        esc(dev.developerProfile),
+        esc(String(dev.totalDemands)),
+        esc(String(dev.totalEstimatedHours)),
+        esc(fmtDecimal(dev.totalEstimatedValue)),
+        esc(minimo > 0 ? fmtDecimal(minimo) : ""),
+        esc(minimo > 0 ? fmtDecimal(aPagar) : ""),
+        esc(status),
+        esc(dev.signatureCode),
+        esc(fmtDateTime(dev.signedAt)),
+        esc(dev.signatureIp),
+      ].join(SEP));
     }
+
+    // ── Rodapé com totais ──────────────────────────────────────────
+    rows.push("");
+    rows.push([
+      esc("TOTAL"),
+      esc(""), esc(""), esc(""),
+      esc(String(preview.totalDemands)),
+      esc(String(preview.totalEstimatedHours)),
+      esc(fmtDecimal(preview.totalEstimatedValue)),
+      esc(""), esc(""), esc(""), esc(""), esc(""), esc(""),
+    ].join(SEP));
 
     const content = BOM + rows.join(CRLF);
 
@@ -328,7 +322,7 @@ export const dapClosingService = {
       userId: actorId,
     });
 
-    return { content, filename: `variaveis-dap-${mm}-${yy}.csv` };
+    return { content, filename: `resumo-dap-${mm}-${yy}.csv` };
   },
 
   /** Busca o extrato de um DEV para exibição no painel DAP. */

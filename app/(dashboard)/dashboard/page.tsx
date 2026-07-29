@@ -1,4 +1,5 @@
 import { requireAuth, toPermissionUser } from "@/server/auth/helpers";
+import { redirect }          from "next/navigation";
 import { prisma }            from "@/lib/prisma";
 import { dashboardService }  from "@/services/dashboardService";
 import { canViewBenchmark }  from "@/server/auth/permissions";
@@ -93,6 +94,8 @@ export default async function DashboardPage({
   const session = await requireAuth();
   const actor   = toPermissionUser(session);
   const sp      = await searchParams;
+
+  if (actor.role === "DAP") redirect("/fechamento-dap");
 
   // DEV vê apenas seus próprios dados — layout idêntico ao admin/gestor
   const isSelfOnly      = actor.role === "DEV";

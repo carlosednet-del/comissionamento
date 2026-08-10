@@ -1,0 +1,1 @@
+ALTER TABLE "demands" ADD COLUMN "isPedra" BOOLEAN NOT NULL DEFAULT false;

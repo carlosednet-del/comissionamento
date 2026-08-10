@@ -66,6 +66,7 @@ export type DemandSummary = Pick<
   | "directorPriorityOrder"
   | "assigneeProfileSnapshot"
   | "hourlyRateSnapshot"
+  | "isPedra"
 > & {
   assignee: Pick<User, "id" | "name"> | null;
   creator:  Pick<User, "id" | "name">;

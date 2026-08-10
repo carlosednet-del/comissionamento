@@ -386,6 +386,25 @@ export async function returnApprovedToAnalysisAction(
   } catch (e) { return handleError(e); }
 }
 
+// ── Toggle Pedra ─────────────────────────────────────────────────
+
+export async function togglePedraAction(
+  id: string,
+  value: boolean,
+): Promise<ActionResult<void>> {
+  try {
+    const session = await requireAuth();
+    const actor   = toPermissionUser(session);
+    if (actor.role !== "ADMIN" && actor.role !== "GESTOR") {
+      return { success: false, error: "Sem permissão para marcar demanda como Pedra." };
+    }
+    await demandService.updateDemand(id, { isPedra: value }, actor);
+    revalidatePath("/demandas/kanban");
+    revalidatePath(`/demandas/${id}`);
+    return { success: true, data: undefined };
+  } catch (e) { return handleError(e); }
+}
+
 // ── Delete ───────────────────────────────────────────────────────
 
 export async function deleteDemandAction(id: string): Promise<ActionResult<void>> {

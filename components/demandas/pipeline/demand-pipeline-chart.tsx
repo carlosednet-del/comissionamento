@@ -3,10 +3,11 @@
 import { useMemo } from "react";
 import Link from "next/link";
 
-const DAY_PX  = 22;
-const ROW_H   = 54;
-const LEFT_W  = 284;
+const DAY_PX   = 22;
+const ROW_H    = 54;
+const LEFT_W   = 284;
 const HEADER_H = 48;
+const GROUP_H  = 32;
 
 const STATUS_CFG: Record<string, { label: string; color: string }> = {
   RASCUNHO:               { label: "Rascunho",       color: "#94a3b8" },
@@ -47,6 +48,9 @@ function fmt(d: Date): string {
 function fmtMonth(d: Date): string {
   return d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
 }
+function initials(name: string): string {
+  return name.split(" ").slice(0, 2).map(p => p[0]).join("").toUpperCase();
+}
 
 export type PipelineDemand = {
   id:                  string;
@@ -60,6 +64,12 @@ export type PipelineDemand = {
   actualStartDate:     string | null;
   actualDeliveryDate:  string | null;
   assignee: { id: string; name: string } | null;
+};
+
+type AssigneeGroup = {
+  key:          string;
+  assigneeName: string;
+  demands:      PipelineDemand[];
 };
 
 export function DemandPipelineChart({ demands }: { demands: PipelineDemand[] }) {
@@ -90,8 +100,21 @@ export function DemandPipelineChart({ demands }: { demands: PipelineDemand[] }) 
 
   const TW = totalDays * DAY_PX;
 
-  const withDates = demands.filter(d => d.plannedDeliveryDate);
-  const noDate    = demands.filter(d => !d.plannedDeliveryDate);
+  // Group demands by assignee, sorted alphabetically; no-assignee last
+  const groups = useMemo<AssigneeGroup[]>(() => {
+    const map = new Map<string, AssigneeGroup>();
+    for (const d of demands) {
+      const key  = d.assignee?.name ?? "__sem_responsavel__";
+      const name = d.assignee?.name ?? "Sem responsável";
+      if (!map.has(key)) map.set(key, { key, assigneeName: name, demands: [] });
+      map.get(key)!.demands.push(d);
+    }
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.key === "__sem_responsavel__") return 1;
+      if (b.key === "__sem_responsavel__") return -1;
+      return a.assigneeName.localeCompare(b.assigneeName, "pt-BR");
+    });
+  }, [demands]);
 
   if (demands.length === 0) {
     return (
@@ -104,6 +127,28 @@ export function DemandPipelineChart({ demands }: { demands: PipelineDemand[] }) 
       </div>
     );
   }
+
+  // Shared month-separator lines for a row's timeline area
+  const MonthLines = () => (
+    <>
+      {months.map(m => (
+        <div
+          key={m.label}
+          className="absolute top-0 bottom-0 border-r border-muted/40"
+          style={{ left: (m.off + m.days) * DAY_PX - 1 }}
+        />
+      ))}
+    </>
+  );
+
+  // Today vertical line
+  const TodayLine = () =>
+    todayOff >= 0 && todayOff <= totalDays ? (
+      <div
+        className="absolute top-0 bottom-0 z-10 pointer-events-none"
+        style={{ left: todayOff * DAY_PX, width: 2, background: "#ef4444", opacity: 0.6 }}
+      />
+    ) : null;
 
   return (
     <div className="rounded-lg border bg-background overflow-hidden flex flex-col">
@@ -126,7 +171,7 @@ export function DemandPipelineChart({ demands }: { demands: PipelineDemand[] }) 
       <div className="overflow-x-auto">
         <div style={{ minWidth: LEFT_W + TW }}>
 
-          {/* Header */}
+          {/* Sticky month header */}
           <div className="flex sticky top-0 z-20 bg-background border-b">
             <div
               className="shrink-0 sticky left-0 z-30 bg-muted/20 border-r flex items-end px-3 pb-2"
@@ -136,7 +181,6 @@ export function DemandPipelineChart({ demands }: { demands: PipelineDemand[] }) 
                 Demanda
               </span>
             </div>
-            {/* Month columns */}
             <div className="flex" style={{ width: TW, height: HEADER_H }}>
               {months.map(m => (
                 <div
@@ -145,7 +189,6 @@ export function DemandPipelineChart({ demands }: { demands: PipelineDemand[] }) 
                   style={{ width: m.days * DAY_PX }}
                 >
                   {m.label}
-                  {/* Today marker label */}
                   {todayOff >= m.off && todayOff < m.off + m.days && (
                     <span
                       className="absolute bottom-1 text-[9px] font-bold text-red-500"
@@ -159,146 +202,117 @@ export function DemandPipelineChart({ demands }: { demands: PipelineDemand[] }) 
             </div>
           </div>
 
-          {/* ── Rows with dates ──────────────────────────────────────── */}
-          {withDates.map((d, i) => {
-            const cfg      = STATUS_CFG[d.status] ?? STATUS_CFG.RASCUNHO;
-            const end      = dayStart(new Date(d.plannedDeliveryDate!));
-            const start    = d.plannedStartDate ? dayStart(new Date(d.plannedStartDate)) : addDays(end, -7);
-            const barLeft  = Math.max(0, diffDays(rangeStart, start)) * DAY_PX;
-            const barWidth = Math.max(DAY_PX, diffDays(start, end) * DAY_PX);
-            const isOverdue = !DONE_STATUSES.has(d.status) && today > end;
-            const isDone    = d.status === "HOMOLOGADA_PRODUCAO" || d.status === "CONCLUIDA";
-            const stripe    = i % 2 !== 0;
+          {/* ── Groups ───────────────────────────────────────────────── */}
+          {groups.map(group => (
+            <div key={group.key}>
 
-            return (
+              {/* Group header row */}
               <div
-                key={d.id}
-                className="flex border-b"
-                style={{ height: ROW_H, background: stripe ? "rgba(0,0,0,0.018)" : undefined }}
+                className="flex border-b border-t border-border/60"
+                style={{ height: GROUP_H, background: "hsl(var(--muted)/0.45)" }}
               >
-                {/* Left info — sticky */}
+                {/* Left — sticky, shows assignee name + count */}
                 <div
-                  className="shrink-0 sticky left-0 z-10 bg-background border-r flex flex-col justify-center gap-0.5 px-3"
-                  style={{ width: LEFT_W, background: stripe ? "hsl(var(--muted)/0.15)" : undefined }}
+                  className="shrink-0 sticky left-0 z-10 border-r flex items-center gap-2.5 px-3"
+                  style={{ width: LEFT_W, background: "hsl(var(--muted)/0.45)" }}
                 >
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: cfg.color }} />
-                    <Link
-                      href={`/demandas/${d.id}`}
-                      className="text-xs font-semibold truncate hover:underline leading-snug"
-                      title={d.title}
-                    >
-                      {d.title}
-                    </Link>
-                  </div>
-                  <div className="flex items-center gap-2 pl-3.5 text-[10px] text-muted-foreground">
-                    {d.assignee && (
-                      <span className="truncate max-w-[130px]">{d.assignee.name}</span>
-                    )}
-                    <span className="shrink-0 opacity-80">
-                      {d.plannedStartDate ? `${fmt(new Date(d.plannedStartDate))} → ` : "até "}
-                      {fmt(end)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Timeline */}
-                <div className="relative overflow-hidden" style={{ width: TW, height: ROW_H }}>
-                  {/* Month separators */}
-                  {months.map(m => (
-                    <div
-                      key={m.label}
-                      className="absolute top-0 bottom-0 border-r border-muted/40"
-                      style={{ left: (m.off + m.days) * DAY_PX - 1 }}
-                    />
-                  ))}
-                  {/* Today line */}
-                  {todayOff >= 0 && todayOff <= totalDays && (
-                    <div
-                      className="absolute top-0 bottom-0 z-10 pointer-events-none"
-                      style={{ left: todayOff * DAY_PX, width: 2, background: "#ef4444", opacity: 0.6 }}
-                    />
-                  )}
-                  {/* Planned bar */}
-                  <div
-                    className="absolute flex items-center overflow-hidden px-1.5 text-[10px] font-semibold text-white rounded"
-                    style={{
-                      left:   barLeft,
-                      width:  barWidth,
-                      top:    (ROW_H - 26) / 2,
-                      height: 26,
-                      background: cfg.color,
-                      opacity: DONE_STATUSES.has(d.status) && !isDone ? 0.45 : 1,
-                      boxShadow: isOverdue
-                        ? "0 0 0 2px #ef4444"
-                        : isDone
-                        ? `0 0 0 1.5px ${cfg.color}88`
-                        : undefined,
-                    }}
-                    title={`${d.title}\n${cfg.label}${isOverdue ? "\n⚠️ Atrasada" : ""}${isDone ? "\n✅ Concluída" : ""}`}
+                  {/* Avatar circle */}
+                  <span
+                    className="h-5 w-5 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
+                    style={{ background: "#64748b" }}
                   >
-                    {barWidth > 72 && (d.assignee?.name?.split(" ")[0] ?? "")}
-                    {isDone && barWidth > 44 && " ✓"}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* ── Rows without dates ───────────────────────────────────── */}
-          {noDate.length > 0 && (
-            <>
-              <div className="flex border-b bg-muted/30" style={{ minHeight: 28 }}>
-                <div
-                  className="sticky left-0 z-10 bg-muted/30 px-3 flex items-center border-r"
-                  style={{ width: LEFT_W }}
-                >
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                    Sem data prevista
+                    {initials(group.assigneeName)}
+                  </span>
+                  <span className="text-[11px] font-bold text-foreground/80 truncate">
+                    {group.assigneeName}
+                  </span>
+                  <span className="ml-auto shrink-0 text-[10px] text-muted-foreground font-medium">
+                    {group.demands.length} dem.
                   </span>
                 </div>
-                <div style={{ width: TW }} />
+                {/* Right — just grid lines */}
+                <div className="relative flex-1 overflow-hidden" style={{ width: TW }}>
+                  <MonthLines />
+                  <TodayLine />
+                </div>
               </div>
-              {noDate.map((d, i) => {
-                const cfg    = STATUS_CFG[d.status] ?? STATUS_CFG.RASCUNHO;
-                const stripe = i % 2 !== 0;
+
+              {/* Demands in this group */}
+              {group.demands.map((d, i) => {
+                const cfg     = STATUS_CFG[d.status] ?? STATUS_CFG.RASCUNHO;
+                const hasDates = !!d.plannedDeliveryDate;
+                const end      = hasDates ? dayStart(new Date(d.plannedDeliveryDate!)) : null;
+                const start    = d.plannedStartDate
+                  ? dayStart(new Date(d.plannedStartDate))
+                  : end ? addDays(end, -7) : null;
+                const barLeft  = start ? Math.max(0, diffDays(rangeStart, start)) * DAY_PX : 0;
+                const barWidth = start && end ? Math.max(DAY_PX, diffDays(start, end) * DAY_PX) : 0;
+                const isOverdue = end && !DONE_STATUSES.has(d.status) && today > end;
+                const isDone    = d.status === "HOMOLOGADA_PRODUCAO" || d.status === "CONCLUIDA";
+                const stripe    = i % 2 !== 0;
+
                 return (
                   <div
                     key={d.id}
                     className="flex border-b"
                     style={{ height: ROW_H, background: stripe ? "rgba(0,0,0,0.018)" : undefined }}
                   >
+                    {/* Left info — sticky */}
                     <div
                       className="shrink-0 sticky left-0 z-10 bg-background border-r flex flex-col justify-center gap-0.5 px-3"
-                      style={{ width: LEFT_W }}
+                      style={{ width: LEFT_W, background: stripe ? "hsl(var(--muted)/0.10)" : undefined }}
                     >
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: cfg.color }} />
                         <Link
                           href={`/demandas/${d.id}`}
-                          className="text-xs font-semibold truncate hover:underline"
+                          className="text-xs font-semibold truncate hover:underline leading-snug"
                           title={d.title}
                         >
                           {d.title}
                         </Link>
                       </div>
-                      {d.assignee && (
-                        <p className="pl-3.5 text-[10px] text-muted-foreground truncate">
-                          {d.assignee.name}
-                        </p>
-                      )}
+                      <div className="pl-3.5 text-[10px] text-muted-foreground">
+                        {hasDates && start && end ? (
+                          <span>{fmt(start)} → {fmt(end)}</span>
+                        ) : (
+                          <span className="italic opacity-60">sem data prevista</span>
+                        )}
+                      </div>
                     </div>
-                    <div
-                      className="flex items-center px-4 text-[11px] text-muted-foreground italic"
-                      style={{ width: TW }}
-                    >
-                      Sem data prevista de entrega
+
+                    {/* Timeline */}
+                    <div className="relative overflow-hidden" style={{ width: TW, height: ROW_H }}>
+                      <MonthLines />
+                      <TodayLine />
+                      {hasDates && start && end && (
+                        <div
+                          className="absolute flex items-center overflow-hidden px-1.5 text-[10px] font-semibold text-white rounded"
+                          style={{
+                            left:   barLeft,
+                            width:  barWidth,
+                            top:    (ROW_H - 26) / 2,
+                            height: 26,
+                            background: cfg.color,
+                            opacity: DONE_STATUSES.has(d.status) && !isDone ? 0.45 : 1,
+                            boxShadow: isOverdue
+                              ? "0 0 0 2px #ef4444"
+                              : isDone
+                              ? `0 0 0 1.5px ${cfg.color}88`
+                              : undefined,
+                          }}
+                          title={`${d.title}\n${cfg.label}${isOverdue ? "\n⚠️ Atrasada" : ""}${isDone ? "\n✅ Concluída" : ""}`}
+                        >
+                          {barWidth > 72 && (d.assignee?.name?.split(" ")[0] ?? "")}
+                          {isDone && barWidth > 44 && " ✓"}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
               })}
-            </>
-          )}
+            </div>
+          ))}
 
         </div>
       </div>

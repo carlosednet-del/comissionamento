@@ -259,6 +259,17 @@ model DemandEvidence {
   @@map("demand_evidences")
 }
 
+/// Armazena a imagem de evidência no próprio banco, servida por /api/evidence/[id].
+/// Substitui o Supabase Storage; a DemandEvidence.url aponta para essa rota.
+model EvidenceImage {
+  id        String   @id @default(cuid())
+  mimeType  String
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@map("evidence_images")
+}
+
 model AuditLog {
   id        String      @id @default(cuid())
   entity    String

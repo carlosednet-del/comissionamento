@@ -3,7 +3,6 @@
 import { revalidatePath }  from "next/cache";
 import { requireAuth }     from "@/server/auth/helpers";
 import { toPermissionUser } from "@/server/auth/helpers";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { prisma }                 from "@/lib/prisma";
 import { demandService }          from "@/services/demandService";
 import { demandWorkflowService }  from "@/services/demandWorkflowService";
@@ -128,15 +127,19 @@ export async function attachEvidenceAction(
 
 // ── Evidence image upload ─────────────────────────────────────────
 
-const EVIDENCE_BUCKET = "evidence-images";
-const MAX_IMAGE_SIZE  = 5 * 1024 * 1024; // 5 MB
-const ALLOWED_TYPES   = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+const ALLOWED_TYPES  = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
 
+/**
+ * Recebe a imagem, grava os bytes no Postgres (tabela evidence_images) e
+ * devolve a URL da rota que a serve. Não depende do Supabase Storage — só da
+ * conexão de banco que o app já usa.
+ */
 export async function uploadEvidenceImageAction(
   formData: FormData,
 ): Promise<ActionResult<{ url: string }>> {
   try {
-    const session = await requireAuth();
+    await requireAuth();
 
     const file = formData.get("file");
     if (!(file instanceof File)) {
@@ -149,36 +152,13 @@ export async function uploadEvidenceImageAction(
       return { success: false, error: "Imagem deve ter no máximo 5 MB." };
     }
 
-    const supabase = createAdminClient();
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const image  = await prisma.evidenceImage.create({
+      data: { mimeType: file.type, data: buffer },
+      select: { id: true },
+    });
 
-    // Garante que o bucket exista (idempotente)
-    const { data: buckets } = await supabase.storage.listBuckets();
-    const bucketExists = buckets?.some((b) => b.name === EVIDENCE_BUCKET);
-    if (!bucketExists) {
-      const { error: createErr } = await supabase.storage.createBucket(EVIDENCE_BUCKET, {
-        public: true,
-        fileSizeLimit: MAX_IMAGE_SIZE,
-        allowedMimeTypes: ALLOWED_TYPES,
-      });
-      if (createErr) throw new Error(`Falha ao criar bucket: ${createErr.message}`);
-    }
-
-    const ext      = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-    const filename = `${session.id}/${Date.now()}.${ext}`;
-    const bytes    = await file.arrayBuffer();
-    const buffer   = Buffer.from(bytes);
-
-    const { error: uploadErr } = await supabase.storage
-      .from(EVIDENCE_BUCKET)
-      .upload(filename, buffer, { contentType: file.type, upsert: false });
-
-    if (uploadErr) throw new Error(`Falha no upload: ${uploadErr.message}`);
-
-    const { data: { publicUrl } } = supabase.storage
-      .from(EVIDENCE_BUCKET)
-      .getPublicUrl(filename);
-
-    return { success: true, data: { url: publicUrl } };
+    return { success: true, data: { url: `/api/evidence/${image.id}` } };
   } catch (e) {
     return handleError(e);
   }

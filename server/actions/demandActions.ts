@@ -405,6 +405,31 @@ export async function togglePedraAction(
   } catch (e) { return handleError(e); }
 }
 
+// ── Pipeline Pedras ─────────────────────────────────────────────
+
+export async function getPedraPipelineAction() {
+  const session = await requireAuth();
+  const actor   = toPermissionUser(session);
+  if (actor.role !== "ADMIN" && actor.role !== "GESTOR") return [];
+  return prisma.demand.findMany({
+    where: { isPedra: true },
+    select: {
+      id:                  true,
+      title:               true,
+      status:              true,
+      priority:            true,
+      requesterArea:       true,
+      estimatedHours:      true,
+      plannedStartDate:    true,
+      plannedDeliveryDate: true,
+      actualStartDate:     true,
+      actualDeliveryDate:  true,
+      assignee: { select: { id: true, name: true } },
+    },
+    orderBy: [{ plannedDeliveryDate: { sort: "asc", nulls: "last" } }],
+  });
+}
+
 // ── Delete ───────────────────────────────────────────────────────
 
 export async function deleteDemandAction(id: string): Promise<ActionResult<void>> {

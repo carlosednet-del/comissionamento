@@ -17,6 +17,7 @@ import {
   FileText,
   FileSpreadsheet,
   TrendingUp,
+  GanttChart,
 } from "lucide-react";
 import type { UserRole } from "@prisma/client";
 
@@ -36,8 +37,9 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard",           label: "Dashboard",          icon: LayoutDashboard, roles: ["ADMIN", "GESTOR", "FINANCEIRO", "DEV"] },
   { href: "/dashboard-executivo", label: "Dashboard Executivo", icon: TrendingUp,       roles: ["ADMIN", "DIRETOR", "GESTOR"] },
-  { href: "/demandas",        label: "Demandas",   icon: ClipboardList },
-  { href: "/demandas/kanban", label: "Kanban",      icon: LayoutGrid },
+  { href: "/demandas",          label: "Demandas",        icon: ClipboardList },
+  { href: "/demandas/kanban",   label: "Kanban",          icon: LayoutGrid },
+  { href: "/demandas/pipeline", label: "Pipeline Pedras", icon: GanttChart, roles: ["ADMIN", "GESTOR"] },
   { href: "/meu-extrato",     label: "Meu Extrato",     icon: FileText,        roles: ["DEV", "ADMIN", "DIRETOR"] },
   { href: "/fechamento-dap",  label: "Fechamento DAP",  icon: FileSpreadsheet, roles: ["DAP", "ADMIN", "DIRETOR", "FINANCEIRO"] },
   { href: "/usuarios",        label: "Usuários",      icon: Users,     roles: ["ADMIN"] },
@@ -78,7 +80,8 @@ export function Sidebar({ user }: { user: SidebarUser }) {
             item.href === "/dashboard" || item.href === "/demandas"
               ? pathname === item.href ||
                 (pathname.startsWith(item.href + "/") &&
-                  !pathname.startsWith("/demandas/kanban"))
+                  !pathname.startsWith("/demandas/kanban") &&
+                  !pathname.startsWith("/demandas/pipeline"))
               : pathname.startsWith(item.href);
 
           return (

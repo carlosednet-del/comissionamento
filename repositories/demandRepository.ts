@@ -44,6 +44,7 @@ const demandSummarySelect = {
   directorPriorityOrder:   true,
   assigneeProfileSnapshot: true,
   hourlyRateSnapshot:      true,
+  isPedra:                 true,
   assignee: { select: { id: true, name: true } },
   creator:  { select: { id: true, name: true } },
 } as const;

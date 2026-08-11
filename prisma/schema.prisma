@@ -221,6 +221,7 @@ model Demand {
   rejectionReason      String?
   deliveryNotes        String?
   homologationNotes    String?
+  isPedra              Boolean        @default(false)
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
 
@@ -256,6 +257,17 @@ model DemandEvidence {
   createdBy User?  @relation("EvidenceCreator", fields: [createdById], references: [id])
 
   @@map("demand_evidences")
+}
+
+/// Armazena a imagem de evidência no próprio banco, servida por /api/evidence/[id].
+/// Substitui o Supabase Storage; a DemandEvidence.url aponta para essa rota.
+model EvidenceImage {
+  id        String   @id @default(cuid())
+  mimeType  String
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@map("evidence_images")
 }
 
 model AuditLog {

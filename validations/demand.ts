@@ -139,6 +139,7 @@ export const updateDemandSchema = createDemandBase
     actualStartDate:    z.coerce.date().optional().nullable(),
     actualDeliveryDate: z.coerce.date().optional().nullable(),
     homologationDate:   z.coerce.date().optional().nullable(),
+    isPedra:            z.boolean().optional(),
   })
   .refine(dateDeliveryAfterStart, deliveryMsg);
 

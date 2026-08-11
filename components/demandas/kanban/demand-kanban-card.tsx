@@ -39,6 +39,7 @@ import {
   FolderOpen, FlaskConical, Code2,
   Send, ShieldCheck, XCircle, RotateCcw, Ban, Star, Undo2, TrendingDown, CheckCircle2,
 } from "lucide-react";
+import { togglePedraAction } from "@/server/actions/demandActions";
 
 const BRL_COMPACT = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
@@ -82,10 +83,11 @@ export function DemandKanbanCard({ demand, actor, evidenceCount = 0, benchmarkCo
   const canCancel             = ["RASCUNHO","ABERTA","EM_ANALISE","PRIORIZACAO_DIRETORIA","APROVADA","EM_DESENVOLVIMENTO"].includes(demand.status)
                                 && canChangeDemandStatus(actor, demandPerm, "CANCELADA");
   const canReturnApproved     = ["APROVADA", "EM_DESENVOLVIMENTO"].includes(demand.status) && canReturnApprovedToAnalysis(actor);
+  const canTogglePedra        = actor.role === "ADMIN" || actor.role === "GESTOR";
 
   // canPrioritizeApprove e canReturnFromDirector são exibidos no painel dedicado da diretoria
   const hasActions = canOpen || canAnalysis || canSendToDirector || canStart || canReturnApproved ||
-                     canHomologation || canHomologate || canReject || canReturn || canCancel;
+                     canHomologation || canHomologate || canReject || canReturn || canCancel || canTogglePedra;
 
   const benchEconomy = (
     (actor.role === "ADMIN" || actor.role === "DIRETOR" || actor.role === "GESTOR") &&
@@ -109,11 +111,16 @@ export function DemandKanbanCard({ demand, actor, evidenceCount = 0, benchmarkCo
         "hover:shadow-md hover:border-brand-primary/30 transition-all duration-150",
       )}
     >
-      {/* Linha 1: Prioridade + Tipo + Diretor */}
+      {/* Linha 1: Prioridade + Tipo + Diretor + Pedra */}
       <div className="flex flex-wrap items-center gap-1.5">
         <PriorityBadge priority={demand.priority} showIcon />
         <TypeBadge     type={demand.demandType} />
         <DirectorBadge requesterArea={demand.requesterArea} />
+        {demand.isPedra && (
+          <span className="inline-flex items-center gap-0.5 rounded-full bg-stone-100 border border-stone-300 px-1.5 py-0.5 text-[10px] font-bold text-stone-700 select-none">
+            🪨 Pedra
+          </span>
+        )}
       </div>
 
       {/* Linha 2: Título */}
@@ -333,6 +340,16 @@ export function DemandKanbanCard({ demand, actor, evidenceCount = 0, benchmarkCo
                 </Button>
               }
             />
+          )}
+          {canTogglePedra && (
+            <Button
+              variant="outline"
+              size="sm"
+              className={`h-6 px-2 text-[10px] gap-1 ${demand.isPedra ? "border-stone-400 bg-stone-100 text-stone-700 hover:bg-stone-200" : "border-stone-200 text-stone-500 hover:bg-stone-50"}`}
+              onClick={async () => { await togglePedraAction(demand.id, !demand.isPedra); }}
+            >
+              🪨 {demand.isPedra ? "Remover Pedra" : "Pedra"}
+            </Button>
           )}
         </div>
       )}

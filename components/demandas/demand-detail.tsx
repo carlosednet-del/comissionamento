@@ -3,7 +3,8 @@
 import Link from "next/link";
 const DATE_FMT = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 const BRL      = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const safeHref = (url: string) => /^https?:\/\//i.test(url) ? url : "#";
+const safeHref = (url: string) =>
+  /^https?:\/\//i.test(url) || url.startsWith("/api/evidence/") ? url : "#";
 
 import { useState, useTransition } from "react";
 import { useRouter }               from "next/navigation";
@@ -285,7 +286,8 @@ export function DemandDetail({ demand, actor, auditLogs, benchmarkConfig }: Prop
                 <ul className="space-y-2">
                   {demand.evidences.map((ev) => {
                     const isImage = /\.(jpe?g|png|gif|webp|svg)(\?.*)?$/i.test(ev.url) ||
-                      ev.url.includes("/evidence-images/");
+                      ev.url.includes("/evidence-images/") ||
+                      ev.url.startsWith("/api/evidence/");
                     return (
                       <li key={ev.id} className="rounded-md border overflow-hidden">
                         {/* Thumbnail para imagens */}

@@ -93,7 +93,7 @@ export const ROI_LABELS: Record<RoiLevel, string> = {
  * 2 DU  → 0,50  (−50 %)
  * 3 DU  → 0,25  (−75 %)
  * 4 DU  → 0,10  (−90 %)
- * 5+ DU → 0,00  (valor zerado)
+ * 5+ DU → −1,00 (penalidade: valor negativo — dev desconta o valor da entrega)
  *
  * "DU" = Dia Útil = dias de semana (seg–sex), feriados nacionais não considerados.
  * Base: actualDeliveryDate − plannedDeliveryDate.
@@ -104,6 +104,7 @@ export const DEFLATOR_FACTORS: Record<number, number> = {
   2: 0.50,
   3: 0.25,
   4: 0.10,
+  5: -1.00,
 };
 
 export function getDeflatorFactor(
@@ -112,9 +113,9 @@ export function getDeflatorFactor(
 ): number {
   if (workingDaysLate <= 0) return 1.00;
   const factors = factorsOverride ?? DEFLATOR_FACTORS;
-  // Para 5+ DU usamos a chave 5; se não existir, retorna 0
+  // Para 5+ DU usamos a chave 5
   const key = Math.min(workingDaysLate, 5);
-  return factors[key] ?? 0;
+  return factors[key] ?? -1.00;
 }
 
 /** Conta dias úteis (seg–sex) entre duas datas (exclusive start, inclusive end). */

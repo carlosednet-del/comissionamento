@@ -3,6 +3,7 @@ import { auditService }              from "@/services/auditService";
 import { generateSignatureCode }     from "@/lib/statement/generateSignatureCode";
 import { generateStatementContentHash } from "@/lib/statement/generateContentHash";
 import { periodBounds, signingWindow, isSigningWindowOpen } from "@/lib/statement/statementPeriod";
+import { applyDeflator }             from "@/lib/demand-pricing";
 import type { StatementData, StatementPreviewItem, StatementTotals } from "@/types";
 
 async function fetchHomologatedDemands(developerId: string, month: number, year: number) {
@@ -28,7 +29,13 @@ function demandToPreviewItem(d: {
   hourlyRateSnapshot: number | null;
   estimatedDemandValue: number | null;
   actualDeliveryDate: Date | null;
+  plannedDeliveryDate: Date | null;
 }): StatementPreviewItem {
+  const deflated = applyDeflator(
+    d.estimatedDemandValue ?? 0,
+    d.actualDeliveryDate,
+    d.plannedDeliveryDate,
+  );
   return {
     demandId:      d.id,
     demandCode:    d.id.slice(-6).toUpperCase(),
@@ -39,7 +46,7 @@ function demandToPreviewItem(d: {
     roi:           d.roi,
     estimatedHours: d.estimatedHours ?? 0,
     hourlyRate:    d.hourlyRateSnapshot,
-    estimatedValue: d.estimatedDemandValue ?? 0,
+    estimatedValue: deflated.deflatedValue,
     deliveryDate:  d.actualDeliveryDate ? d.actualDeliveryDate.toISOString() : null,
   };
 }

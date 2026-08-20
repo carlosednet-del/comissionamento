@@ -1,6 +1,7 @@
-import { prisma }       from "@/lib/prisma";
-import { auditService } from "@/services/auditService";
-import { periodBounds } from "@/lib/statement/statementPeriod";
+import { prisma }         from "@/lib/prisma";
+import { auditService }   from "@/services/auditService";
+import { periodBounds }   from "@/lib/statement/statementPeriod";
+import { applyDeflator }  from "@/lib/demand-pricing";
 import type {
   DapClosingFilters,
   DapClosingPreview,
@@ -209,7 +210,11 @@ export const dapClosingService = {
         roi:                    d.roi,
         estimatedHours:         d.estimatedHours ?? 0,
         hourlyRate:             d.hourlyRateSnapshot !== null ? Number(d.hourlyRateSnapshot) : null,
-        estimatedValue:         d.estimatedDemandValue ?? 0,
+        estimatedValue:         applyDeflator(
+                                  d.estimatedDemandValue ?? 0,
+                                  d.actualDeliveryDate,
+                                  d.plannedDeliveryDate,
+                                ).deflatedValue,
         homologationDate:       d.homologationDate?.toISOString() ?? null,
         assigneeProfileSnapshot: d.assigneeProfileSnapshot ?? dev.workerProfile ?? null,
         directorPriorityOrder:  d.directorPriorityOrder,

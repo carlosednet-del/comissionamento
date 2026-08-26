@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -12,7 +12,7 @@ import {
   type UpdateDemandInput,
 } from "@/validations/demand";
 import type { DemandWithRelations } from "@/types";
-import { createDemandAction, updateDemandAction } from "@/server/actions/demandActions";
+import { createDemandAction, updateDemandAction, attachEvidenceAction, uploadEvidenceImageAction } from "@/server/actions/demandActions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -35,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Save, Send, Info, FlaskConical } from "lucide-react";
+import { Loader2, Save, Send, Info, FlaskConical, Paperclip, Upload, X, FileText, ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   HOURLY_RATES,
@@ -262,6 +262,36 @@ export function DemandForm(props: Props) {
 
   const [serverError, setServerError] = useState<string | null>(null);
 
+  // ── Especificação — upload de arquivos ───────────────────────────
+  type SpecFile = { name: string; url: string; mimeType: string; existingId?: string };
+  const [specFiles, setSpecFiles] = useState<SpecFile[]>(() => {
+    if (isCreate || !demand) return [];
+    return (demand.evidences ?? [])
+      .filter((e) => e.description === "Especificação")
+      .map((e) => ({ name: e.title, url: e.url, mimeType: "", existingId: e.id }));
+  });
+  const [specUploading, setSpecUploading] = useState(false);
+  const [specError, setSpecError] = useState<string | null>(null);
+  const specInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleSpecFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setSpecError(null);
+    setSpecUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const result = await uploadEvidenceImageAction(fd);
+    setSpecUploading(false);
+    if (!result.success) { setSpecError(result.error); return; }
+    setSpecFiles((prev) => [...prev, { name: file.name, url: result.data.url, mimeType: file.type }]);
+  }
+
+  function removeNewSpecFile(url: string) {
+    setSpecFiles((prev) => prev.filter((f) => f.existingId || f.url !== url));
+  }
+
   type FormValues = CreateDemandInput | UpdateDemandInput;
 
   const defaultValues: Partial<FormValues> = isCreate
@@ -372,11 +402,21 @@ export function DemandForm(props: Props) {
       const payload = { ...(values as CreateDemandInput), saveAsDraft: draft };
       const result  = await createDemandAction(payload);
       if (!result.success) { setServerError(result.error); scrollToFirstError(); return; }
+      const demandId = result.data.id;
+      for (const f of specFiles) {
+        const title = f.name.length >= 3 ? f.name : `Arquivo - ${f.name}`;
+        await attachEvidenceAction({ demandId, title, url: f.url, description: "Especificação" });
+      }
       router.push("/demandas");
     } else {
-      const result = await updateDemandAction((props as EditMode).demand.id, values as UpdateDemandInput);
+      const demandId = (props as EditMode).demand.id;
+      const result = await updateDemandAction(demandId, values as UpdateDemandInput);
       if (!result.success) { setServerError(result.error); scrollToFirstError(); return; }
-      router.push(`/demandas/${(props as EditMode).demand.id}`);
+      for (const f of specFiles.filter((f) => !f.existingId)) {
+        const title = f.name.length >= 3 ? f.name : `Arquivo - ${f.name}`;
+        await attachEvidenceAction({ demandId, title, url: f.url, description: "Especificação" });
+      }
+      router.push(`/demandas/${demandId}`);
     }
 
     router.refresh();
@@ -710,6 +750,87 @@ export function DemandForm(props: Props) {
                 </FormItem>
               )}
             />
+          </CardContent>
+        </Card>
+
+        {/* ── Bloco 3c — Especificação / Documentação ─────────────────── */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Paperclip className="h-4 w-4" />
+              Especificação / Documentação
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Anexe arquivos de especificação, layouts, requisitos ou qualquer documento de referência (imagens e PDFs, máx. 10 MB cada).
+            </p>
+
+            {specFiles.length > 0 && (
+              <ul className="space-y-2">
+                {specFiles.map((f) => {
+                  const isPdf = f.mimeType === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+                  return (
+                    <li
+                      key={f.url}
+                      className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm"
+                    >
+                      {isPdf
+                        ? <FileText className="h-4 w-4 shrink-0 text-red-500" />
+                        : <ImageIcon className="h-4 w-4 shrink-0 text-blue-500" />
+                      }
+                      <a
+                        href={f.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 truncate text-foreground hover:underline"
+                      >
+                        {f.name}
+                      </a>
+                      {!f.existingId && (
+                        <button
+                          type="button"
+                          onClick={() => removeNewSpecFile(f.url)}
+                          className="ml-auto shrink-0 rounded p-0.5 hover:bg-destructive/10 hover:text-destructive"
+                          aria-label="Remover arquivo"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            {specError && (
+              <p className="text-sm text-destructive">{specError}</p>
+            )}
+
+            <input
+              ref={specInputRef}
+              type="file"
+              className="hidden"
+              accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml,application/pdf"
+              onChange={handleSpecFileChange}
+              disabled={specUploading}
+            />
+            <button
+              type="button"
+              onClick={() => specInputRef.current?.click()}
+              disabled={specUploading}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium",
+                "hover:bg-accent hover:text-accent-foreground",
+                "disabled:cursor-not-allowed disabled:opacity-50",
+              )}
+            >
+              {specUploading
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <Upload className="h-4 w-4" />
+              }
+              {specUploading ? "Enviando…" : "Anexar arquivo"}
+            </button>
           </CardContent>
         </Card>
 

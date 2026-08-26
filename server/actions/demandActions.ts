@@ -127,8 +127,8 @@ export async function attachEvidenceAction(
 
 // ── Evidence image upload ─────────────────────────────────────────
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
-const ALLOWED_TYPES  = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
+const MAX_FILE_SIZE  = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_TYPES  = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml", "application/pdf"];
 
 /**
  * Recebe a imagem, grava os bytes no Postgres (tabela evidence_images) e
@@ -146,10 +146,10 @@ export async function uploadEvidenceImageAction(
       return { success: false, error: "Nenhum arquivo enviado" };
     }
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return { success: false, error: "Formato inválido. Use JPG, PNG, GIF, WebP ou SVG." };
+      return { success: false, error: "Formato inválido. Use JPG, PNG, GIF, WebP, SVG ou PDF." };
     }
-    if (file.size > MAX_IMAGE_SIZE) {
-      return { success: false, error: "Imagem deve ter no máximo 5 MB." };
+    if (file.size > MAX_FILE_SIZE) {
+      return { success: false, error: "Arquivo deve ter no máximo 10 MB." };
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());

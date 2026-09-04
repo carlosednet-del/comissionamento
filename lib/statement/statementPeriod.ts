@@ -18,10 +18,22 @@ export function periodBounds(month: number, year: number) {
 
 export function signingWindow(month: number, year: number) {
   // Exceção: julho/2026 prazo estendido até dia 30
-  const closeDay = (month === 7 && year === 2026) ? 30 : 25;
+  if (month === 7 && year === 2026) {
+    return {
+      open:  new Date(2026, 6, 16, 0,  0,  0,   0),
+      close: new Date(2026, 6, 30, 23, 59, 59, 999),
+    };
+  }
+  // Exceção: agosto/2026 prazo estendido até 15/setembro/2026
+  if (month === 8 && year === 2026) {
+    return {
+      open:  new Date(2026, 7, 16, 0,  0,  0,   0),
+      close: new Date(2026, 8, 15, 23, 59, 59, 999),
+    };
+  }
   return {
     open:  new Date(year, month - 1, 16, 0,  0,  0,   0),
-    close: new Date(year, month - 1, closeDay, 23, 59, 59, 999),
+    close: new Date(year, month - 1, 25, 23, 59, 59, 999),
   };
 }
 

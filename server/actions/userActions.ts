@@ -111,6 +111,16 @@ export async function forcePasswordResetAction(userId: string): Promise<ActionRe
   }
 }
 
+export async function setDefaultPasswordAction(userId: string): Promise<ActionResult> {
+  try {
+    const actor = await requireAuth();
+    await userService.setDefaultPassword(userId, toPermissionUser(actor));
+    return { success: true, data: undefined, message: "Senha padrão definida. O usuário deverá trocá-la no próximo acesso." };
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
 export async function getCurrentUserAction() {
   const { getCurrentUser } = await import("@/server/auth/helpers");
   return getCurrentUser();

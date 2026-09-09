@@ -199,6 +199,35 @@ export const userService = {
     return updated;
   },
 
+  async setDefaultPassword(id: string, actor: UserForPermission) {
+    if (actor.role !== "ADMIN") {
+      throw new Error("Apenas administradores podem redefinir senhas.");
+    }
+    if (actor.id === id) {
+      throw new Error("Você não pode redefinir a própria senha por aqui.");
+    }
+
+    const existing = await userRepository.findById(id);
+    if (!existing) throw new UserNotFoundError(id);
+
+    const DEFAULT_PASSWORD = "123Mud@r";
+    const passwordHash = await authService.hashPassword(DEFAULT_PASSWORD);
+
+    await prisma.user.update({
+      where: { id },
+      data:  { passwordHash, forcePasswordChange: true },
+    });
+
+    await auditService.log({
+      entity:   "User",
+      entityId: id,
+      action:   "PASSWORD_RESET_FORCED",
+      oldValue: {},
+      newValue: { defaultPasswordSet: true, forcePasswordChange: true },
+      userId:   actor.id,
+    });
+  },
+
   /**
    * Exclusão permanente de usuário.
    *

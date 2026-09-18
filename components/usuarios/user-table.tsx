@@ -16,7 +16,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { activateUserAction, deactivateUserAction, deleteUserAction, forcePasswordResetAction, toggleUserEntraIdAction } from "@/server/actions/userActions";
+import { activateUserAction, deactivateUserAction, deleteUserAction, forcePasswordResetAction, setDefaultPasswordAction, toggleUserEntraIdAction } from "@/server/actions/userActions";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   MoreHorizontal, Pencil, UserCheck, UserX, Trash2,
-  Search, ChevronsUpDown, ChevronUp, ChevronDown, KeyRound, ShieldCheck, ShieldOff,
+  Search, ChevronsUpDown, ChevronUp, ChevronDown, KeyRound, ShieldCheck, ShieldOff, RotateCcw,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -64,8 +64,9 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
   const [loadingId, setLoadingId]    = useState<string | null>(null);
 
   // Estado para os dialogs de ação
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
-  const [resetTarget,  setResetTarget]  = useState<{ id: string; name: string } | null>(null);
+  const [deleteTarget,        setDeleteTarget]        = useState<{ id: string; name: string } | null>(null);
+  const [resetTarget,         setResetTarget]         = useState<{ id: string; name: string } | null>(null);
+  const [defaultPassTarget,   setDefaultPassTarget]   = useState<{ id: string; name: string } | null>(null);
 
   // Busca (URL-based → servidor filtra → contagem correta no cabeçalho)
   const [localSearch, setLocalSearch] = useState(defaultSearch);
@@ -172,6 +173,23 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
     });
   }
 
+  function handleDefaultPasswordConfirm() {
+    if (!defaultPassTarget) return;
+    const id = defaultPassTarget.id;
+    setDefaultPassTarget(null);
+    setLoadingId(id);
+    startAction(async () => {
+      const result = await setDefaultPasswordAction(id);
+      if (result.success) {
+        toast.success(result.message ?? "Senha padrão definida.");
+      } else {
+        toast.error(result.error ?? "Erro ao definir senha padrão.");
+      }
+      router.refresh();
+      setLoadingId(null);
+    });
+  }
+
   // ── Cabeçalho de coluna clicável ────────────────────────────────
   function SortHead({ field, children, className }: {
     field: SortField; children: React.ReactNode; className?: string;
@@ -262,6 +280,39 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
           >
             <KeyRound className="mr-2 h-4 w-4" />
             Confirmar reset
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    {/* ── Dialog de confirmação de senha padrão ─────────────────── */}
+    <AlertDialog open={!!defaultPassTarget} onOpenChange={(v) => { if (!v) setDefaultPassTarget(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-orange-600">
+            <RotateCcw className="h-5 w-5" />
+            Gerar senha padrão
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2 text-sm">
+              <p>
+                A senha de <strong className="text-foreground">{defaultPassTarget?.name}</strong> será
+                redefinida para a senha padrão do sistema.
+              </p>
+              <p className="text-muted-foreground">
+                O usuário será obrigado a criar uma nova senha no próximo acesso.
+              </p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDefaultPasswordConfirm}
+            className="bg-orange-600 hover:bg-orange-700 text-white"
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Confirmar
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -386,6 +437,14 @@ export function UserTable({ users, currentUserId, defaultSearch = "" }: Props) {
                         )}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-orange-600 focus:text-orange-600"
+                        disabled={user.id === currentUserId}
+                        onClick={() => setDefaultPassTarget({ id: user.id, name: user.name })}
+                      >
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        Gerar senha padrão
+                      </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-amber-600 focus:text-amber-600"
                         disabled={user.id === currentUserId}

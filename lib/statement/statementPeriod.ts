@@ -31,6 +31,13 @@ export function signingWindow(month: number, year: number) {
       close: new Date(2026, 8, 15, 23, 59, 59, 999),
     };
   }
+  // Exceção: setembro/2026 prazo estendido até dia 28
+  if (month === 9 && year === 2026) {
+    return {
+      open:  new Date(2026, 8, 16, 0,  0,  0,   0),
+      close: new Date(2026, 8, 28, 23, 59, 59, 999),
+    };
+  }
   return {
     open:  new Date(year, month - 1, 16, 0,  0,  0,   0),
     close: new Date(year, month - 1, 25, 23, 59, 59, 999),

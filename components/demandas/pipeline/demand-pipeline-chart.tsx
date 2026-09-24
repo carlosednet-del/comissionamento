@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 const DAY_PX   = 22;
 const ROW_H    = 54;
@@ -74,6 +75,15 @@ type AssigneeGroup = {
 
 export function DemandPipelineChart({ demands }: { demands: PipelineDemand[] }) {
   const today = useMemo(() => dayStart(new Date()), []);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  function toggleGroup(key: string) {
+    setCollapsed(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) { next.delete(key); } else { next.add(key); }
+      return next;
+    });
+  }
 
   const { rangeStart, totalDays, todayOff, months } = useMemo(() => {
     const pts: Date[] = [addDays(today, -21), addDays(today, 45)];
@@ -203,7 +213,9 @@ export function DemandPipelineChart({ demands }: { demands: PipelineDemand[] }) 
           </div>
 
           {/* ── Groups ───────────────────────────────────────────────── */}
-          {groups.map(group => (
+          {groups.map(group => {
+            const isCollapsed = collapsed.has(group.key);
+            return (
             <div key={group.key}>
 
               {/* Group header row */}
@@ -216,6 +228,16 @@ export function DemandPipelineChart({ demands }: { demands: PipelineDemand[] }) 
                   className="shrink-0 sticky left-0 z-10 border-r flex items-center gap-2.5 px-3"
                   style={{ width: LEFT_W, background: "hsl(var(--muted)/0.45)" }}
                 >
+                  {/* Collapse toggle */}
+                  <button
+                    onClick={() => toggleGroup(group.key)}
+                    className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                    title={isCollapsed ? "Expandir" : "Recolher"}
+                  >
+                    {isCollapsed
+                      ? <ChevronRight className="h-3.5 w-3.5" />
+                      : <ChevronDown  className="h-3.5 w-3.5" />}
+                  </button>
                   {/* Avatar circle */}
                   <span
                     className="h-5 w-5 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
@@ -238,7 +260,7 @@ export function DemandPipelineChart({ demands }: { demands: PipelineDemand[] }) 
               </div>
 
               {/* Demands in this group */}
-              {group.demands.map((d, i) => {
+              {!isCollapsed && group.demands.map((d, i) => {
                 const cfg     = STATUS_CFG[d.status] ?? STATUS_CFG.RASCUNHO;
                 const hasDates = !!d.plannedDeliveryDate;
                 const end      = hasDates ? dayStart(new Date(d.plannedDeliveryDate!)) : null;
@@ -312,7 +334,8 @@ export function DemandPipelineChart({ demands }: { demands: PipelineDemand[] }) 
                 );
               })}
             </div>
-          ))}
+            );
+          })}
 
         </div>
       </div>

@@ -1,8 +1,15 @@
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
-const SEP_START = new Date("2026-09-01T00:00:00.000Z");
-const SEP_END   = new Date("2026-09-30T23:59:59.999Z");
+const IDS_SUFIXO = [
+  "GKI4AR","5CZZ34","6RA3QX","GHUMCP","RMNJQ8",
+  "J1SGVM","Y3GDU7","UV00R3","197R1L","4DHK86",
+  "L2D0QZ","IY851Y","F5KVC2",
+  // variantes reais (ambiguidade O/0, B/8, S/5)
+  "UVOOR3","4DHKB6","FSKVC2",
+];
+
+const SET_DATE = new Date("2026-09-24T12:00:00.000Z");
 
 async function main() {
   const daniela = await prisma.user.findFirst({
@@ -12,40 +19,37 @@ async function main() {
   if (!daniela) { console.log("Daniela não encontrada"); return; }
   console.log(`Usuário: ${daniela.name}`);
 
-  const demands = await prisma.demand.findMany({
-    where: {
-      assigneeId: daniela.id,
-      OR: [
-        { plannedDeliveryDate: { gte: SEP_START, lte: SEP_END } },
-        { actualDeliveryDate:  { gte: SEP_START, lte: SEP_END } },
-      ],
+  const all = await prisma.demand.findMany({
+    where: { assigneeId: daniela.id },
+    select: {
+      id: true, title: true,
+      homologationDate: true, actualDeliveryDate: true, plannedDeliveryDate: true,
     },
-    select: { id: true, title: true, plannedDeliveryDate: true, actualDeliveryDate: true },
-    orderBy: { plannedDeliveryDate: "asc" },
   });
 
-  const deflated = demands.filter(d =>
-    d.actualDeliveryDate && d.plannedDeliveryDate &&
-    new Date(d.actualDeliveryDate) > new Date(d.plannedDeliveryDate)
-  );
+  const targets = all.filter(d => IDS_SUFIXO.includes(d.id.slice(-6).toUpperCase()));
 
-  console.log(`\n${demands.length} demandas em setembro | ${deflated.length} deflacionadas:\n`);
-  for (const d of demands) {
-    const p = d.plannedDeliveryDate?.toISOString().slice(0,10) ?? "—";
+  console.log(`\n${targets.length} demandas encontradas:\n`);
+  for (const d of targets) {
+    const h = d.homologationDate?.toISOString().slice(0,10) ?? "—";
     const a = d.actualDeliveryDate?.toISOString().slice(0,10) ?? "—";
-    const flag = deflated.find(x => x.id === d.id) ? "⚠ DEFLACIONADA" : "✓ ok";
-    console.log(`  [${d.id.slice(-6).toUpperCase()}] planned:${p} | actual:${a} | ${flag}`);
+    const p = d.plannedDeliveryDate?.toISOString().slice(0,10) ?? "—";
+    console.log(`  [${d.id.slice(-6).toUpperCase()}] homolog:${h} | actual:${a} | planned:${p}`);
+    console.log(`         ${d.title.slice(0,60)}`);
   }
 
-  if (deflated.length === 0) { console.log("\nNenhuma deflação."); return; }
+  if (targets.length === 0) { return; }
 
-  console.log(`\nCorrigindo ${deflated.length} demanda(s) (actual → planned)...\n`);
-  for (const d of deflated) {
+  console.log(`\nAtualizando homologationDate → 2026-09-24 e actualDeliveryDate → plannedDeliveryDate...\n`);
+  for (const d of targets) {
     await prisma.demand.update({
       where: { id: d.id },
-      data: { actualDeliveryDate: d.plannedDeliveryDate },
+      data: {
+        homologationDate:  SET_DATE,
+        actualDeliveryDate: d.plannedDeliveryDate, // garante sem deflação
+      },
     });
-    console.log(`  ✓ [${d.id.slice(-6).toUpperCase()}] actual → ${d.plannedDeliveryDate?.toISOString().slice(0,10)} | ${d.title.slice(0,55)}`);
+    console.log(`  ✓ [${d.id.slice(-6).toUpperCase()}] ${d.title.slice(0,55)}`);
   }
   console.log("\nConcluído ✓");
 }

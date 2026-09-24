@@ -1,0 +1,156 @@
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+const DEMANDS = [
+  {
+    title:               "Diagnóstico e Priorização dos Módulos do Sienge",
+    description:         "Mapear a utilização atual do Sienge pelas áreas, identificando módulos mais críticos, processos com maior volume ou impacto, dificuldades recorrentes, funcionalidades subutilizadas e desvios operacionais que devam orientar a reciclagem.",
+    systemAffected:      "ERP Sienge e processos corporativos suportados pelos módulos priorizados.",
+    businessProblem:     "A utilização do ERP pode ter evoluído de forma desigual entre áreas, com conhecimento concentrado, procedimentos paralelos e uso parcial de funcionalidades, reduzindo eficiência e aumentando retrabalho.",
+    expectedResult:      "Consolidar uma visão objetiva dos módulos prioritários, públicos envolvidos e principais gaps funcionais, servindo como base para o plano de reciclagem e para as demais ações de governança.",
+    impactDescription:   "Maior foco nas capacitações, redução de desperdício de esforço e melhor direcionamento das ações de melhoria do ERP.",
+    dependencies:        "Disponibilidade de usuários-chave e gestores das áreas; acesso às informações de utilização e processos atuais.",
+    risks:               "Baixa disponibilidade das áreas ou excesso de temas frente ao prazo disponível.",
+    observations:        "O ciclo deve priorizar os módulos de maior relevância operacional. Não é objetivo revisar integralmente todos os módulos existentes no Sienge até setembro.",
+    acceptanceCriteria:  "Módulos prioritários definidos e justificados. Áreas e usuários-chave relacionados aos módulos identificados. Principais dificuldades e desvios registrados. Plano de reciclagem orientado pelo diagnóstico.",
+    start:               "2026-08-17",
+    delivery:            "2026-08-21",
+  },
+  {
+    title:               "Revisão de Usuários, Perfis e Permissões",
+    description:         "Revisar a base de usuários, perfis e permissões do Sienge, identificando contas de desligados, contas sem uso, acessos genéricos, privilégios excessivos, permissões incompatíveis com a função e acessos administrativos ou críticos.",
+    systemAffected:      "Sienge - administração de usuários, perfis, permissões e acessos.",
+    businessProblem:     "A concessão histórica de acessos pode gerar excesso de privilégios, contas desnecessárias e baixa rastreabilidade, aumentando riscos de segurança, fraude, erro operacional e não conformidade.",
+    expectedResult:      "Sanear a base de usuários e estabelecer uma visão confiável das permissões existentes, com correção dos desvios sob governabilidade da equipe.",
+    impactDescription:   "Redução da superfície de risco, melhor segregação de funções e maior controle sobre acessos ao ERP.",
+    dependencies:        "Base atual de usuários; vínculo com colaboradores e funções; validação dos gestores quando necessária.",
+    risks:               "Acessos antigos sem justificativa documentada, dependência de validação das áreas e risco de impacto operacional por remoção indevida.",
+    observations:        "Alterações críticas devem ser validadas antes da execução. Casos sem definição devem ser mantidos como exceção temporária com responsável e prazo de revisão.",
+    acceptanceCriteria:  "Usuários ativos revisados. Contas de desligados identificadas e tratadas. Acessos privilegiados revisados. Permissões incompatíveis corrigidas ou formalmente justificadas. Base de exceções registrada.",
+    start:               "2026-08-17",
+    delivery:            "2026-09-04",
+  },
+  {
+    title:               "Governança e Novo Fluxo de Acessos do ERP",
+    description:         "Redesenhar o ciclo de concessão, alteração, revisão e revogação de acessos ao Sienge, definindo solicitantes, aprovadores, executores, prazos, evidências, tratamento de exceções e responsabilidades entre TI e áreas de negócio.",
+    systemAffected:      "Sienge, Service Desk e processos de admissão, movimentação interna e desligamento.",
+    businessProblem:     "Fluxos informais ou pouco padronizados podem gerar concessões inadequadas, demora na revogação, ausência de aprovação rastreável e dificuldade de auditoria.",
+    expectedResult:      "Implantar um fluxo claro e documentado para todo o ciclo de vida dos acessos ao ERP.",
+    impactDescription:   "Maior governança, segurança, rastreabilidade e previsibilidade no atendimento de solicitações.",
+    dependencies:        "Alinhamento com RH, gestores e áreas proprietárias dos processos.",
+    risks:               "Atraso na definição de responsáveis ou aprovações externas à TI.",
+    observations:        "A entrega considera o fluxo desenhado, validado e comunicado. Automatizações adicionais podem compor roadmap posterior.",
+    acceptanceCriteria:  "Fluxo de concessão documentado. Fluxo de alteração de função/perfil definido. Revogação em desligamentos incorporada ao processo. Papéis de solicitante, aprovador e executor definidos. Tratamento de exceções e revisão periódica definidos.",
+    start:               "2026-08-24",
+    delivery:            "2026-09-11",
+  },
+  {
+    title:               "Reciclagem dos Principais Módulos do Sienge",
+    description:         "Executar reciclagem funcional direcionada aos módulos priorizados, com foco nos processos reais da empresa, boas práticas, erros recorrentes, funcionalidades subutilizadas e execução correta das principais rotinas.",
+    systemAffected:      "Módulos do Sienge priorizados no diagnóstico.",
+    businessProblem:     "Diferenças de conhecimento entre usuários e perda de domínio das rotinas podem gerar retrabalho, utilização incorreta do ERP, processos paralelos e dependência excessiva de poucos usuários.",
+    expectedResult:      "Reforçar o domínio funcional das equipes sobre os processos críticos e reduzir dúvidas e erros recorrentes.",
+    impactDescription:   "Aumento da produtividade, maior padronização operacional e melhor aproveitamento do ERP.",
+    dependencies:        "Diagnóstico concluído, disponibilidade dos usuários-chave e agenda das áreas.",
+    risks:               "Conflito de agenda, baixa participação ou escopo excessivo de treinamento no período.",
+    observations:        "Priorizar conteúdo de alto impacto. Treinamentos complementares identificados durante o ciclo devem ser encaminhados ao roadmap.",
+    acceptanceCriteria:  "Conteúdo preparado para os módulos priorizados. Sessões de reciclagem realizadas. Usuários-chave envolvidos. Dúvidas e gaps identificados durante as sessões registrados. Materiais disponibilizados às áreas.",
+    start:               "2026-08-31",
+    delivery:            "2026-09-18",
+  },
+  {
+    title:               "Correção do Processo de Baixas no Sienge",
+    description:         "Revisar o processo atual de baixas no Sienge, identificar causas de inconsistências, corrigir regras, parametrizações e procedimentos sob governabilidade da equipe e validar o fluxo com as áreas responsáveis.",
+    systemAffected:      "Sienge - rotinas financeiras e processos relacionados às baixas.",
+    businessProblem:     "Inconsistências no processo de baixas podem gerar divergências financeiras, retrabalho, necessidade de ajustes manuais e perda de confiabilidade dos dados.",
+    expectedResult:      "Estabilizar o processo de baixas, reduzir ocorrências de erro e documentar o procedimento correto para operação e suporte.",
+    impactDescription:   "Maior confiabilidade financeira, redução de retrabalho e melhoria da qualidade das informações do ERP.",
+    dependencies:        "Disponibilidade das áreas financeira/contábil, casos de erro para análise e acesso às parametrizações necessárias.",
+    risks:               "Erros dependentes de fornecedor, customização, integração externa ou regras de negócio ainda não definidas.",
+    observations:        "Itens não solucionáveis até setembro devem ser registrados com causa, criticidade, responsável e plano de ação.",
+    acceptanceCriteria:  "Causas principais das inconsistências identificadas. Correções viáveis aplicadas. Fluxo de baixa validado com usuários-chave. Procedimento atualizado e comunicado. Pendências externas formalmente registradas.",
+    start:               "2026-08-24",
+    delivery:            "2026-09-11",
+  },
+  {
+    title:               "Implantação do Pagamento Escritural",
+    description:         "Configurar e implantar o processo de pagamento escritural no Sienge, contemplando parametrização bancária, geração de remessa, processamento de retorno, homologação e validação controlada do fluxo financeiro.",
+    systemAffected:      "Sienge - financeiro, integração bancária e rotinas de pagamento.",
+    businessProblem:     "Processos manuais ou pouco integrados de pagamento elevam retrabalho, risco operacional, tempo de processamento e necessidade de conferências adicionais.",
+    expectedResult:      "Disponibilizar um fluxo de pagamento escritural validado, com remessa e retorno testados antes da entrada em produção.",
+    impactDescription:   "Maior eficiência operacional, redução de atividades manuais, melhor rastreabilidade e segurança no processo de pagamentos.",
+    dependencies:        "Informações e layouts bancários, homologação com instituição financeira, parametrizações do Sienge e disponibilidade da área financeira.",
+    risks:               "Dependência de banco, fornecedor, certificados, layouts ou homologações externas que possam exceder o prazo.",
+    observations:        "A entrada em produção somente deve ocorrer após testes controlados. Dependências externas devem ser documentadas e acompanhadas sem comprometer o aceite das etapas sob responsabilidade interna.",
+    acceptanceCriteria:  "Parametrizações necessárias concluídas. Arquivo de remessa gerado e validado. Retorno processado em ambiente/fluxo de teste. Homologação funcional realizada com usuários-chave. Ciclo controlado executado com sucesso antes da produção.",
+    start:               "2026-08-24",
+    delivery:            "2026-09-25",
+  },
+  {
+    title:               "Política de Segurança, Perfis e Governança do Sienge",
+    description:         "Formalizar as regras de segurança e governança do ERP, estabelecendo critérios para criação de usuários, menor privilégio, perfis, acessos administrativos, mudança de função, desligamentos, revisões periódicas e tratamento de exceções.",
+    systemAffected:      "Sienge e processos corporativos de gestão de acesso.",
+    businessProblem:     "Sem uma política formal, decisões sobre acessos e privilégios tendem a variar entre áreas e ao longo do tempo, reduzindo consistência, rastreabilidade e segurança.",
+    expectedResult:      "Estabelecer referência formal para administração segura do ERP e sustentação dos novos processos de acesso.",
+    impactDescription:   "Aumento da maturidade de governança, redução de privilégios desnecessários e maior aderência a princípios de segurança.",
+    dependencies:        "Conclusões da revisão de usuários/perfis e validação das áreas envolvidas.",
+    risks:               "Demora na aprovação institucional ou necessidade de adequações jurídicas/compliance.",
+    observations:        "Caso a aprovação dependa de instâncias externas, a versão final entregue e encaminhada para aprovação será considerada conclusão da responsabilidade da equipe neste ciclo.",
+    acceptanceCriteria:  "Princípio do menor privilégio formalizado. Regras de perfis e acessos administrativos definidas. Regras para admissão, movimentação e desligamento registradas. Periodicidade de revisão de acessos definida. Tratamento de exceções e responsabilidades documentados.",
+    start:               "2026-09-08",
+    delivery:            "2026-09-25",
+  },
+  {
+    title:               "Auditoria Final, Indicadores e Roadmap de Evolução do Sienge",
+    description:         "Consolidar os resultados do ciclo, revisar o atendimento das ações planejadas e apresentar indicadores, riscos residuais, pendências e roadmap de evolução do Sienge para o período seguinte.",
+    systemAffected:      "Sienge, governança de acessos, financeiro e processos priorizados.",
+    businessProblem:     "Sem consolidação final, as ações podem perder rastreabilidade e não gerar uma visão executiva da evolução, dos riscos restantes e das próximas prioridades.",
+    expectedResult:      "Encerrar o ciclo com visão objetiva das melhorias implementadas e plano estruturado para continuidade.",
+    impactDescription:   "Maior transparência, governança e capacidade de priorização das próximas evoluções do ERP.",
+    dependencies:        "Conclusão ou status atualizado das macroatividades anteriores.",
+    risks:               "Pendências externas ainda em andamento no fechamento de setembro.",
+    observations:        "O relatório deve diferenciar claramente concluído, pendente interno, dependência externa e ação futura.",
+    acceptanceCriteria:  "Usuários e acessos revisados consolidados. Reciclagens realizadas registradas. Status das correções de baixas consolidado. Status do pagamento escritural registrado. Riscos residuais e exceções documentados. Roadmap de evolução aprovado ou encaminhado para validação.",
+    start:               "2026-09-21",
+    delivery:            "2026-09-30",
+  },
+];
+
+async function main() {
+  console.log("Criando 8 demandas ERP Sienge...\n");
+
+  for (const d of DEMANDS) {
+    const created = await prisma.demand.create({
+      data: {
+        title:               d.title,
+        description:         d.description,
+        requesterArea:       "Diretoria",
+        requesterName:       "Gabriel Sarkis",
+        requesterEmail:      "gabriel@7lm.com.br",
+        demandType:          "OUTRO",
+        priority:            "MEDIA",
+        status:              "EM_DESENVOLVIMENTO",
+        estimatedHours:      20,
+        systemAffected:      d.systemAffected,
+        businessProblem:     d.businessProblem,
+        expectedResult:      d.expectedResult,
+        impactDescription:   d.impactDescription,
+        dependencies:        d.dependencies,
+        risks:               d.risks,
+        observations:        d.observations,
+        acceptanceCriteria:  d.acceptanceCriteria,
+        plannedStartDate:    new Date(`${d.start}T00:00:00.000Z`),
+        plannedDeliveryDate: new Date(`${d.delivery}T00:00:00.000Z`),
+        creator:             { connect: { id: "7baac510-4800-40c1-8cc9-288311be06c2" } },
+      },
+      select: { id: true, title: true },
+    });
+    console.log(`✓ [${created.id}] ${created.title}`);
+    console.log(`  ${d.start} → ${d.delivery}`);
+  }
+
+  console.log("\n8 demandas criadas com sucesso.");
+}
+
+main().catch(console.error).finally(() => prisma.$disconnect());

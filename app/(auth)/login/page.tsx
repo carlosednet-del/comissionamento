@@ -16,9 +16,13 @@ const FEATURES = [
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; next?: string }>;
+  searchParams: Promise<{ error?: string; next?: string; sso?: string }>;
 }) {
   const sp = await searchParams;
+  // Entrada de SSO a partir do menu do 7LM Connect (/login?sso=microsoft). Com
+  // `error` na URL — volta de uma falha no login Microsoft — não dispara de
+  // novo, senão a tela entra em loop.
+  const entradaMicrosoft = sp.sso === "microsoft" && !sp.error;
   return (
     <div className="flex min-h-screen">
 
@@ -121,7 +125,11 @@ export default async function LoginPage({
             </Alert>
           )}
 
-          <LoginForm next={sp.next} microsoftEnabled={!!process.env.AUTH_MICROSOFT_ENTRA_ID_ID} />
+          <LoginForm
+            next={sp.next}
+            microsoftEnabled={!!process.env.AUTH_MICROSOFT_ENTRA_ID_ID}
+            autoMicrosoft={entradaMicrosoft}
+          />
 
           <p className="mt-10 text-center text-xs text-brand-text-muted/60">
             Gestor de Demandas Técnicas

@@ -11,6 +11,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { ChevronDown, ChevronRight, Download, Copy } from "lucide-react";
+import Link from "next/link";
 import type { DapDeveloperRow } from "@/types";
 
 const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -154,9 +155,15 @@ function DevCard({ row }: DevRowProps) {
               <TableBody>
                 {row.demands.map((d) => (
                   <TableRow key={d.demandId}>
-                    <TableCell className="font-mono text-xs">{d.demandCode}</TableCell>
-                    <TableCell className="max-w-[200px] truncate text-sm" title={d.demandTitle}>
-                      {d.demandTitle}
+                    <TableCell className="font-mono text-xs">
+                      <Link href={`/demandas/${d.demandId}`} className="hover:underline text-primary" target="_blank">
+                        {d.demandCode}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="min-w-[320px] text-sm">
+                      <Link href={`/demandas/${d.demandId}`} className="hover:underline" target="_blank" title={d.demandTitle}>
+                        {d.demandTitle}
+                      </Link>
                     </TableCell>
                     <TableCell className="text-xs">{d.requesterArea ?? "—"}</TableCell>
                     <TableCell className="text-xs">{d.demandType ?? "—"}</TableCell>

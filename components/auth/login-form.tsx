@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -31,7 +31,20 @@ function MicrosoftIcon({ className }: { className?: string }) {
   );
 }
 
-export function LoginForm({ next, microsoftEnabled = false }: { next?: string; microsoftEnabled?: boolean }) {
+export function LoginForm({
+  next,
+  microsoftEnabled = false,
+  autoMicrosoft = false,
+}: {
+  next?: string;
+  microsoftEnabled?: boolean;
+  /**
+   * Entrada de SSO (`/login?sso=microsoft`, o link do menu do 7LM Connect):
+   * dispara o "Entrar com Microsoft" sozinho. Quem já tem sessão Microsoft no
+   * navegador — entrou no Connect pela Microsoft — volta logado sem digitar nada.
+   */
+  autoMicrosoft?: boolean;
+}) {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -57,7 +70,7 @@ export function LoginForm({ next, microsoftEnabled = false }: { next?: string; m
     router.refresh();
   }
 
-  async function handleMicrosoftLogin() {
+  const handleMicrosoftLogin = useCallback(async () => {
     setServerError(null);
     setMicrosoftLoading(true);
     try {
@@ -68,7 +81,15 @@ export function LoginForm({ next, microsoftEnabled = false }: { next?: string; m
       setServerError("Erro ao conectar com Microsoft. Tente novamente.");
       setMicrosoftLoading(false);
     }
-  }
+  }, [next]);
+
+  // Uma vez só: em dev o StrictMode monta o componente duas vezes.
+  const autoIniciado = useRef(false);
+  useEffect(() => {
+    if (!autoMicrosoft || !microsoftEnabled || autoIniciado.current) return;
+    autoIniciado.current = true;
+    void handleMicrosoftLogin();
+  }, [autoMicrosoft, microsoftEnabled, handleMicrosoftLogin]);
 
   return (
     <div className="space-y-5">

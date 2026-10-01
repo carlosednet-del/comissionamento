@@ -104,7 +104,7 @@ export const DEFLATOR_FACTORS: Record<number, number> = {
   2: 0.50,
   3: 0.25,
   4: 0.10,
-  5: -1.00,
+  5: 0.00,
 };
 
 export function getDeflatorFactor(
@@ -115,7 +115,7 @@ export function getDeflatorFactor(
   const factors = factorsOverride ?? DEFLATOR_FACTORS;
   // Para 5+ DU usamos a chave 5
   const key = Math.min(workingDaysLate, 5);
-  return factors[key] ?? -1.00;
+  return factors[key] ?? 0.00;
 }
 
 /** Conta dias úteis (seg–sex) entre duas datas (exclusive start, inclusive end). */
